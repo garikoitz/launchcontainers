@@ -33,14 +33,15 @@ import pandas as pd
 
 # basedir="/bcbl/home/public/Gari/MAGNO2/"
 basedir="/export/home/glerma/glerma/00local/PROYECTOS/MAGNO2/"
+basedir="/bcbl/home/public/Gari/MINI/"
 # THIS ANALYSIS
-tool   ="fs_7.1.1-03"
+# tool   ="fs_7.1.1-03d"
 # tool   ="rtppreproc_1.1.2"
-# tool   ="rtp-pipeline_4.3.4"
+tool   ="rtp-pipeline_4.3.5d"
 analysis="01" 
 
 # PREVIOUS ANALYSIS
-pretoolfs="fs_7.1.1-03"
+pretoolfs="fs_7.1.1-03d"
 preanalysisfs="01"
 
 pretoolpp="rtppreproc_1.1.2"
@@ -49,6 +50,7 @@ preanalysispp="01"
 
 # Get the unique list of subjects and sessions
 codedir  = "/bcbl/home/home_g-m/glerma/GIT/paper-MAGNO"
+codedir  = "/bcbl/home/public/Gari/MINI/Nifti"
 subseslist=os.path.join(codedir,"subSesList.txt")
 os.chdir(codedir)
 

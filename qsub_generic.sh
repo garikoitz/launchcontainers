@@ -11,6 +11,7 @@
 printf "Calling the tool $1, with sub $2, ses $3, running analysis $4 (mem=$5, var 6=$6)\n\n"
 # export basedir=/export/home/glerma/public/Gari/MAGNO2
 export basedir="/export/home/glerma/glerma/00local/PROYECTOS/MAGNO2/"
+export basedir="/bcbl/home/public/Gari/MINI/"
 export tool=$1
 export sub=$2
 export ses=$3
@@ -48,7 +49,7 @@ printf "\n\n It will use basedir:$basedir and tool:$tool \n\n"
 		printf "#########################################"
     		printf "############## $sub_$ses ################"
     		printf "#########################################"
-    		qsub    -q long.q \
+    		qsub    -q all.q \
 			-N t-${tool}_a-${analysis}_s-${sub}_s-${ses} \
 			-l mem_free=$mem \
 			-v tool=$tool \

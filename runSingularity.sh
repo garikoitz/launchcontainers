@@ -1,6 +1,7 @@
 #!/bin/bash
 
 echo $sub
+set -x
 singularityVersion=3.5.2
 module load singularity/$singularityVersion
 
