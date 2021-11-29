@@ -74,7 +74,8 @@ if [ "$qsb" == "true" ];then
             ${codedir}/runSingularity.sh"
         elif [ "$manager" == "slurm" ]; then
             cmd="sbatch \
-            -q serial --partition=serial --mem=$mem --nodes=1 --cpus-per-task=$core --time=1-00:00:00 \
+            -q $que --partition=regular --mem=$mem --nodes=1 --cpus-per-task=$core --time=1-00:00:00 \
+            --ntasks-per-node=1 \
             --job-name=${sub}_${ses}_${tool}_${analysis} \
             -o ${logdir}/t-${tool}_a-${analysis}_s-${sub}_s-${ses}.o \
             -e ${logdir}/t-${tool}_a-${analysis}_s-${sub}_s-${ses}.e \

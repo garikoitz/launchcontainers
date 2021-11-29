@@ -1,15 +1,17 @@
 {
   "config": {
-    "basedir": "/scratch/lmx/THALOC",
+    "basedir": "/scratch/lmx/ThaTract",
     "rpe": true,
-    "tool": "rtppreproc_1.1.3",
-    "analysis": "01",
-    "annotfile": "/scratch/lmx/THALOC/Nifti/annots.zip",
-    "mniroizip": "",
-    "pre_fs":false,
+    "tool": "lmx/ThaTract",
+    "rpe": true,
+    "tool": "rtp-pipeline_4.3.9",
+    "analysis": "15",
+    "annotfile": "/scratch/lmx/ThaTract/Nifti/annotfile.zip",
+    "mniroizip": "/scratch/lmx/ThaTract/MNI_ROIS_FOR_FSL.zip",
+    "pre_fs":true,
     "pretoolfs":"anatrois_4.2.7-7.1.1",
     "preanalysisfs":"01",
-    "prefs_zipname":"freesurfer-recon-all_",
+    "prefs_zipname":"freesurfer-recon-all",
     "pretoolpp":"rtppreproc_1.1.3",
     "preanalysispp":"01",
     "codedir":"/dipc/lmx/GIT/launchcontainers",
@@ -27,10 +29,10 @@
   },
   "DIPC": {
     "mem":"60G",
-    "que":"bcbl",
-    "core":6,
+    "que":"regular",
+    "core":12,
     "sin_ver":"Singularity/3.5.3-GCC-8.3.0",
     "manager":"slurm",
-    "system":"scratch"
+    "system":"lscratch"
   }
 }

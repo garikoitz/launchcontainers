@@ -291,7 +291,7 @@ for index in dt.index:
     if 'rtp-pipeline' in tool and RUN and dwi:
         # Main source dir
         srcDirfs=os.path.join(basedir, 'Nifti', 'derivatives', pretoolfs,
-                                'analysis-'+preanalysisfs, 'sub-'+sub, 'ses-'+ses, 'output')
+                                'analysis-'+preanalysisfs, 'sub-'+sub, 'ses-'+'T01', 'output')
         srcDirpp=os.path.join(basedir, 'Nifti', 'derivatives', pretoolpp,
                                 'analysis-'+preanalysispp, 'sub-'+sub, 'ses-'+ses, 'output')
 

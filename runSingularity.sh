@@ -70,6 +70,7 @@ elif [ "$host" == "DIPC" ];then
             export LSCRATCH_DIR=/lscratch/$USER/jobs/${SLURM_JOB_ID}
             mkdir -p $LSCRATCH_DIR/input $LSCRATCH_DIR/output
             export SINGULARITYENV_TMPDIR=/flywheel/v0/output
+            export SINGULARITYENV_MRTRIX_TMPFILE_DIR=/flywheel/v0/output
         fi
         cmd="singularity run -e --no-home \
      	    --bind /scratch:/scratch \
