@@ -5,3 +5,4 @@ conda install shutil
 conda install pandas
 conda install subprocess
 conda install pyyaml
+conda install nibabel -c conda-forge
