@@ -1,6 +1,6 @@
 conda install dask
 conda install dask-jobqueue -c conda-forge
-conda install dask.distributed 
+conda install dask.distributed -c conda-forge
 conda install shutil
 conda install pandas
 conda install subprocess
