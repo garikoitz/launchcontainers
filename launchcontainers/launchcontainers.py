@@ -140,7 +140,7 @@ def _read_df(path_to_df_file):
     a dataframe
 
     """
-    outputdf = pd.read_csv(path_to_df_file, sep=",", header=0)
+    outputdf = pd.read_csv(path_to_df_file, sep=",", header=0, dtype="string")
     num_rows = len(outputdf)
 
     # Print the result
@@ -149,7 +149,7 @@ def _read_df(path_to_df_file):
     print(f'The DataFrame has {num_rows} rows. \n')
     print("3333333333333333333333333333333333333333333333333333333333333333333333\n")
     
-
+    outputdf.fillna("NO", inplace= True)
     return outputdf
 #%% check if tractparam ROI was created in the anatrois fs.zip file
 def check_tractparam(lc_config, sub, ses, tractparam_df):
@@ -237,22 +237,22 @@ def prepare_input_files(lc_config, df_subSes, container_specific_config):
         print(f"{sub}_{ses}_RUN-{RUN}_{container}_{version}\n")
 
         if not RUN:
-            continue
-
-        if "rtppreproc" in container:
-            csl.rtppreproc(lc_config, sub, ses, container_specific_config)
-        elif "rtp-pipeline" in container:
-            csl.rtppipeline(lc_config, sub, ses, container_specific_config)
-            tractparam_df=_read_df(container_specific_config[1])
-            check_tractparam(lc_config, sub, ses, tractparam_df)
-        elif "anatrois" in container:
-            csl.anatrois(lc_config, sub, ses, container_specific_config)
-        # future container
-        else:
-            print(f"******************* ERROR ********************\n")
-            print(
-                f"{container} is not created, check for typos or contact admin for singularity images\n"
-            )
+            pass
+        if RUN:
+            if "rtppreproc" in container:
+                csl.rtppreproc(lc_config, sub, ses, container_specific_config)
+            elif "rtp-pipeline" in container:
+                csl.rtppipeline(lc_config, sub, ses, container_specific_config)
+                tractparam_df=_read_df(container_specific_config[1])
+                check_tractparam(lc_config, sub, ses, tractparam_df)
+            elif "anatrois" in container:
+                csl.anatrois(lc_config, sub, ses, container_specific_config)
+            # future container
+            else:
+                print(f"******************* ERROR ********************\n")
+                print(
+                    f"{container} is not created, check for typos or contact admin for singularity images\n"
+                     )
     print("4444444444444444444444444444444444444444444444444444444444444444444444\n")
     return
 
