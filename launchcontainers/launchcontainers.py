@@ -173,7 +173,7 @@ def check_tractparam(lc_config, sub, ses, tractparam_df):
     required_rois=set()
     for col in ['roi1', 'roi2', 'roi3', 'roi4',"roiexc1","roiexc2"]:
         for val in tractparam_df[col].unique():
-            if val != "NO":
+            if (val != "NO") & (val != " "):
                 required_rois.add(val)
 
     # Define the zip file
