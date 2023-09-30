@@ -74,7 +74,7 @@ def initiate_cluster(jobqueue_config, n_job):
                                          name = jobqueue_config["name"],
                                          death_timeout = 300,#jobqueue_config["death-timeout"],
                                          walltime=jobqueue_config["walltime"],
-                                         job_extra_directives = ["--export=ALL"])
+                                         job_extra_directives = ["--partition="+jobqueue_config["partition"],"--export=ALL"])
         cluster_by_config.scale(jobs=n_job)
     elif "local" in jobqueue_config["manager"]:
         logger.debug("defining local cluster")

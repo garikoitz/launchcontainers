@@ -252,9 +252,9 @@ def prepare_dwi_input(parser_namespace, Dir_analysis, lc_config, df_subSes):
                 "output", "configs"
             )
             if not os.path.isdir(tmpdir):
-                os.mkdir(tmpdir)
+                os.makedirs(tmpdir)
             if not os.path.isdir(logdir):
-                os.mkdir(logdir)
+                os.makedirs(logdir)
             
             if "rtppreproc" in container:
                 csl.rtppreproc(parser_namespace, Dir_analysis, lc_config, sub, ses)
