@@ -57,7 +57,7 @@ def generate_cmd(new_lc_config,sub,ses,Dir_analysis, path_to_analysis_config_jso
                 f"{sif_path} 2>> {logfilename}.e 1>> {logfilename}.o "
         
         elif "DIPC" == host:
-            cmd=f"singularity run -e --no-home "\
+            cmd=f"singularity run --no-home "\
                 f"--bind /scratch:/scratch "\
                 f"--bind {path_to_sub_derivatives}/input:/flywheel/v0/input:ro "\
                 f"--bind {path_to_sub_derivatives}/output:/flywheel/v0/output "\

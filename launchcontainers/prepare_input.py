@@ -43,11 +43,14 @@ def prepare_analysis_folder(parser_namespace, lc_config):
     # get the analysis folder information
     
     container_folder = os.path.join(basedir, 'BIDS','derivatives',f'{container}')
+    
     if not os.path.isdir(container_folder):
         os.makedirs(container_folder)
-    
+        logger.warning(f"your container folder for {container} is empty, please rerun prepare mode it you didn't do so ") 
     entities= os.listdir(container_folder)
-    
+    if len(entities)==0:
+        logger.critical('No valid analysis folder, prepare mode is incomplete, please rerun prepare mode and create correct analysis folder')
+        raise FileNotFoundError('the analysis folder is not found, aborting')
     analysis_folders= [dir_ana for dir_ana in entities if os.path.isdir(os.path.join(container_folder,dir_ana))]
     
     if not analysis_folders:

@@ -59,7 +59,7 @@ def initiate_cluster(jobqueue_config, n_job):
                                        # resource_spec=jobqueue_config["resource-spec"],
                                        walltime=jobqueue_config["walltime"])#,
                                        #job_extra_directives=job_extra_directives)
-        cluster_by_config.scale(jobs=n_job)
+        cluster_by_config.scale(n_job)
 
     elif "slurm" in jobqueue_config["manager"]:
         envextra = [f"module load {jobqueue_config['sin_ver']} ",\
@@ -75,12 +75,12 @@ def initiate_cluster(jobqueue_config, n_job):
                                          death_timeout = 300,#jobqueue_config["death-timeout"],
                                          walltime=jobqueue_config["walltime"],
                                          job_extra_directives = ["--partition="+jobqueue_config["partition"],"--export=ALL"])
-        cluster_by_config.scale(jobs=n_job)
+        cluster_by_config.scale(n_job)
     elif "local" in jobqueue_config["manager"]:
         logger.debug("defining local cluster")
         cluster_by_config=LocalCluster()
 
-        cluster_by_config.scale(jobs=n_job)
+        cluster_by_config.scale(n_job)
     else:
         logger.warning(
             "dask configuration wasn't detected, "
