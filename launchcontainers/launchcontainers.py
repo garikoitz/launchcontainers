@@ -174,8 +174,8 @@ def launchcontainers(lc_config, sub_ses_list, run_it,new_lc_config_path, new_sub
         futures = client.map(cmdrun,hosts,paths_to_subs_derivatives,paths_to_configs_json,sif_paths,logfilenames)
         progress(futures)
         results = client.gather(futures)
-        logger.ino(results)
-        logger.ino('###########')
+        logger.info(results)
+        logger.info('###########')
     
         client.close()
         cluster.close()
