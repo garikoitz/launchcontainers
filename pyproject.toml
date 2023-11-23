@@ -1,29 +1,53 @@
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
 
-[tool.black]
-line-length = 99
-target-version = ['py37']
-include = '\.pyi?$'
-exclude = '''
-(
-  /(
-      \.eggs         # exclude a few common directories in the
-    | \.git          # root of the project
-    | \.github
-    | \.hg
-    | \.pytest_cache
-    | _build
-    | build
-    | dist
-  )/
-  | get_version.py
-  | versioneer.py
-  | launchcontainers/_version.py
-  | launchcontainers/due.py
-)
-'''
+[tool.poetry]
+name = "launchcontainers"
+version = "0.0.1"
+description = "Launch Containers Package"
+authors = [ "BCBL", "CompNeuroLabBilbao",
+            "Tiger Yongning Lei",
+            "David Linhardt",
+            "Iñigo Tellaetxe",
+            "Alec Gallo",
+            "Ana Joya"
+            ]
+maintainers = ["Tiger Yongning Lei", "David Linhardt"]
+readme = "README.md"
+repository = "https://github.com/yongninglei/launchcontainers"
+license = "MIT"
+keywords = ["Age Modelling", "Brain Age"]
+classifiers = ["Topic :: Software Development :: Libraries :: Python Modules"]
+packages = [{include = "launchcontainers", from = "src"}]
 
-[tool.isort]
-profile = "black"
-multi_line_output = 3
+[tool.poetry.scripts]
+launchcontainers = "launchcontainers.launch:main"
+
+
+[tool.poetry.dependencies]
+python = ">=3.9, <3.12"
+bids = "*"
+pybids = "0.16.1"
+dask = "2022.7.0"
+dask_jobqueue = "0.8.1"
+nibabel = "5.1.0"
+numpy = "1.23.5"
+pandas = "1.5.3"
+scipy = "1.11.4"
+PyYAML = "6.0.1"
+coverage-conditional-plugin = "^0.7.0"
+
+[tool.poetry.dev-dependencies]
+nox-poetry = "*"
+# Testing
+pytest = "*"
+pytest-cov = "*"
+coverage_conditional_plugin = "*"
+# Linting
+flake8 = "*"
+flake8-bugbear = "*"
+flake8-broken-line = "*"
+flake8-comprehensions = "*"
+# Formatting
+black = {version = "^23.1a1", allow-prereleases = true}

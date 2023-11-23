@@ -1,17 +1,16 @@
 import argparse
 from argparse import RawDescriptionHelpFormatter
-
 import sys
 
 
 # %% parser
 def get_parser():
-    """
-    Input:
-    Parse command line inputs
-
+    
+    """Parses command line inputs
+    Args:
+        None
     Returns:
-    a dict stores information about the cmd input
+        parse_namespace(argparse.Namespace): dict-like storing the command line arguments
 
     """
     parser = argparse.ArgumentParser(
@@ -93,13 +92,12 @@ def get_parser():
 
 # %% parser
 def get_parser2():
-    """
-    Input:
-    Parse command line inputs
-
+    """Parses command line inputs
+    Args:
+        None
     Returns:
-    a dict stores information about the cmd input
-
+        parse_namespace(argparse.Namespace): dict-like storing the command line arguments
+        parse_dict(mappingproxy): parsed arguments from the argument parser
     """
     parser = argparse.ArgumentParser(
         description= """
@@ -170,7 +168,7 @@ def get_parser2():
                 f'{parse_dict}\n'+    
         "#####################################################\n")
     
-    return parse_namespace ,parse_dict   
+    return parse_namespace, parse_dict   
 
 
 def main():
@@ -178,7 +176,7 @@ def main():
     
     #get the path from command line input
     #parser_namespace = get_parser()
-    parser_namespace, parse_dict= get_parser2()
+    parser_namespace, parse_dict = get_parser2()
     print(parser_namespace.container_specific_config)
     print(parse_dict)
 

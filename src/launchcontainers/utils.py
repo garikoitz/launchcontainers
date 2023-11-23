@@ -3,11 +3,14 @@ from argparse import RawDescriptionHelpFormatter
 import yaml
 from yaml.loader import SafeLoader
 import logging
-import pandas as pd
 import os
 import shutil
 import sys
+
+import pandas as pd
+
 logger=logging.getLogger("GENERAL")
+
 
 # %% parser
 def get_parser():
