@@ -52,7 +52,7 @@ def generate_cmd(lc_config,sub,ses,dir_analysis, lst_container_specific_configs,
     if container in ['anatrois', 'rtppreproc','rtp-pipeline']:  
         logger.info("\n"+ f'start to generate the DWI PIPELINE command')
         config_json= lst_container_specific_configs[0]
-        
+        logger.debug(f"\n the sub is {sub} \n the ses is {ses} \n the analysis dir is {dir_analysis}")
         # Define the directory and the file name to output the log of each subject
         logdir= os.path.join(
                 dir_analysis,
@@ -217,7 +217,7 @@ def launchcontainer(dir_analysis, lc_config, sub_ses_list, parser_namespace):
     lc_configs=[]
     subs=[]
     sess=[]
-    dir_analysis=[]
+    dir_analysiss=[]
     paths_to_analysis_config_json=[]
     run_lcs=[]
     
@@ -251,7 +251,7 @@ def launchcontainer(dir_analysis, lc_config, sub_ses_list, parser_namespace):
             lc_configs.append(lc_config)
             subs.append(sub)
             sess.append(ses)
-            dir_analysis.append(dir_analysis)
+            dir_analysiss.append(dir_analysis)
             paths_to_analysis_config_json.append(lst_container_specific_configs)
             run_lcs.append(run_lc)
             
@@ -267,7 +267,7 @@ def launchcontainer(dir_analysis, lc_config, sub_ses_list, parser_namespace):
     # RUN mode
     if run_lc:  
         # Compose the command to run in the cluster  
-        futures = client.map(generate_cmd,lc_configs,subs,sess,dir_analysis,paths_to_analysis_config_json, run_lcs)
+        futures = client.map(generate_cmd,lc_configs,subs,sess,dir_analysiss,paths_to_analysis_config_json, run_lcs)
         # Record the progress
         progress(futures)
         # Get the info and report it in the logger
