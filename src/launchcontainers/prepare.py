@@ -10,8 +10,8 @@ from glob import glob
 import numpy as np 
 from scipy.io import loadmat
 
-import launchcontainers.utils as do
-import launchcontainers.prepare_dwi as dwipre
+import utils as do
+import prepare_dwi as dwipre
 
 logger=logging.getLogger("GENERAL")
 
