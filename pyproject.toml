@@ -4,10 +4,10 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "launchcontainers"
-version = "0.0.1"
+version = "0.0.2"
 description = "Launch Containers Package"
 authors = [ "BCBL", "CompNeuroLabBilbao",
-            "Tiger Yongning Lei",
+            "Yongning Lei",
             "David Linhardt",
             "Iñigo Tellaetxe",
             "Alec Gallo",

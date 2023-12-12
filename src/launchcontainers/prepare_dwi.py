@@ -1,4 +1,19 @@
+"""
+MIT License
+
+Copyright (c) 2020-2023 Garikoitz Lerma-Usabiaga
+Copyright (c) 2020-2022 Mengxing Liu
+Copyright (c) 2022-2023 Leandro Lecca
+Copyright (c) 2022-2023 Yongning Lei
+Copyright (c) 2023 David Linhardt
+Copyright (c) 2023 Iñigo Tellaetxe
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+"""
 #%% import libraries
+
 import os
 import errno
 import glob
@@ -10,8 +25,8 @@ import subprocess as sp
 import zipfile
 import logging
 
-import utils as do
-from utils import read_df, copy_file 
+from launchcontainers import utils as do
+from launchcontainers.utils import read_df, copy_file 
 
 
 logger=logging.getLogger("GENERAL")
@@ -246,7 +261,7 @@ def anatrois(parser_namespace, dir_analysis,lc_config, sub, ses, layout):
                     srcFileT1 = zips_new[-1]
                 else:
                     logger.error("\n"+"An error occurred"
-                               +zips_new +"\n"
+                               +zips_new +"\n" # type: ignore
                                +"no target preanalysis.zip file exist, please check the config_lc.yaml file")
                     sys.exit(1)
         elif len(zips) > 1:
