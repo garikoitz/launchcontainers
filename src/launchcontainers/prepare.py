@@ -25,8 +25,8 @@ from glob import glob
 import numpy as np 
 from scipy.io import loadmat
 
-import utils as do
-import prepare_dwi as dwipre
+from launchcontainers import utils as do
+from launchcontainers import prepare_dwi as dwipre
 
 logger=logging.getLogger("GENERAL")
 

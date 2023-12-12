@@ -25,8 +25,8 @@ import subprocess as sp
 import zipfile
 import logging
 
-import utils as do
-from utils import read_df, copy_file 
+from launchcontainers import utils as do
+from launchcontainers.utils import read_df, copy_file 
 
 
 logger=logging.getLogger("GENERAL")
