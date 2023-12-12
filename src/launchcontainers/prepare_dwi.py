@@ -124,13 +124,18 @@ def check_tractparam(lc_config, sub, ses, tractparam_df):
     # Define the list of required ROIs
     logger.info("\n"+
                 "#####################################################\n")
-    required_rois=set()
-    
+    roi_list=[]
     # Iterate over some defined roisand check if they are required or not in the config.yaml
     for col in ['roi1', 'roi2', 'roi3', 'roi4',"roiexc1","roiexc2"]:
-        for val in tractparam_df[col][~tractparam_df[col].isna()].unique():
-            if val != "NO":
-                required_rois.add(val)
+        for val in tractparam_df[col][~tractparam_df[col].isna()]:
+            if '_AND_' in val:
+                multi_roi= val.split('_AND_')
+                roi_list.extend(multi_roi)
+            else:
+                if val != "NO":                    
+                    roi_list.append(val)
+    
+    required_rois= set(roi_list)
 
     # Define the zip file
     basedir = lc_config["general"]["basedir"]
