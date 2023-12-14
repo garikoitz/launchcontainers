@@ -494,12 +494,35 @@ def rtppreproc(parser_namespace, Dir_analysis, lc_config, sub, ses, layout):
             rpe_dir = "AP"
         elif phaseEnco_direc == "AP":
             rpe_dir = "PA"
+        
         # the reverse direction nii.gz
         srcFileDwi_nii_R = layout.get(subject= sub, session=ses, extension='nii.gz',suffix= 'dwi', direction=rpe_dir, return_type='filename')[0]
         # the reverse direction bval
-        srcFileDwi_bval_R = layout.get(subject= sub, session=ses, extension='bval',suffix= 'dwi', direction=rpe_dir, return_type='filename')[0]
+        srcFileDwi_bval_R_lst= layout.get(subject= sub, session=ses, extension='bval',suffix= 'dwi', direction=rpe_dir, return_type='filename')
+        if len(srcFileDwi_bval_R_lst)==0:
+            srcFileDwi_bval_R = os.path.join(
+            basedir,
+            bidsdir_name,
+            "sub-" + sub, "ses-" + ses, 
+            "dwi", 
+            "sub-" + sub + "_ses-" + ses + "_dir-"+rpe_dir+"_dwi.bval"
+            )
+            logger.warning(f"\n the bval Reverse file are not find by BIDS, create empty file !!!")
+        else:    
+            srcFileDwi_bval_R = layout.get(subject= sub, session=ses, extension='bval',suffix= 'dwi', direction=rpe_dir, return_type='filename')[0]
         # the reverse direction bvec
-        srcFileDwi_bvec_R =layout.get(subject= sub, session=ses, extension='bvec',suffix= 'dwi', direction=rpe_dir, return_type='filename')[0]
+        srcFileDwi_bvec_R_lst= layout.get(subject= sub, session=ses, extension='bvec',suffix= 'dwi', direction=rpe_dir, return_type='filename')
+        if len(srcFileDwi_bvec_R_lst)==0:
+            srcFileDwi_bvec_R = os.path.join(
+            basedir,
+            bidsdir_name,
+            "sub-" + sub, "ses-" + ses, 
+            "dwi", 
+            "sub-" + sub + "_ses-" + ses + "_dir-"+rpe_dir+"_dwi.bvec"
+            )     
+            logger.warning(f"\n the bvec Reverse file are not find by BIDS, create empty file !!!")       
+        else:
+            srcFileDwi_bvec_R =layout.get(subject= sub, session=ses, extension='bvec',suffix= 'dwi', direction=rpe_dir, return_type='filename')[0]
 
         # If bval and bvec do not exist because it is only b0-s, create them
         # (it would be better if dcm2niix would output them but...)
@@ -512,7 +535,7 @@ def rtppreproc(parser_namespace, Dir_analysis, lc_config, sub, ses, layout):
             f = open(srcFileDwi_bval_R, "x")
             f.write(volumes * "0 ")
             f.close()
-
+            logger.warning(f"\n Finish writing the bval Reverse file with all 0 !!!")
             # Write bvec file
             f = open(srcFileDwi_bvec_R, "x")
             f.write(volumes * "0 ")
@@ -522,7 +545,8 @@ def rtppreproc(parser_namespace, Dir_analysis, lc_config, sub, ses, layout):
             f.write(volumes * "0 ")
             f.write("\n")
             f.close()
-
+            logger.warning(f"\n Finish writing the bvec
+                            Reverse file with all 0 !!!")
     # create input and output directory for this container, the dstDir_output should be empty, the dstDir_input should contains all the symlinks
     dstDir_input = os.path.join(
         Dir_analysis,
