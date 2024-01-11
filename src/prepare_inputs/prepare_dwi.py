@@ -267,10 +267,11 @@ def anatrois(parser_namespace, dir_analysis,lc_config, sub, ses, layout):
                      +f'the tpye of patter is {type(prefs_zipname)}')
         zips=[]
         pattern=r'^anatrois_S.*\.zip$'
+        logger.debug('\n'
+                     +f'the pattern is equal to prefs_zipname?  it is {pattern==prefs_zipname}')
         for filename in os.listdir(srcAnatPath):
-            if filename.endswith(".zip") and re.match(pattern, filename):
+            if filename.endswith(".zip") and re.match(prefs_zipname, filename):
                 zips.append(filename)
-        
         if len(zips) == 0:
             logger.warning("\n"+
                 f"There are no files with pattern: {prefs_zipname} in {srcAnatPath}, we will listed potential zip file for you"
