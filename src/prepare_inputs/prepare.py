@@ -136,7 +136,9 @@ def prepare_dwi_input(parser_namespace, Dir_analysis, lc_config, df_subSes, layo
     
     container = lc_config["general"]["container"]
     version = lc_config["container_specific"][container]["version"]
- 
+    force = lc_config["general"]["force"]   
+    run_lc = parser_namespace.run_lc    
+    force= force or run_lc    
     
     # first thing, if the container specific config is not correct, then not doing anything
     if len(parser_namespace.container_specific_config)==0:
@@ -178,7 +180,12 @@ def prepare_dwi_input(parser_namespace, Dir_analysis, lc_config, df_subSes, layo
             if not os.path.isdir(logdir):
                 os.makedirs(logdir)
             
+            do.copy_file(parser_namespace.lc_config, os.path.join(logdir,'lc_config.yaml'), force) 
+               
+  
+
             if "rtppreproc" in container:
+                do.copy_file(parser_namespace.container_specific_config[0], os.path.join(logdir,'config.json'), force)
                 dwipre.rtppreproc(parser_namespace, Dir_analysis, lc_config, sub, ses, layout)
             
             elif "rtp-pipeline" in container:
@@ -188,10 +195,14 @@ def prepare_dwi_input(parser_namespace, Dir_analysis, lc_config, df_subSes, layo
                               +f"Input file error: the RTP-PIPELINE config is not provided completely")
                     raise FileNotFoundError('The RTP-PIPELINE needs the config.json and tratparams.csv as container specific configs')
                 
+                output_folder_config_json=  [os.path.join(logdir, "config.json"), os.path.join(logdir, "tractparams.csv")]
+                for orig_config_json, copy_config_json in zip(parser_namespace.container_specific_config,output_folder_config_json):
+                    do.copy_file(orig_config_json, copy_config_json, force) 
                 dwipre.rtppipeline(parser_namespace, Dir_analysis,lc_config, sub, ses, layout)
             
             elif "anatrois" in container:
                 logger.info('we do the anatrois')
+                do.copy_file(parser_namespace.container_specific_config[0], os.path.join(logdir,'config.json'), force)
                 dwipre.anatrois(parser_namespace, Dir_analysis,lc_config,sub, ses, layout)
             
             else:
