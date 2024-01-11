@@ -15,6 +15,7 @@ The above copyright notice and this permission notice shall be included in all c
 #%% import libraries
 
 import os
+import re
 import errno
 import glob
 import sys
@@ -25,8 +26,8 @@ import subprocess as sp
 import zipfile
 import logging
 
-from launchcontainers import utils as do
-from launchcontainers.utils import read_df, copy_file 
+from . import utils as do
+from .utils import read_df, copy_file 
 
 
 logger=logging.getLogger("GENERAL")
@@ -125,13 +126,18 @@ def check_tractparam(lc_config, sub, ses, tractparam_df):
     # Define the list of required ROIs
     logger.info("\n"+
                 "#####################################################\n")
-    required_rois=set()
-    
+    roi_list=[]
     # Iterate over some defined roisand check if they are required or not in the config.yaml
     for col in ['roi1', 'roi2', 'roi3', 'roi4',"roiexc1","roiexc2"]:
-        for val in tractparam_df[col][~tractparam_df[col].isna()].unique():
-            if val != "NO":
-                required_rois.add(val)
+        for val in tractparam_df[col][~tractparam_df[col].isna()]:
+            if '_AND_' in val:
+                multi_roi= val.split('_AND_')
+                roi_list.extend(multi_roi)
+            else:
+                if val != "NO":                    
+                    roi_list.append(val)
+    
+    required_rois= set(roi_list)
 
     # Define the zip file
     basedir = lc_config["general"]["basedir"]
@@ -215,11 +221,15 @@ def anatrois(parser_namespace, dir_analysis,lc_config, sub, ses, layout):
     pre_fs = lc_config["container_specific"][container]["pre_fs"]
     prefs_zipname = lc_config["container_specific"][container]["prefs_zipname"]
     # I added this line, shall we modify config yaml
-    precontainer_anat = lc_config["container_specific"][container]["precontainer_anat"]
-    anat_analysis_name = lc_config["container_specific"][container]["anat_analysis_name"]
     annotfile = lc_config["container_specific"][container]["annotfile"]
     mniroizip = lc_config["container_specific"][container]["mniroizip"]
+    
     version = lc_config["container_specific"][container]["version"]
+    source_path_fszip= lc_config["container_specific"][container]["source_path_fszip"]
+    precontainer_anat = lc_config["container_specific"][container]["precontainer_anat"]
+    anat_analysis_name = lc_config["container_specific"][container]["anat_analysis_name"]
+    precontainer_fmriprep = lc_config["container_specific"][container]["precontainer_fmriprep"]
+    fmriprep_analysis_name = lc_config["container_specific"][container]["fmriprep_analysis_name"]
     
     srcFile_container_config_json= container_specific_config_path[0]
     new_container_specific_config_path=[]
@@ -228,24 +238,43 @@ def anatrois(parser_namespace, dir_analysis,lc_config, sub, ses, layout):
     if pre_fs:
         logger.info("\n"
                    +f"########\n the sourceFile T1 will be pre_fs\n#########\n")
-        srcAnatPath = os.path.join(
-            basedir,
-            bidsdir_name,
-            "derivatives",
-            f'{precontainer_anat}',
-            "analysis-" + anat_analysis_name,
-            "sub-" + sub,
-            "ses-" + ses,
-            "output",
-        )
-        zips = sorted(
-            glob.glob(os.path.join(srcAnatPath, prefs_zipname + "*")), key=os.path.getmtime
-        )
+        if source_path_fszip == "anatrois":
+            srcAnatPath = os.path.join(
+                basedir,
+                bidsdir_name,
+                "derivatives",
+                f'{precontainer_anat}',
+                "analysis-" + anat_analysis_name,
+                "sub-" + sub,
+                "ses-" + ses,
+                "output",
+            )
+        elif source_path_fszip == "fmriprep":
+            srcAnatPath = os.path.join(
+                basedir,
+                bidsdir_name,
+                "derivatives",
+                f'{precontainer_fmriprep}',
+                "analysis-" + fmriprep_analysis_name,
+                'sourcedata',
+                "freesurfer"
+                "sub-" + sub,
+            )
         logger.info("\n"
-                   +f"---the len of the zip file list is {len(zips)}\n")
+                   +f"---the patter of fs.zip filename we are searching is {prefs_zipname}\n"
+                   +f"---the directory we are searching for is {srcAnatPath}")
+        logger.debug("\n"
+                     +f'the tpye of patter is {type(prefs_zipname)}')
+        zips=[]
+        pattern=r'^anatrois_S.*\.zip$'
+        logger.debug('\n'
+                     +f'the pattern is equal to prefs_zipname?  it is {pattern==prefs_zipname}')
+        for filename in os.listdir(srcAnatPath):
+            if filename.endswith(".zip") and re.match(prefs_zipname, filename):
+                zips.append(filename)
         if len(zips) == 0:
             logger.warning("\n"+
-                f"There are no {prefs_zipname}.zip in {srcAnatPath}, we will listed potential zip file for you"
+                f"There are no files with pattern: {prefs_zipname} in {srcAnatPath}, we will listed potential zip file for you"
             )
             zips_new = sorted(glob.glob(os.path.join(srcAnatPath, "*")), key=os.path.getmtime)
             if len(zips_new) == 0:
@@ -264,12 +293,8 @@ def anatrois(parser_namespace, dir_analysis,lc_config, sub, ses, layout):
                                +zips_new +"\n" # type: ignore
                                +"no target preanalysis.zip file exist, please check the config_lc.yaml file")
                     sys.exit(1)
-        elif len(zips) > 1:
-            logger.info("\n"
-                       +f"There are more than one zip file in {srcAnatPath}, selecting the latest one")
-            srcFileT1 = zips[-1]
         else:
-            srcFileT1 = zips[0]
+            srcFileT1 = os.path.join(srcAnatPath,zips[0])
 
     else:
         srcFileT1_lst= layout.get(subject= sub, session=ses, extension='nii.gz',suffix= 'T1w',return_type='filename')
@@ -490,12 +515,37 @@ def rtppreproc(parser_namespace, Dir_analysis, lc_config, sub, ses, layout):
             rpe_dir = "AP"
         elif phaseEnco_direc == "AP":
             rpe_dir = "PA"
+        
         # the reverse direction nii.gz
         srcFileDwi_nii_R = layout.get(subject= sub, session=ses, extension='nii.gz',suffix= 'dwi', direction=rpe_dir, return_type='filename')[0]
         # the reverse direction bval
-        srcFileDwi_bval_R = layout.get(subject= sub, session=ses, extension='bval',suffix= 'dwi', direction=rpe_dir, return_type='filename')[0]
+        srcFileDwi_bval_R_lst= layout.get(subject= sub, session=ses, extension='bval',suffix= 'dwi', direction=rpe_dir, return_type='filename')
+        if len(srcFileDwi_bval_R_lst)==0:
+            srcFileDwi_bval_R = os.path.join(
+            basedir,
+            bidsdir_name,
+            "sub-" + sub, "ses-" + ses, 
+            "dwi", 
+            "sub-" + sub + "_ses-" + ses + "_dir-"+rpe_dir+"_dwi.bval"
+            )
+            logger.warning(f"\n the bval Reverse file are not find by BIDS, create empty file !!!")
+        #TODO layout.get(subject= sub, session=ses, extension='bval',suffix= 'dwi', direction='AP')[0].get_entities()['acquisition'] use this to rename the PA, you can use get entities to get everything you need, and make them the same
+        # aviod hardcoded
+        else:    
+            srcFileDwi_bval_R = layout.get(subject= sub, session=ses, extension='bval',suffix= 'dwi', direction=rpe_dir, return_type='filename')[0]
         # the reverse direction bvec
-        srcFileDwi_bvec_R =layout.get(subject= sub, session=ses, extension='bvec',suffix= 'dwi', direction=rpe_dir, return_type='filename')[0]
+        srcFileDwi_bvec_R_lst= layout.get(subject= sub, session=ses, extension='bvec',suffix= 'dwi', direction=rpe_dir, return_type='filename')
+        if len(srcFileDwi_bvec_R_lst)==0:
+            srcFileDwi_bvec_R = os.path.join(
+            basedir,
+            bidsdir_name,
+            "sub-" + sub, "ses-" + ses, 
+            "dwi", 
+            "sub-" + sub + "_ses-" + ses + "_dir-"+rpe_dir+"_dwi.bvec"
+            )     
+            logger.warning(f"\n the bvec Reverse file are not find by BIDS, create empty file !!!")       
+        else:
+            srcFileDwi_bvec_R =layout.get(subject= sub, session=ses, extension='bvec',suffix= 'dwi', direction=rpe_dir, return_type='filename')[0]
 
         # If bval and bvec do not exist because it is only b0-s, create them
         # (it would be better if dcm2niix would output them but...)
@@ -508,7 +558,7 @@ def rtppreproc(parser_namespace, Dir_analysis, lc_config, sub, ses, layout):
             f = open(srcFileDwi_bval_R, "x")
             f.write(volumes * "0 ")
             f.close()
-
+            logger.warning(f"\n Finish writing the bval Reverse file with all 0 !!!")
             # Write bvec file
             f = open(srcFileDwi_bvec_R, "x")
             f.write(volumes * "0 ")
@@ -518,7 +568,7 @@ def rtppreproc(parser_namespace, Dir_analysis, lc_config, sub, ses, layout):
             f.write(volumes * "0 ")
             f.write("\n")
             f.close()
-
+            logger.warning(f"\n Finish writing the bvec Reverse file with all 0 !!!")
     # create input and output directory for this container, the dstDir_output should be empty, the dstDir_input should contains all the symlinks
     dstDir_input = os.path.join(
         Dir_analysis,
