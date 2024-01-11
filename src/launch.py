@@ -21,9 +21,9 @@ import logging
 from bids import BIDSLayout
 from dask.distributed import progress
 
-import dask_scheduler_config as dsq
-import prepare as prepare
-import utils as do
+from prepare_inputs import dask_scheduler_config as dsq
+from prepare_inputs import prepare as prepare
+from prepare_inputs import utils as do
 
 logger=logging.getLogger("GENERAL")
 
