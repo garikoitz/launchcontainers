@@ -11,7 +11,11 @@ Currently, **launchcontainers** works along with [anatROIs](https://github.com/g
 Now you can `pip install launchcontainers==0.0.6 ` and use it in the command line! check the [How to use]() for more information
 
 # Check also:
+* [Home](https://github.com/garikoitz/launchcontainers/wiki/Home)
 * [Installation](https://github.com/garikoitz/launchcontainers/wiki/Installation)
-* [Pipeline documentation](https://github.com/garikoitz/launchcontainers/wiki/Pipeline-steps)
-* [Reporting and citation](reporting-citation)
-* [TO-DO list](https://github.com/garikoitz/launchcontainers/wiki/TO-DO)
+* [Manual](https://github.com/garikoitz/launchcontainers/wiki/Manual)
+    - [Edit configs](https://github.com/garikoitz/launchcontainers/wiki/Manual)
+    - [Launch `prepare` mode](https://github.com/garikoitz/launchcontainers/wiki/Manual)
+    - [Launch `run` mode](https://github.com/garikoitz/launchcontainers/wiki/Manual)
+* [Reporting, Contribution, and citation](https://github.com/garikoitz/launchcontainers/wiki/Reporting,-Contributing,-and-Citation)
+* [Supplement: How to use HeuDiConv](https://github.com/garikoitz/launchcontainers/wiki/How-to-Use-HeuDiConv)
