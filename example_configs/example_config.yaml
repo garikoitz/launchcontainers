@@ -53,9 +53,9 @@ general:
   
   basedir: /bcbl/home/public/Gari/VOTCLOC
   containerdir: /bcbl/home/public/Gari/singularity_images
-  container: "rtppreproc"  # VALID OPTIONS: anatrois, rtppreproc, rtp-pipeline, TODO: heudiconv, prfprepare, prfanalyze, prfresults, fmriprep
-  analysis_name: "compare_dwi"
-  force: false
+  container: "rtp-pipeline"  # VALID OPTIONS: anatrois, rtppreproc, rtp-pipeline, TODO: heudiconv, prfprepare, prfanalyze, prfresults, fmriprep
+  analysis_name: "test_logdirbackup"
+  force: true
   host: BCBL #valid options: local, BCBL, DIPC.
   print_command_only: true
   bidsdir_name: "BIDS"
@@ -63,7 +63,7 @@ general:
 container_specific:
 # Add the containers and options you want to run
   fmriprep:
-    version: 
+   version: 
     space: ""
   anatrois:
     version: 4.6.1-7.3.2
@@ -71,11 +71,18 @@ container_specific:
     pre_fs: true
     # If pre_fs is true, it will try to find it using the options below
     # Add the container name and versions used to create the pre_fs
-    precontainer_anat: anatrois_4.5.2-7.3.2
+    source_path_fszip: "anatrois" #options: anatrois, fmriprep
+    # 
+    precontainer_anat: anatrois_4.6.1-7.3.2
     # There can be more than one analysis, give the number of the analysis here
-    anat_analysis_name: "compare_dwi"
+    anat_analysis_name: "6prefs_from_fmriprep"
     # It will find a zip file in the anatrois output, that starts with this string
-    prefs_zipname: "anatrois"
+    precontainer_fmriprep: fmriprep
+    # There can be more than one analysis, give the number of the analysis here
+    fmriprep_analysis_name: "bhdpilot"
+    # It will find a zip file in the anatrois output, that starts with this string
+        
+    prefs_zipname: '^anatrois_S.*\.zip$' #right now you don't need to change this, it searches for the pattern
     # These are optional input files. If there is none, leave it empty string
     # If it is empty, it will ignore it and will not create the input/folder
     annotfile: ""
@@ -90,21 +97,15 @@ container_specific:
     # Find where the input files are. It will take the T1 and the brainmask from here
     #
     #this thing was pretoolfs originally
-    precontainer_anat: anatrois_4.5.2-7.3.2
-    anat_analysis_name: "compare_dwi"
+    precontainer_anat: anatrois_4.6.1-7.3.2
+    anat_analysis_name: "fMRIprep_brainmask"
   rtp-pipeline:
-    version: 4.4.1
+    version: 4.5.2-3.0.3
     # Find where the input files are. It will take the T1 and the brainmask from here        
-    precontainer_anat: anatrois_4.2.7-7.1.1
-    anat_analysis_name: "01"
-    precontainerpp: rtppreproc_1.2.0-3.0.3
-    preanalysispp: "01"
-    # Porject level tractparams or individual tractparams can be used. 
-    # If it is poject level, there should be one tractparams in the analysis-xx folder, and it will crate a symlink in every subjects input folder
-    # and if the file is not there, it will throw an error. 
-    # If the option is seet to false, then the program will need to check that the tractparams file is in the inptu fodler per every subject, otherwise it will fail
-    # TODO: the checking system is not implemented, the createSymLink it is
-    one_tractparams_per_analysis: true
+    precontainer_anat: anatrois_4.6.1-7.3.2
+    anat_analysis_name: "fulltract_anatrerun"
+    precontainer_preproc: rtppreproc_1.2.0-3.0.3
+    preproc_analysis_name: "6sub_wrongbvec"
   prfprepare:
     version: 
   prfanalyze:
@@ -134,7 +135,7 @@ host_options:
       extra: []
       env-extra: []
       job-extra: []
-      logdir: /bcbl/home/public/Gari/VOTCLOC/BIDS
+      #logdir: /bcbl/home/public/Gari/VOTCLOC/BIDS
       resource-spec: null
 
 
@@ -149,7 +150,7 @@ host_options:
       system: scratch
       name: "anatrois"
     # maxwall: 5
-      logdir: /scratch/llecca/devtrajtract/DATA/BERTSOLARI/logdir
+      #logdir: /scratch/llecca/devtrajtract/DATA/BERTSOLARI/logdir
       tmpdir: /scratch/llecca/tmp
     # Other
     local:

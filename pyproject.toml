@@ -17,10 +17,13 @@ repository = "https://github.com/yongninglei/launchcontainers"
 license = "MIT"
 keywords = ["Age Modelling", "Brain Age"]
 classifiers = ["Topic :: Software Development :: Libraries :: Python Modules"]
-packages = [{include = "launchcontainers", from = "src"}]
+packages = [{include = "prepare_inputs", from = "src"},
+            {include = "launch.py", from="src"}
+		
+]
 
 [tool.poetry.scripts]
-launchcontainers = "launchcontainers.launch:main"
+launchcontainers = "src.launch:main"
 
 
 [tool.poetry.dependencies]
