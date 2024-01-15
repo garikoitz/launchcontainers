@@ -4,21 +4,21 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "launchcontainers"
-version = "0.0.3"
+version = "0.0.6"
 description = "Launch Containers Package"
 authors = [ "BCBL", "CompNeuroLabBilbao",
             "Yongning Lei",
             "David Linhardt",
             "Iñigo Tellaetxe",
             ]
-maintainers = ["Tiger Yongning Lei"]
+maintainers = ["Yongning Lei"]
 readme = "README.md"
 repository = "https://github.com/yongninglei/launchcontainers"
 license = "MIT"
 keywords = ["Age Modelling", "Brain Age"]
 classifiers = ["Topic :: Software Development :: Libraries :: Python Modules"]
 packages = [{include = "prepare_inputs", from = "src"},
-            {include = "launch.py", from="src"}
+            {include = "src"}
 		
 ]
 
