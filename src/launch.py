@@ -70,7 +70,7 @@ def generate_cmd(lc_config,sub,ses,dir_analysis, lst_container_specific_configs,
             "output", "log"
         )
     logfilename=f"{logdir}/t-{container}-sub-{sub}_ses-{ses}"
-
+    
     path_to_sub_derivatives=os.path.join(dir_analysis,
                                     f"sub-{sub}",
                                     f"ses-{ses}")
@@ -83,7 +83,7 @@ def generate_cmd(lc_config,sub,ses,dir_analysis, lst_container_specific_configs,
         bind_cmd=''
         for bind in bind_options:
             bind_cmd += f"--bind {bind}:{bind} "           
-
+        
         env_cmd=''
         if host == "local":
             if use_module == True:
@@ -94,6 +94,7 @@ def generate_cmd(lc_config,sub,ses,dir_analysis, lst_container_specific_configs,
             f"--bind {path_to_sub_derivatives}/output:/flywheel/v0/output "\
             f"--bind {config_json}:/flywheel/v0/config.json "\
             f"{container_name} 2>> {logfilename}.e 1>> {logfilename}.o "
+        
     
     # Check which container we are using, and define the command accordingly
     if container == 'fmriprep':
@@ -221,6 +222,7 @@ def launchcontainer(dir_analysis, lc_config, sub_ses_list, parser_namespace, pat
     paths_to_analysis_config_json=[]
     run_lcs=[]
     
+
     # PREPARATION mode
     if not run_lc:
         logger.critical(f"\nlaunchcontainers.py was run in PREPARATION mode (without option --run_lc)\n" \
@@ -237,7 +239,6 @@ def launchcontainer(dir_analysis, lc_config, sub_ses_list, parser_namespace, pat
                         f"The cluster job script for this command is:\n" \
                         f"{cluster.job_script()}"
                         )
-
     # Iterate over the provided subject list
     for row in sub_ses_list.itertuples(index=True, name='Pandas'):
         sub  = row.sub
@@ -246,24 +247,23 @@ def launchcontainer(dir_analysis, lc_config, sub_ses_list, parser_namespace, pat
         dwi  = row.dwi
         
         if RUN=="True":
-
             # Append config, subject, session, and path info in corresponding lists
             lc_configs.append(lc_config)
             subs.append(sub)
             sess.append(ses)
             dir_analysiss.append(dir_analysis)
             paths_to_analysis_config_json.append(path_to_analysis_container_specific_config)
-            run_lcs.append(run_lc)
-            
+            run_lcs.append(run_lc)    
+
             if not run_lc:
                 # This cmd is only for print the command 
-                command= generate_cmd(lc_config,sub,ses,dir_analysis, path_to_analysis_container_specific_config,run_lc)
+                command= generate_cmd(lc_config,sub,ses,dir_analysis, path_to_analysis_container_specific_config, run_lc)
                 logger.critical(f"\nCOMMAND for subject-{sub}, and session-{ses}:\n" \
                                 f"{command}\n\n"
                                 )
                 if lc_config['general']['container']=='fmriprep':
                     logger.critical('\n'+ 'fmriprep now can not deal with session specification, so the analysis are running on all sessions of the subject you are specifying')
-
+        
     # RUN mode
     if run_lc:  
         # Compose the command to run in the cluster  
@@ -333,7 +333,7 @@ def main():
         pass
     
     # Run mode
-    launchcontainer(dir_analysis, lc_config, sub_ses_list, parser_namespace,path_to_analysis_container_specific_config)
+    launchcontainer(dir_analysis, lc_config, sub_ses_list, parser_namespace, path_to_analysis_container_specific_config)
     
 
     
