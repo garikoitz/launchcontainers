@@ -41,7 +41,7 @@ def initiate_cluster(jobqueue_config, n_job, logdir):
     config.set(admin__tick__limit="3h")
     
     if "sge" in jobqueue_config["manager"]:
-        envextra = [f"module load {jobqueue_config['sin_ver']} " 
+        envextra = [f"module load {jobqueue_config['apptainer']} " 
                    #f"conda activate /export/home/tlei/tlei/conda_env/launchcontainers"
                     ]
         cluster_by_config = SGECluster(cores  = jobqueue_config["cores"], 
@@ -76,7 +76,7 @@ def initiate_cluster(jobqueue_config, n_job, logdir):
         cluster_by_config.scale(jobs=n_job)
 
     elif "slurm" in jobqueue_config["manager"]:
-        envextra = [f"module load {jobqueue_config['sin_ver']} ",\
+        envextra = [f"module load {jobqueue_config['apptainer']} ",\
                     f"export SINGULARITYENV_TMPDIR={jobqueue_config['tmpdir']}",\
                     "export SINGULARITY_BIND=''",\
                     "TMPDIR="]

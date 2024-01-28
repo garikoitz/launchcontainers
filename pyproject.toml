@@ -4,18 +4,18 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "launchcontainers"
-version = "0.0.6"
+version = "0.0.8"
 description = "Launch Containers Package"
-authors = [ "BCBL", "CompNeuroLabBilbao",
+authors = [ "BCBL", 
             "Yongning Lei",
-            "David Linhardt",
-            "Iñigo Tellaetxe",
+            "Leandro Lecca",
+            "Mengxing Liu"
             ]
 maintainers = ["Yongning Lei"]
 readme = "README.md"
 repository = "https://github.com/yongninglei/launchcontainers"
 license = "MIT"
-keywords = ["Age Modelling", "Brain Age"]
+keywords = ["HPC", "MRI", "RTP2"]
 classifiers = ["Topic :: Software Development :: Libraries :: Python Modules"]
 packages = [{include = "prepare_inputs", from = "src"},
             {include = "src"}

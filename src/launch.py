@@ -57,57 +57,43 @@ def generate_cmd(lc_config,sub,ses,dir_analysis, lst_container_specific_configs,
     # Information relevant to the host and container
     jobqueue_config= lc_config['host_options'][host]
     version = lc_config["container_specific"][container]["version"]
-    envcmd= f"module load {jobqueue_config['sin_ver']} "
-    
-    # Location of the Singularity Image File (.sif)
-    container_sif_file= os.path.join(containerdir, f'{container}_{version}.sif')
+    use_module= jobqueue_config['use_module']
+    bind_options= jobqueue_config['bind_options']
 
-    # TODO: define this list of available/implemented containers in another module, for usability accross modules.
+    # Location of the Singularity Image File (.sif)
+    container_name= os.path.join(containerdir, f'{container}_{version}.sif')
+    # Define the directory and the file name to output the log of each subject
+    logdir= os.path.join(
+            dir_analysis,
+            "sub-" + sub,
+            "ses-" + ses,
+            "output", "log"
+        )
+    logfilename=f"{logdir}/t-{container}-sub-{sub}_ses-{ses}"
+
+    path_to_sub_derivatives=os.path.join(dir_analysis,
+                                    f"sub-{sub}",
+                                    f"ses-{ses}")
+    
     if container in ['anatrois', 'rtppreproc','rtp-pipeline']:  
         logger.info("\n"+ f'start to generate the DWI PIPELINE command')
         config_json= lst_container_specific_configs[0]
         logger.debug(f"\n the sub is {sub} \n the ses is {ses} \n the analysis dir is {dir_analysis}")
-        # Define the directory and the file name to output the log of each subject
-        logdir= os.path.join(
-                dir_analysis,
-                "sub-" + sub,
-                "ses-" + ses,
-                "output", "log"
-            )
-        logfilename=f"{logdir}/t-{container}-sub-{sub}_ses-{ses}"
         
-        path_to_sub_derivatives=os.path.join(dir_analysis,
-                                        f"sub-{sub}",
-                                        f"ses-{ses}")
-        
-        # Check which host we are on, and define the command accordingly
-        if "BCBL" == host :
-            cmd=f"singularity run -e --no-home "\
-                f"--bind /bcbl:/bcbl "\
-                f"--bind /tmp:/tmp "\
-                f"--bind /export:/export "\
-                f"--bind {path_to_sub_derivatives}/input:/flywheel/v0/input:ro "\
-                f"--bind {path_to_sub_derivatives}/output:/flywheel/v0/output "\
-                f"--bind {config_json}:/flywheel/v0/config.json "\
-                f"{container_sif_file} 2>> {logfilename}.e 1>> {logfilename}.o "
+        bind_cmd=''
+        for bind in bind_options:
+            bind_cmd += f"--bind {bind}:{bind} "           
 
-        if ("local" == host):
-            cmd=envcmd+f"singularity run -e --no-home "\
-                f"--bind /bcbl:/bcbl "\
-                f"--bind /tmp:/tmp "\
-                f"--bind /export:/export "\
-                f"--bind {path_to_sub_derivatives}/input:/flywheel/v0/input:ro "\
-                f"--bind {path_to_sub_derivatives}/output:/flywheel/v0/output "\
-                f"--bind {config_json}:/flywheel/v0/config.json "\
-                f"{container_sif_file} 2>> {logfilename}.e 1>> {logfilename}.o "
-        
-        elif "DIPC" == host:
-            cmd=f"singularity run -e --no-home "\
-                f"--bind /scratch:/scratch "\
-                f"--bind {path_to_sub_derivatives}/input:/flywheel/v0/input:ro "\
-                f"--bind {path_to_sub_derivatives}/output:/flywheel/v0/output "\
-                f"--bind {config_json}:/flywheel/v0/config.json "\
-                f"{container_sif_file} 2>> {logfilename}.e 1>> {logfilename}.o "
+        env_cmd=''
+        if host == "local":
+            if use_module == True:
+                env_cmd= f"module load {jobqueue_config['apptainer']} "
+
+        cmd=f"{env_cmd} && singularity run -e --no-home {bind_cmd}"\
+            f"--bind {path_to_sub_derivatives}/input:/flywheel/v0/input:ro "\
+            f"--bind {path_to_sub_derivatives}/output:/flywheel/v0/output "\
+            f"--bind {config_json}:/flywheel/v0/config.json "\
+            f"{container_name} 2>> {logfilename}.e 1>> {logfilename}.o "
     
     # Check which container we are using, and define the command accordingly
     if container == 'fmriprep':
@@ -122,7 +108,7 @@ def generate_cmd(lc_config,sub,ses,dir_analysis, lst_container_specific_configs,
                 f'unset PYTHONPATH; ' \
         
         if "local" == host:
-            cmd = envcmd + precommand+f'singularity run '\
+            cmd =   precommand+f'singularity run '\
                     f'-H {homedir} '\
                     f'-B {basedir}:/base -B {fs_license}:/license '\
                     f'--cleanenv {container_path} '\
@@ -174,7 +160,7 @@ def generate_cmd(lc_config,sub,ses,dir_analysis, lst_container_specific_configs,
                 f'--cleanenv {container_path} '\
         
         elif host == 'local':
-            cmd= envcmd+  'unset PYTHONPATH; '\
+            cmd= 'unset PYTHONPATH; '\
                 f'singularity run '\
                 f'-H {homedir} '\
                 f'-B {basedir}/derivatives/fmriprep:/flywheel/v0/input '\
@@ -194,7 +180,7 @@ def generate_cmd(lc_config,sub,ses,dir_analysis, lst_container_specific_configs,
     return cmd
 
 #%% the launchcontainer
-def launchcontainer(dir_analysis, lc_config, sub_ses_list, parser_namespace):
+def launchcontainer(dir_analysis, lc_config, sub_ses_list, parser_namespace, path_to_analysis_container_specific_config):
     """
     This function launches containers generically in different Docker/Singularity HPCs
     This function is going to assume that all files are where they need to be.
@@ -260,18 +246,18 @@ def launchcontainer(dir_analysis, lc_config, sub_ses_list, parser_namespace):
         dwi  = row.dwi
         
         if RUN=="True":
-            lst_container_specific_configs = parser_namespace.container_specific_config
+
             # Append config, subject, session, and path info in corresponding lists
             lc_configs.append(lc_config)
             subs.append(sub)
             sess.append(ses)
             dir_analysiss.append(dir_analysis)
-            paths_to_analysis_config_json.append(lst_container_specific_configs)
+            paths_to_analysis_config_json.append(path_to_analysis_container_specific_config)
             run_lcs.append(run_lc)
             
             if not run_lc:
                 # This cmd is only for print the command 
-                command= generate_cmd(lc_config,sub,ses,dir_analysis, lst_container_specific_configs,run_lc)
+                command= generate_cmd(lc_config,sub,ses,dir_analysis, path_to_analysis_container_specific_config,run_lc)
                 logger.critical(f"\nCOMMAND for subject-{sub}, and session-{ses}:\n" \
                                 f"{command}\n\n"
                                 )
@@ -331,7 +317,7 @@ def main():
     logger.critical('start reading the BIDS layout')
     # Prepare file and launch containers
     # First of all prepare the analysis folder: it create you the analysis folder automatically so that you are not messing up with different analysis
-    dir_analysis = prepare.prepare_analysis_folder(parser_namespace, lc_config)
+    dir_analysis, path_to_analysis_container_specific_config = prepare.prepare_analysis_folder(parser_namespace, lc_config)
     layout= BIDSLayout(os.path.join(basedir,bidsdir_name))
     
     
@@ -347,7 +333,7 @@ def main():
         pass
     
     # Run mode
-    launchcontainer(dir_analysis, lc_config, sub_ses_list, parser_namespace)
+    launchcontainer(dir_analysis, lc_config, sub_ses_list, parser_namespace,path_to_analysis_container_specific_config)
     
 
     

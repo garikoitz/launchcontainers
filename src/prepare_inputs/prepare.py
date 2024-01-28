@@ -112,7 +112,7 @@ def prepare_analysis_folder(parser_namespace, lc_config):
             pass
         else:
             logger.error(f'\n did NOT detect back up configs in the analysis folder, Please check then continue the run mode')
-    return Dir_analysis 
+    return Dir_analysis, path_to_analysis_container_specific_config
 
 # %% prepare_input_files
 def prepare_dwi_input(parser_namespace, Dir_analysis, lc_config, df_subSes, layout):
