@@ -27,7 +27,7 @@ launchcontainers = "src.launch:main"
 
 
 [tool.poetry.dependencies]
-python = "3.10"
+python = "~3.10"
 bids = "*"
 pybids = "0.16.1"
 dask = "2022.7.0"
