@@ -89,7 +89,9 @@ container_specific:
     mniroizip: ""
   rtppreproc:
     version: 1.2.0-3.0.3
-    rpe: true
+    # It checks if there is a reverse phase encoding acquisition
+    # Old dcm2nixx will not create empty bvec and bval files if there was an acquisition with just b0-s
+    rpe: true # if you have reverse phase encoding
     # Find where the input files are. It will take the T1 and the brainmask from here
     #
     #this thing was pretoolfs originally

@@ -4,18 +4,22 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "launchcontainers"
-version = "0.0.8"
+version = "0.0.9"
 description = "Launch Containers Package"
 authors = [ "BCBL", 
-            "Yongning Lei",
+            "Garikoitz Lerma-Usabiaga",
             "Leandro Lecca",
-            "Mengxing Liu"
+            "Mengxing Liu",
+            "Yongning Lei"
             ]
-maintainers = ["Yongning Lei"]
+# Acknowledgments
+# I would like to thank Iñigo Tellaetxe from CompNeuroLabBilbao for his help on packaging this repository
+
+maintainers = ["Garikoitz Lerma-Usabiaga", "Yongning Lei"]
 readme = "README.md"
-repository = "https://github.com/yongninglei/launchcontainers"
+repository = "https://github.com/garikoitz/launchcontainers"
 license = "MIT"
-keywords = ["HPC", "MRI", "RTP2"]
+keywords = ["HPC", "MRI", "RTP2","DWI","dMRI"]
 classifiers = ["Topic :: Software Development :: Libraries :: Python Modules"]
 packages = [{include = "prepare_inputs", from = "src"},
             {include = "src"}
@@ -27,7 +31,7 @@ launchcontainers = "src.launch:main"
 
 
 [tool.poetry.dependencies]
-python = "3.10.9"
+python = "~3.10"
 bids = "*"
 pybids = "0.16.1"
 dask = "2022.7.0"

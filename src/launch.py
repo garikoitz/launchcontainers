@@ -87,9 +87,9 @@ def generate_cmd(lc_config,sub,ses,dir_analysis, lst_container_specific_configs,
         env_cmd=''
         if host == "local":
             if use_module == True:
-                env_cmd= f"module load {jobqueue_config['apptainer']} "
+                env_cmd= f"module load {jobqueue_config['apptainer']} &&"
 
-        cmd=f"{env_cmd} && singularity run -e --no-home {bind_cmd}"\
+        cmd=f"{env_cmd} singularity run -e --no-home {bind_cmd}"\
             f"--bind {path_to_sub_derivatives}/input:/flywheel/v0/input:ro "\
             f"--bind {path_to_sub_derivatives}/output:/flywheel/v0/output "\
             f"--bind {config_json}:/flywheel/v0/config.json "\
