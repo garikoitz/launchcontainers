@@ -461,14 +461,14 @@ def rtppreproc(parser_namespace, Dir_analysis, lc_config, sub, ses, layout):
     
     # 3 dwi file that needs to be preprocessed, under BIDS/sub/ses/dwi
     # the nii
-    srcFileDwi_nii = layout.get(subject= sub, session=ses, extension='nii.gz',suffix= 'dwi',return_type='filename')[0]
+    srcFileDwi_nii = layout.get(subject= sub, session=ses, extension='nii.gz',suffix= 'dwi', direction=phaseEnco_direc, return_type='filename')[0]
     # the bval
-    srcFileDwi_bval = layout.get(subject= sub, session=ses, extension='bval',suffix= 'dwi',return_type='filename')[0]
+    srcFileDwi_bval = layout.get(subject= sub, session=ses, extension='bval',suffix= 'dwi', direction=phaseEnco_direc, return_type='filename')[0]
     # the bve
-    srcFileDwi_bvec =layout.get(subject= sub, session=ses, extension='bvec',suffix= 'dwi',return_type='filename')[0]
+    srcFileDwi_bvec =layout.get(subject= sub, session=ses, extension='bvec',suffix= 'dwi',direction=phaseEnco_direc, return_type='filename')[0]
     
     # check how many *dir_dwi.nii.gz there are in the BIDS/sub/ses/dwi directory
-    phaseEnco_direc_dwi_files = layout.get(subject= sub, session=ses, extension='nii.gz',suffix= 'dwi', direction=phaseEnco_direc, return_type='filename')[0]
+    phaseEnco_direc_dwi_files = layout.get(subject= sub, session=ses, extension='nii.gz',suffix= 'dwi', direction=phaseEnco_direc, return_type='filename')
     
     if len(phaseEnco_direc_dwi_files) > 1:
         dwi_acq = [f for f in phaseEnco_direc_dwi_files if 'acq-' in f]
@@ -485,8 +485,8 @@ def rtppreproc(parser_namespace, Dir_analysis, lc_config, sub, ses, layout):
                 dwi_acq.sort()
                 sp.run(['mrcat',*dwi_acq,srcFileDwi_nii])
             # also get the bvecs and bvals
-            bvals_dir = layout.get(subject= sub, session=ses, extension='bval',suffix= 'dwi', direction=phaseEnco_direc, return_type='filename')[0]
-            bvecs_dir = layout.get(subject= sub, session=ses, extension='bvec',suffix= 'dwi', direction=phaseEnco_direc, return_type='filename')[0]
+            bvals_dir = layout.get(subject= sub, session=ses, extension='bval',suffix= 'dwi', direction=phaseEnco_direc, return_type='filename')
+            bvecs_dir = layout.get(subject= sub, session=ses, extension='bvec',suffix= 'dwi', direction=phaseEnco_direc, return_type='filename')
             bvals_acq = [f for f in bvals_dir if 'acq-' in f]
             bvecs_acq = [f for f in bvecs_dir if 'acq-' in f]
             if len(dwi_acq) == len(bvals_acq) and not os.path.isfile(srcFileDwi_bval):
@@ -518,31 +518,20 @@ def rtppreproc(parser_namespace, Dir_analysis, lc_config, sub, ses, layout):
         
         # the reverse direction nii.gz
         srcFileDwi_nii_R = layout.get(subject= sub, session=ses, extension='nii.gz',suffix= 'dwi', direction=rpe_dir, return_type='filename')[0]
+        
         # the reverse direction bval
         srcFileDwi_bval_R_lst= layout.get(subject= sub, session=ses, extension='bval',suffix= 'dwi', direction=rpe_dir, return_type='filename')
+        
         if len(srcFileDwi_bval_R_lst)==0:
-            srcFileDwi_bval_R = os.path.join(
-            basedir,
-            bidsdir_name,
-            "sub-" + sub, "ses-" + ses, 
-            "dwi", 
-            "sub-" + sub + "_ses-" + ses + "_dir-"+rpe_dir+"_dwi.bval"
-            )
+            srcFileDwi_bval_R = srcFileDwi_nii_R.replace("dwi.nii.gz", "dwi.bval")
             logger.warning(f"\n the bval Reverse file are not find by BIDS, create empty file !!!")
-        #TODO layout.get(subject= sub, session=ses, extension='bval',suffix= 'dwi', direction='AP')[0].get_entities()['acquisition'] use this to rename the PA, you can use get entities to get everything you need, and make them the same
-        # aviod hardcoded
         else:    
             srcFileDwi_bval_R = layout.get(subject= sub, session=ses, extension='bval',suffix= 'dwi', direction=rpe_dir, return_type='filename')[0]
+        
         # the reverse direction bvec
         srcFileDwi_bvec_R_lst= layout.get(subject= sub, session=ses, extension='bvec',suffix= 'dwi', direction=rpe_dir, return_type='filename')
         if len(srcFileDwi_bvec_R_lst)==0:
-            srcFileDwi_bvec_R = os.path.join(
-            basedir,
-            bidsdir_name,
-            "sub-" + sub, "ses-" + ses, 
-            "dwi", 
-            "sub-" + sub + "_ses-" + ses + "_dir-"+rpe_dir+"_dwi.bvec"
-            )     
+            srcFileDwi_bvec_R = srcFileDwi_nii_R.replace("dwi.nii.gz", "dwi.bvec")
             logger.warning(f"\n the bvec Reverse file are not find by BIDS, create empty file !!!")       
         else:
             srcFileDwi_bvec_R =layout.get(subject= sub, session=ses, extension='bvec',suffix= 'dwi', direction=rpe_dir, return_type='filename')[0]

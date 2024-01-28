@@ -91,7 +91,7 @@ def prepare_analysis_folder(parser_namespace, lc_config):
         
         do.copy_file(parser_namespace.lc_config, path_to_analysis_lc_config, force) 
         do.copy_file(parser_namespace.sub_ses_list,path_to_analysis_sub_ses_list,force)
-        for orig_config_json, copy_config_json in zip(parser_namespace.container_specific_config,path_to_analysis_container_specific_config):
+        for orig_config_json, copy_config_json in zip(parser_namespace.container_specific_config, path_to_analysis_container_specific_config):
             do.copy_file(orig_config_json, copy_config_json, force)    
         logger.debug(f'\n the analysis folder is {Dir_analysis}, all the cofigs has been copied') 
     
@@ -112,7 +112,7 @@ def prepare_analysis_folder(parser_namespace, lc_config):
             pass
         else:
             logger.error(f'\n did NOT detect back up configs in the analysis folder, Please check then continue the run mode')
-    return Dir_analysis 
+    return Dir_analysis, path_to_analysis_container_specific_config
 
 # %% prepare_input_files
 def prepare_dwi_input(parser_namespace, Dir_analysis, lc_config, df_subSes, layout):
