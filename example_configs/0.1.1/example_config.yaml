@@ -1,0 +1,161 @@
+########################
+# This yaml file is to config launchcontainer, by inputing the correct infomation, you will be able to launch the corresponding container on your local or cluster
+#
+# This file should be copied from garikoitz/launchcontainer/example_configs 
+# You may want to put it to your working directory ~/PROJECT/nifti
+# It will work with a subsesList.txt file and other container specific config files
+
+########################
+########################
+# General description:
+# There are three categories of config information for you to set up this soft: 
+# general settings, 
+# container specific settings, 
+# and computing host settings(we call it host options).
+
+########################
+########################
+# Detailed explanations are explained under each dictionary.
+
+########################
+general:
+
+  # basedir:  
+      # type: str
+      # description: Path to the folder of your project where you put the dicom and nifti folders. 
+      # author note: 
+      #   1. Remember to give the full path of the directory starting from /, do not use ~
+      #   2. If you are using public folders, go from generic public wihout using your path e.g. useing /bcbl/public instead of using /export/xxxx/public
+  # containerdir:
+      # type: str
+      # description: Path to where all the singularity images are stored. For Docker, this can be empty 
+  # container:
+      # type: str
+      # description: Name of the container you want to launch, version and other details will needs to be input in container_options
+      # auther note: 
+      #   1. the valid options are listed below, be sure not to input wrong name
+  # analysis:
+      # type: str or int
+      # description: The name of your analysis, e.g. 01, 001, abcd, etc. It will help you create a corresponding folder under derivetives/container
+  # force:
+      # type: bool / don't sensitive to capital letters True and true both okay
+      # description: Options whether you want to overwritte the existing file or not
+      # author note: 
+      #   1.This force command applies to symlinks and analyses, if it set to true, it will always overwrite everything
+      #   2.For PREPARE MODE
+      #     if file_exists and force: overwrite
+      #     if file_exists and not force: do nothing and print(say that the file existed but you kept it)
+      #     if not file_exists: we don't care about force, you add the file (the symlink)
+  # host
+      # type: str
+      # description: where you want to run the program, valid options: local, BCBL, DIPC.
+       
+  
+  basedir: /bcbl/home/public/Gari/VOTCLOC
+  containerdir: /bcbl/home/public/Gari/singularity_images
+  container: "rtppreproc"  # VALID OPTIONS: anatrois, rtppreproc, rtp-pipeline, TODO: heudiconv, prfprepare, prfanalyze, prfresults, fmriprep
+  analysis_name: "lcv008_acqd_ips"
+  force: true
+  host: BCBL #valid options: local, BCBL, DIPC.
+  print_command_only: true
+  bidsdir_name: "BIDS"
+ 
+container_specific:
+# Add the containers and options you want to run
+  fmriprep:
+   version: 
+    space: ""
+  anatrois:
+    version: 4.6.1-7.3.2
+    # If you have run FS previously, you can say true here and it will use the existing output
+    pre_fs: true
+    # If pre_fs is true, it will try to find it using the options below
+    # Add the container name and versions used to create the pre_fs
+    source_path_fszip: "anatrois" #options: anatrois, fmriprep
+    # 
+    precontainer_anat: anatrois_4.6.1-7.3.2
+    # There can be more than one analysis, give the number of the analysis here
+    anat_analysis_name: "6prefs_from_fmriprep"
+    # It will find a zip file in the anatrois output, that starts with this string
+    precontainer_fmriprep: fmriprep
+    # There can be more than one analysis, give the number of the analysis here
+    fmriprep_analysis_name: "bhdpilot"
+    # It will find a zip file in the anatrois output, that starts with this string
+        
+    prefs_zipname: '^anatrois_S.*\.zip$' #right now you don't need to change this, it searches for the pattern
+    # These are optional input files. If there is none, leave it empty string
+    # If it is empty, it will ignore it and will not create the input/folder
+    annotfile: ""
+    mniroizip: ""
+  rtppreproc:
+    version: 1.2.0-3.0.3
+    # It checks if there is a reverse phase encoding acquisition
+    # Old dcm2nixx will not create empty bvec and bval files if there was an acquisition with just b0-s
+    rpe: true # if you have reverse phase encoding
+    # Find where the input files are. It will take the T1 and the brainmask from here
+    #
+    #this thing was pretoolfs originally
+    precontainer_anat: anatrois_4.6.1-7.3.2
+    anat_analysis_name: "fMRIprep_brainmask"
+  rtp-pipeline:
+    version: 4.5.2-3.0.3
+    # Find where the input files are. It will take the T1 and the brainmask from here        
+    precontainer_anat: anatrois_4.6.1-7.3.2
+    anat_analysis_name: "fulltract_anatrerun"
+    precontainer_preproc: rtppreproc_1.2.0-3.0.3
+    preproc_analysis_name: "6sub_wrongbvec"
+  prfprepare:
+    version: 
+  prfanalyze:
+    version: 
+
+host_options:
+    # Default BCBL
+    BCBL:
+      use_module: False # for SGE, it is always false
+      apptainer: apptainer/latest
+      maxwall: 10
+      manager: sge
+      name: "anatrois"
+      # Dask worker options
+      cores: 6                    # Total number of cores per job (it was core for BCBL)
+      memory: 32G                # Total amount of memory per job (it was mem for BCBL)
+      processes: 1                # Number of Python processes per job
+
+      interface: lo             # Network interface to use like eth0 or ib0
+      death-timeout: 100           # Number of seconds to wait if a worker can not find a scheduler
+      local-directory: null       # Location of fast local storage like /scratch or $TMPDIR
+
+      # SGE resource manager options
+      #shebang: "#!/usr/bin/env bash"
+      queue: long.q              # It was que in BCBL
+      project: null
+      walltime: 25:30:00'
+      extra: []
+      env-extra: []
+      job-extra: []
+      resource-spec: null
+      bind_options: ['/bcbl', '/tmp', '/export']
+
+    # Defaul DIPC
+    DIPC:
+      memory: 32G
+      queue: regular
+      cores: 24
+      walltime: '22:00:00'
+      use_module: False # for SLURM, it is always false
+      apptainer: Singularity/3.5.3-GCC-8.3.0
+      manager: slurm
+      system: scratch
+      name: "anatrois"
+    # maxwall: 5
+      tmpdir: /scratch/llecca/tmp
+    # Other
+      bind_options: ['/scratch']
+    # local host options
+    local:
+      use_module: False # if the local machine use module load this option will give you different version of job-queue cmd
+      apptainer: apptainer/latest
+      bind_options: ['/fileserver', '/tmp'] # Copy the example list: for BCBL we need ['/bcbl', '/tmp', '/export']; for okazaki we need ['/fileserver', '/tmp']
+      manager: 'local'
+      launch_mode: 'serial'  # This can only be serial or parallel, any other options will make it fail.
