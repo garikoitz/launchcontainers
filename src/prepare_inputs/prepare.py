@@ -76,7 +76,7 @@ def prepare_analysis_folder(parser_namespace, lc_config):
     
     if container  not in ['rtp-pipeline', 'fmriprep']:    
         path_to_analysis_container_specific_config = [os.path.join(Dir_analysis, "config.json")] 
-    if container == 'rtp-pipeline':
+    if container in ['rtp-pipeline', 'rtp2-pipeline']:
         path_to_analysis_container_specific_config = [os.path.join(Dir_analysis, "config.json"), os.path.join(Dir_analysis, "tractparams.csv")]
     if container == 'fmriprep':
         path_to_analysis_container_specific_config=[]
