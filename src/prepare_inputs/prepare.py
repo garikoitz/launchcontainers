@@ -203,7 +203,6 @@ def prepare_dwi_input(parser_namespace, Dir_analysis, lc_config, df_subSes, layo
 
     # If freesurferator, before copying configs, existingFS and control input fields need to be in the config.json
     if container in "rtp2-pipeline":
-        control_points = lc_config["container_specific"][container]["control_points"] #specific for freesurferator
         container_specific_config_data = json.load(open(parser_namespace.container_specific_config[0]))
         container_specific_config_data["inputs"] = {}
         container_config_inputs = container_specific_config_data["inputs"]
