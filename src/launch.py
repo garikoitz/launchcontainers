@@ -582,18 +582,17 @@ def main():
         "anatrois",
         "rtppreproc",
         "rtp-pipeline",
-        "freesurferator"
+        "freesurferator",
+        "rtp2-preproc",
+        "rtp2-pipeline"
     ]:  # TODO: define list in another module for reusability accross modules and functions
+        logger.debug(f"{container} is in the list")
         prepare.prepare_dwi_input(
             parser_namespace, dir_analysis, lc_config, sub_ses_list, layout, path_to_analysis_container_specific_config
         )
+    else:
+        logger.warning(f"{container} is not in the list")
 
-    if container == "fmriprep":
-        prepare.fmriprep_intended_for(sub_ses_list, layout)
-
-    if container in ["prfprepare", "prfanalyze-vista", "prfreport"]:
-        logger.info(f"Container not implemented yet.")
-        pass
 
     # Run mode
     launchcontainer(
