@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "launchcontainers"
-version = "0.0.9"
+version = "0.2.2"
 description = "Launch Containers Package"
 authors = [ "BCBL", 
             "Garikoitz Lerma-Usabiaga",
@@ -34,6 +34,7 @@ launchcontainers = "src.launch:main"
 python = "~3.10"
 bids = "*"
 pybids = "0.16.1"
+distributed = "2022.7.0"
 dask = "2022.7.0"
 dask_jobqueue = "0.8.1"
 nibabel = "5.1.0"
