@@ -151,7 +151,7 @@ def prepare_dwi_input(parser_namespace, Dir_analysis, lc_config, df_subSes, layo
             pre_fs = lc_config["container_specific"][container]["pre_fs"]
     
     # If freesurferator, before copying configs, existingFS and control input fields need to be in the config.json
-    if "freesurferator" in container:
+    if container in "freesurferator":
         control_points = lc_config["container_specific"][container]["control_points"] #specific for freesurferator
         container_specific_config_data = json.load(open(parser_namespace.container_specific_config[0]))
         container_specific_config_data["inputs"] = {}
@@ -165,91 +165,60 @@ def prepare_dwi_input(parser_namespace, Dir_analysis, lc_config, df_subSes, layo
         if control_points:
             container_config_inputs["control_points"] =  {'location': 
             {'path': '/flywheel/v0/input/control_points/control.dat', 'name': 'control.dat'}, 'base': 'file'}
-        # if len(lc_config["container_specific"][container]["mniroizip"]) != 0:
-        #   container_config_inputs["mniroizip"] =  {'location': 
-        #   {'path': '/flywheel/v0/input/mniroizip/mniroizip.zip', 'name': 'mniroizip.zip'}, 'base': 'file'}
-        
+
+        if len(lc_config["container_specific"][container]["mniroizip"]) != 0:
+            container_config_inputs["mniroizip"] =  {'location': 
+            {'path': '/flywheel/v0/input/mniroizip/mniroizip.zip', 'name': 'mniroizip.zip'}, 'base': 'file'}
+        if len(lc_config["container_specific"][container]["annotfile"]) != 0:
+            container_config_inputs["annotfile"] =  {'location': 
+            {'path': '/flywheel/v0/input/annotfile/annotfile.zip', 'name': 'annotfile.zip'}, 'base': 'file'}        
 
         # Add the new options
         container_specific_config_data["inputs"] = container_config_inputs
         # Write the new config file
         with open(path_to_analysis_container_specific_config[0] , "w") as outfile:
             json.dump(container_specific_config_data, outfile, indent = 4)
-
-
-
-        
-        # "mniroizip": gear_context.get_input_path("mniroizip"),
-        # "annotfile": gear_context.get_input_path("annotfile"),
+        # TODO:
         # "t1w_anatomical_2": gear_context.get_input_path("t1w_anatomical_2"),
         # "t1w_anatomical_3": gear_context.get_input_path("t1w_anatomical_3"),
         # "t1w_anatomical_4": gear_context.get_input_path("t1w_anatomical_4"),
         # "t1w_anatomical_5": gear_context.get_input_path("t1w_anatomical_5"),
         # "t2w_anatomical": gear_context.get_input_path("t2w_anatomical"),
         
-
-
-
-
     # If freesurferator, before copying configs, existingFS and control input fields need to be in the config.json
-    if "rtp2-preproc" in container:
+    if container in "rtp2-preproc":
         container_specific_config_data = json.load(open(parser_namespace.container_specific_config[0]))
         container_specific_config_data["inputs"] = {}
         container_config_inputs = container_specific_config_data["inputs"]
-        # if pre_fs. add pre_fs in the inputs field of the container specific config.json, otherwise add T1.nii.gz
-        if pre_fs:
-            container_config_inputs["pre_fs"] = {'location': {'path': os.path.join('/flywheel/v0/input/pre_fs', 'existingFS.zip'), 'name': 'existingFS.zip'}, 'base': 'file'}
-        else:
-            container_config_inputs["anat"] = {'location': {'path': os.path.join('/flywheel/v0/input/anat', 'T1.nii.gz'), 'name': 'T1.nii.gz'}, 'base': 'file'}
-        # add control_points in the inputs field of the container specific config.json 
-        if control_points:
-            container_config_inputs["control_points"] =  {'location': {'path': '/flywheel/v0/input/control_points/control.dat', 'name': 'control.dat'}, 'base': 'file'}
+
+        container_config_inputs["ANAT"] = {'location': {'path': os.path.join('/flywheel/v0/input/ANAT', 'T1.nii.gz'), 'name': 'T1.nii.gz'}, 'base': 'file'}
+        container_config_inputs["BVAL"] = {'location': {'path': os.path.join('/flywheel/v0/input/BVAL', 'dwiF.bval'), 'name': 'dwiF.bval'}, 'base': 'file'}
+        container_config_inputs["BVEC"] = {'location': {'path': os.path.join('/flywheel/v0/input/BVEC', 'dwiF.bvec'), 'name': 'dwiF.bvec'}, 'base': 'file'}
+        container_config_inputs["DIFF"] = {'location': {'path': os.path.join('/flywheel/v0/input/DIFF', 'dwiF.nii.gz'), 'name': 'dwiF.nii.gz'}, 'base': 'file'}
+        container_config_inputs["FSMASK"] = {'location': {'path': os.path.join('/flywheel/v0/input/FSMASK', 'brainmask.nii.gz'), 'name': 'brainmask.nii.gz'}, 'base': 'file'}
         container_specific_config_data["inputs"] = container_config_inputs
+        
         with open(path_to_analysis_container_specific_config[0] , "w") as outfile:
             json.dump(container_specific_config_data, outfile, indent = 4)
 
-
-        "DIFF": gear_context.get_input_path("DIFF"),
-        "BVAL": gear_context.get_input_path("BVAL"),
-        "BVEC": gear_context.get_input_path("BVEC"),
-        "ANAT": gear_context.get_input_path("ANAT"),
-        "FSMASK": gear_context.get_input_path("FSMASK"),
-
-
-
-
     # If freesurferator, before copying configs, existingFS and control input fields need to be in the config.json
-    if "rtp2-pipeline" in container:
+    if container in "rtp2-pipeline":
         control_points = lc_config["container_specific"][container]["control_points"] #specific for freesurferator
         container_specific_config_data = json.load(open(parser_namespace.container_specific_config[0]))
         container_specific_config_data["inputs"] = {}
         container_config_inputs = container_specific_config_data["inputs"]
-        # if pre_fs. add pre_fs in the inputs field of the container specific config.json, otherwise add T1.nii.gz
-        if pre_fs:
-            container_config_inputs["pre_fs"] = {'location': {'path': os.path.join('/flywheel/v0/input/pre_fs', 'existingFS.zip'), 'name': 'existingFS.zip'}, 'base': 'file'}
-        else:
-            container_config_inputs["anat"] = {'location': {'path': os.path.join('/flywheel/v0/input/anat', 'T1.nii.gz'), 'name': 'T1.nii.gz'}, 'base': 'file'}
-        # add control_points in the inputs field of the container specific config.json 
-        if control_points:
-            container_config_inputs["control_points"] =  {'location': {'path': '/flywheel/v0/input/control_points/control.dat', 'name': 'control.dat'}, 'base': 'file'}
-        container_specific_config_data["inputs"] = container_config_inputs
+
+        container_config_inputs["anatomical"] = {'location': {'path': os.path.join('/flywheel/v0/input/anatomical', 'T1.nii.gz'), 'name': 'T1.nii.gz'}, 'base': 'file'}
+        container_config_inputs["bval"] = {'location': {'path': os.path.join('/flywheel/v0/input/bval', 'dwi.bval'), 'name': 'dwi.bval'}, 'base': 'file'}
+        container_config_inputs["bvec"] = {'location': {'path': os.path.join('/flywheel/v0/input/bvec', 'dwi.bvec'), 'name': 'dwi.bvec'}, 'base': 'file'}
+        container_config_inputs["dwi"] = {'location': {'path': os.path.join('/flywheel/v0/input/dwi', 'dwi.nii.gz'), 'name': 'dwi.nii.gz'}, 'base': 'file'}        
+        container_config_inputs["fs"] = {'location': {'path': os.path.join('/flywheel/v0/input/fs', 'fs.zip'), 'name': 'fs.zip'}, 'base': 'file'}
+        container_config_inputs["tractparams"] = {'location': {'path': os.path.join('/flywheel/v0/input/tractparams', 'tractparams.csv'), 'name': 'tractparams.csv'}, 'base': 'file'}
+        
         with open(path_to_analysis_container_specific_config[0] , "w") as outfile:
             json.dump(container_specific_config_data, outfile, indent = 4)
 
-
-        "anatomical": gear_context.get_input_path("anatomical"),
-        "fs": gear_context.get_input_path("fs"),
-        "tractparams": gear_context.get_input_path("tractparams"),
-        "dwi": gear_context.get_input_path("dwi"),
-        "bval": gear_context.get_input_path("bval"),
-        "bvec": gear_context.get_input_path("bvec"),
-        "fsmask": gear_context.get_input_path("fsmask"),
-
-
-
-
-
-
+        # "fsmask": gear_context.get_input_path("fsmask"),
 
     for row in df_subSes.itertuples(index=True, name="Pandas"):
         sub = row.sub
@@ -288,28 +257,28 @@ def prepare_dwi_input(parser_namespace, Dir_analysis, lc_config, df_subSes, layo
                
   
 
-            if "rtppreproc" in container:
-                do.copy_file(parser_namespace.container_specific_config[0], os.path.join(logdir,'config.json'), force)
+            if container in ["rtppreproc" ,"rtp2-preproc"]:
+                do.copy_file(path_to_analysis_container_specific_config[0], os.path.join(logdir,'config.json'), force)
                 dwipre.rtppreproc(parser_namespace, Dir_analysis, lc_config, sub, ses, layout)
             
-            elif "rtp-pipeline" in container:
+            elif container in ["rtp-pipeline", "rtp2-pipeline"]:
                 
                 if not len(parser_namespace.container_specific_config) == 2:
                     logger.error("\n"
                               +f"Input file error: the RTP-PIPELINE config is not provided completely")
                     raise FileNotFoundError('The RTP-PIPELINE needs the config.json and tratparams.csv as container specific configs')
                 
-                output_folder_config_json=  [os.path.join(logdir, "config.json"), os.path.join(logdir, "tractparams.csv")]
-                for orig_config_json, copy_config_json in zip(parser_namespace.container_specific_config,output_folder_config_json):
-                    do.copy_file(orig_config_json, copy_config_json, force) 
+                do.copy_file(path_to_analysis_container_specific_config[0],os.path.join(logdir, "config.json"), force) 
+                do.copy_file(path_to_analysis_container_specific_config[-1],os.path.join(logdir, "tractparams.csv"), force) 
+                
                 dwipre.rtppipeline(parser_namespace, Dir_analysis,lc_config, sub, ses, layout)
             
-            elif "anatrois" in container:
+            elif container in "anatrois":
                 logger.info('we do the anatrois')
                 do.copy_file(parser_namespace.container_specific_config[0], os.path.join(logdir,'config.json'), force)
                 dwipre.anatrois(parser_namespace, Dir_analysis,lc_config,sub, ses, layout)
             
-            elif "freesurferator" in container:
+            elif container in "freesurferator":
                 logger.info('we do the freesurferator')
                 do.copy_file(path_to_analysis_container_specific_config[0], os.path.join(logdir,'config.json'), force)
                 dwipre.anatrois(parser_namespace, Dir_analysis,lc_config,sub, ses, layout)

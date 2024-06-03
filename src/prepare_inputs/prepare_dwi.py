@@ -273,10 +273,6 @@ def anatrois(parser_namespace, dir_analysis,lc_config, sub, ses, layout):
         logger.debug("\n"
                      +f'the tpye of patter is {type(prefs_zipname)}')
         zips=[]
-        # pattern=r'^anatrois_S.*\.zip$'
-        pattern = lc_config["container_specific"][container]["prefs_zipname"]
-        logger.debug('\n'
-                     +f'the pattern is equal to prefs_zipname?  it is {pattern==prefs_zipname}')
         for filename in os.listdir(srcAnatPath):
             if filename.endswith(".zip") and re.match(prefs_zipname, filename):
                 zips.append(filename)
