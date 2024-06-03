@@ -86,8 +86,7 @@ def generate_cmd(
             env_cmd = f"module load {jobqueue_config['apptainer']} &&"
 
     if container in ["anatrois", "rtppreproc", "rtp-pipeline"]:
-        logger.info("\n" + f"start to generate the DWI PIPELINE command")
-        config_json = lst_container_specific_configs[0]
+        logger.info("\n" + "start to generate the DWI PIPELINE command")
         logger.debug(
             f"\n the sub is {sub} \n the ses is {ses} \n the analysis dir is {dir_analysis}"
         )
@@ -102,7 +101,6 @@ def generate_cmd(
 
     if container == "freesurferator":
         logger.info("\n" + "FREESURFERATOR command")
-        config_json = lst_container_specific_configs[0]
         logger.debug(
             f"\n the sub is {sub} \n the ses is {ses} \n the analysis dir is {dir_analysis}"
         )
@@ -152,7 +150,6 @@ def generate_cmd(
 
     if container == "rtp2-preproc":
         logger.info("\n" + "rtp2-preprc command")
-        config_json = lst_container_specific_configs[0]
         logger.debug(
             f"\n the sub is {sub} \n the ses is {ses} \n the analysis dir is {dir_analysis}"
         )
@@ -188,8 +185,7 @@ def generate_cmd(
         )
     
     if container == "rtp2-pipeline":
-        logger.info("\n" + f"rtp2-pipeline command")
-        config_json = lst_container_specific_configs[0]
+        logger.info("\n" + "rtp2-pipeline command")
         logger.debug(
             f"\n the sub is {sub} \n the ses is {ses} \n the analysis dir is {dir_analysis}"
         )

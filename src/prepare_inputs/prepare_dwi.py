@@ -19,7 +19,6 @@ import re
 import errno
 import glob
 import sys
-import shutil
 import nibabel as nib
 import json
 import subprocess as sp
@@ -27,7 +26,7 @@ import zipfile
 import logging
 
 from . import utils as do
-from .utils import read_df, copy_file 
+from .utils import read_df
 
 
 logger=logging.getLogger("GENERAL")
@@ -245,7 +244,7 @@ def anatrois(parser_namespace, dir_analysis,lc_config, sub, ses, layout):
     # If we ran freesurfer before:
     if pre_fs:
         logger.info("\n"
-                   +f"########\n the sourceFile T1 will be pre_fs\n#########\n")
+                   +"########\n the sourceFile T1 will be pre_fs\n#########\n")
         if source_path_fszip == "anatrois":
             srcAnatPath = os.path.join(
                 basedir,
@@ -274,7 +273,8 @@ def anatrois(parser_namespace, dir_analysis,lc_config, sub, ses, layout):
         logger.debug("\n"
                      +f'the tpye of patter is {type(prefs_zipname)}')
         zips=[]
-        pattern=r'^anatrois_S.*\.zip$'
+        # pattern=r'^anatrois_S.*\.zip$'
+        pattern = lc_config["container_specific"][container]["prefs_zipname"]
         logger.debug('\n'
                      +f'the pattern is equal to prefs_zipname?  it is {pattern==prefs_zipname}')
         for filename in os.listdir(srcAnatPath):
@@ -374,7 +374,6 @@ def anatrois(parser_namespace, dir_analysis,lc_config, sub, ses, layout):
                        +annotfile + " does not exist")
         if not os.path.exists(os.path.join(dstDir_input, "annotfile")):
             os.makedirs(os.path.join(dstDir_input, "annotfile"))
-    # seems not implemented
     if mniroizip:
         if os.path.isfile(mniroizip):
             logger.info("\n"

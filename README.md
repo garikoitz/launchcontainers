@@ -8,7 +8,7 @@
 Currently, **launchcontainers** works along with [anatROIs](https://github.com/garikoitz/anatROIs), [RTP-preproc](https://github.com/garikoitz/rtp-preproc), and [RTP2-pipeline](https://github.com/garikoitz/rtp-pipeline).
 
 ## NEW FEATURES
-Now you can `pip install launchcontainers==0.1.1 ` and use it in the command line! check the [How to use]() for more information
+Now you can `pip install launchcontainers==0.2.0 ` and use it in the command line! check the [How to use]() for more information
 
 # Check also:
 * [Home](https://github.com/garikoitz/launchcontainers/wiki/Home)
