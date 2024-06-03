@@ -1,0 +1,6 @@
+sub,ses,RUN,anat,dwi,func
+S001,T01,True,True,True,True
+S002,T01,False,True,False,True
+S003,T01,False,True,True,False
+S004,T01,False,True,True,True
+S005,T01,False,True,True,True

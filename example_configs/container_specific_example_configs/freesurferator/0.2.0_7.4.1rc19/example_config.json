@@ -1,6 +1,6 @@
 {
     "config": {
-	"subject_id": "Sxxx",
+	    "subject_id": "Sxxx",
         "reconall_options": "-autorecon2-cp -autorecon3",
         "hippocampal_subfields": true,
         "brainstem_structures": true,
@@ -13,6 +13,6 @@
         "neuropythy_analysis": true,
         "run_gtmseg": true,
         "force_ants": true,
-	"freesurfer_license_key": "lean.lecca.96@icloud.com 44700 *Cwx36m5MgglI FSz14PqJ1H/7Y"
+	    "freesurfer_license_key": "lean.lecca.96@icloud.com 44700 *Cwx36m5MgglI FSz14PqJ1H/7Y"
     }
 }

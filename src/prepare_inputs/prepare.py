@@ -168,6 +168,42 @@ def prepare_dwi_input(parser_namespace, Dir_analysis, lc_config, df_subSes, layo
         with open(path_to_analysis_container_specific_config[0] , "w") as outfile:
             json.dump(container_specific_config_data, outfile, indent = 4)
 
+    # If freesurferator, before copying configs, existingFS and control input fields need to be in the config.json
+    if "rtp2-preproc" in container:
+        container_specific_config_data = json.load(open(parser_namespace.container_specific_config[0]))
+        container_specific_config_data["inputs"] = {}
+        container_config_inputs = container_specific_config_data["inputs"]
+        # if pre_fs. add pre_fs in the inputs field of the container specific config.json, otherwise add T1.nii.gz
+        if pre_fs:
+            container_config_inputs["pre_fs"] = {'location': {'path': os.path.join('/flywheel/v0/input/pre_fs', 'existingFS.zip'), 'name': 'existingFS.zip'}, 'base': 'file'}
+        else:
+            container_config_inputs["anat"] = {'location': {'path': os.path.join('/flywheel/v0/input/anat', 'T1.nii.gz'), 'name': 'T1.nii.gz'}, 'base': 'file'}
+        # add control_points in the inputs field of the container specific config.json 
+        if control_points:
+            container_config_inputs["control_points"] =  {'location': {'path': '/flywheel/v0/input/control_points/control.dat', 'name': 'control.dat'}, 'base': 'file'}
+        container_specific_config_data["inputs"] = container_config_inputs
+        with open(path_to_analysis_container_specific_config[0] , "w") as outfile:
+            json.dump(container_specific_config_data, outfile, indent = 4)
+
+    # If freesurferator, before copying configs, existingFS and control input fields need to be in the config.json
+    if "rtp2-pipeline" in container:
+        control_points = lc_config["container_specific"][container]["control_points"] #specific for freesurferator
+        container_specific_config_data = json.load(open(parser_namespace.container_specific_config[0]))
+        container_specific_config_data["inputs"] = {}
+        container_config_inputs = container_specific_config_data["inputs"]
+        # if pre_fs. add pre_fs in the inputs field of the container specific config.json, otherwise add T1.nii.gz
+        if pre_fs:
+            container_config_inputs["pre_fs"] = {'location': {'path': os.path.join('/flywheel/v0/input/pre_fs', 'existingFS.zip'), 'name': 'existingFS.zip'}, 'base': 'file'}
+        else:
+            container_config_inputs["anat"] = {'location': {'path': os.path.join('/flywheel/v0/input/anat', 'T1.nii.gz'), 'name': 'T1.nii.gz'}, 'base': 'file'}
+        # add control_points in the inputs field of the container specific config.json 
+        if control_points:
+            container_config_inputs["control_points"] =  {'location': {'path': '/flywheel/v0/input/control_points/control.dat', 'name': 'control.dat'}, 'base': 'file'}
+        container_specific_config_data["inputs"] = container_config_inputs
+        with open(path_to_analysis_container_specific_config[0] , "w") as outfile:
+            json.dump(container_specific_config_data, outfile, indent = 4)
+
+
     for row in df_subSes.itertuples(index=True, name="Pandas"):
         sub = row.sub
         ses = row.ses

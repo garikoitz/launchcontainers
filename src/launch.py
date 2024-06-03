@@ -101,7 +101,7 @@ def generate_cmd(
         )
 
     if container == "freesurferator":
-        logger.info("\n" + f"FREESURFERATOR command")
+        logger.info("\n" + "FREESURFERATOR command")
         config_json = lst_container_specific_configs[0]
         logger.debug(
             f"\n the sub is {sub} \n the ses is {ses} \n the analysis dir is {dir_analysis}"
@@ -150,6 +150,83 @@ def generate_cmd(
             f"-c python run.py 1> {logfilename}.o 2> {logfilename}.e  "
         )
 
+    if container == "rtp2-preproc":
+        logger.info("\n" + "rtp2-preprc command")
+        config_json = lst_container_specific_configs[0]
+        logger.debug(
+            f"\n the sub is {sub} \n the ses is {ses} \n the analysis dir is {dir_analysis}"
+        )
+
+        cmd = (
+            f"{env_cmd} apptainer run --containall --pwd /flywheel/v0 {bind_cmd}"
+            f"--bind {path_to_sub_derivatives}/input:/flywheel/v0/input:ro "
+            f"--bind {path_to_sub_derivatives}/output:/flywheel/v0/output "
+            f"--bind {path_to_sub_derivatives}/work:/flywheel/v0/work "
+            f"--bind {path_to_sub_derivatives}/output/log/config.json:/flywheel/v0/config.json "
+            f"--env FLYWHEEL=/flywheel/v0 "
+            f"--env LD_LIBRARY_PATH=/opt/fsl/lib:  "
+            f"--env FSLWISH=/opt/fsl/bin/fslwish  "
+            f"--env FSLTCLSH=/opt/fsl/bin/fsltclsh  "
+            f"--env FSLMULTIFILEQUIT=TRUE "
+            f"--env FSLOUTPUTTYPE=NIFTI_GZ  "
+            f"--env FSLDIR=/opt/fsl  "
+            f"--env FREESURFER_HOME=/opt/freesurfer  "
+            f"--env ARTHOME=/opt/art  "
+            f"--env ANTSPATH=/opt/ants/bin  "
+            f"--env PYTHON_GET_PIP_SHA256=1e501cf004eac1b7eb1f97266d28f995ae835d30250bec7f8850562703067dc6 "
+            f"--env PYTHON_GET_PIP_URL=https://github.com/pypa/get-pip/raw/66030fa03382b4914d4c4d0896961a0bdeeeb274/public/get-pip.py "
+            f"--env PYTHON_PIP_VERSION=22.0.4  "
+            f"--env PYTHON_VERSION=3.9.15  "
+            f"--env GPG_KEY=E3FF2839C048B25C084DEBE9B26995E310250568  "
+            f"--env LANG=C.UTF-8  "
+            f"--env PATH=/opt/mrtrix3/bin:/opt/ants/bin:/opt/art/bin:/opt/fsl/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin "
+            f"--env PYTHON_SETUPTOOLS_VERSION=58.1.0 -e DISPLAY=:50.0 -e QT_QPA_PLATFORM=xcb  "
+            f"--env FS_LICENSE=/opt/freesurfer/license.txt  "
+            f"--env PWD=/flywheel/v0 "
+            f"{container_name} "
+            f"-c python run.py 1> {logfilename}.o 2> {logfilename}.e  "
+        )
+    
+    if container == "rtp2-pipeline":
+        logger.info("\n" + f"rtp2-pipeline command")
+        config_json = lst_container_specific_configs[0]
+        logger.debug(
+            f"\n the sub is {sub} \n the ses is {ses} \n the analysis dir is {dir_analysis}"
+        )
+
+        cmd = (
+            f"{env_cmd} apptainer run --containall --pwd /flywheel/v0 {bind_cmd}"
+            f"--bind {path_to_sub_derivatives}/input:/flywheel/v0/input:ro "
+            f"--bind {path_to_sub_derivatives}/output:/flywheel/v0/output "
+            f"--bind {path_to_sub_derivatives}/work:/flywheel/v0/work "
+            f"--bind {path_to_sub_derivatives}/output/log/config.json:/flywheel/v0/config.json "
+            f"--env PATH=/opt/mrtrix3/bin:/opt/ants/bin:/opt/art/bin:/opt/fsl/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin "
+            f"--env LANG=C.UTF-8 -e GPG_KEY=E3FF2839C048B25C084DEBE9B26995E310250568 "
+            f"--env PYTHON_VERSION=3.9.15 "
+            f"--env PYTHON_PIP_VERSION=22.0.4 "
+            f"--env PYTHON_SETUPTOOLS_VERSION=58.1.0 "
+            f"--env PYTHON_GET_PIP_URL=https://github.com/pypa/get-pip/raw/66030fa03382b4914d4c4d0896961a0bdeeeb274/public/get-pip.py "
+            f"--env PYTHON_GET_PIP_SHA256=1e501cf004eac1b7eb1f97266d28f995ae835d30250bec7f8850562703067dc6 "
+            f"--env ANTSPATH=/opt/ants/bin "
+            f"--env ARTHOME=/opt/art "
+            f"--env FREESURFER_HOME=/opt/freesurfer "
+            f"--env FSLDIR=/opt/fsl "
+            f"--env FSLOUTPUTTYPE=NIFTI_GZ "
+            f"--env FSLMULTIFILEQUIT=TRUE "
+            f"--env FSLTCLSH=/opt/fsl/bin/fsltclsh "
+            f"--env FSLWISH=/opt/fsl/bin/fslwish "
+            f"--env LD_LIBRARY_PATH=/opt/mcr/v99/runtime/glnxa64:/opt/mcr/v99/bin/glnxa64:/opt/mcr/v99/sys/os/glnxa64:/opt/mcr/v99/extern/bin/glnxa64:/opt/fsl/lib: "
+            f"--env FLYWHEEL=/flywheel/v0 "
+            f"--env TEMPLATES=/templates "
+            f"--env XAPPLRESDIR=/opt/mcr/v99/X11/app-defaults "
+            f"--env MCR_CACHE_FOLDER_NAME=/flywheel/v0/output/.mcrCache9.9 "
+            f"--env MCR_CACHE_ROOT=/flywheel/v0/output "
+            f"--env MRTRIX_TMPFILE_DIR=/flywheel/v0/output/tmp "
+            f"--env PWD=/flywheel/v0 "
+            f"{container_name} "
+            f"-c python run.py 1> {logfilename}.o 2> {logfilename}.e  "
+        )
+    
     # Check which container we are using, and define the command accordingly
     if container == "fmriprep":
         logger.info("\n" + f"start to generate the FMRIPREP command")
