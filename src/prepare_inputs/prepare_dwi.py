@@ -461,8 +461,10 @@ def rtppreproc(parser_namespace, Dir_analysis, lc_config, sub, ses, layout):
     #     phaseEnco_direc = container_specific_config_data["config"]["pe_dir"]
     # if version =='1.1.3':
     #     phaseEnco_direc = container_specific_config_data["config"]["acqd"]
-    
-    phaseEnco_direc = container_specific_config_data["config"]["pe_dir"]
+    if container == "rtp2-preproc":
+        phaseEnco_direc = container_specific_config_data["config"]["pe_dir"]
+    if container == "rtppreproc":
+        phaseEnco_direc = container_specific_config_data["config"]["acqd"]
     # the source directory that stores the output of previous anatrois analysis
     srcDirFs = os.path.join(
         basedir,
