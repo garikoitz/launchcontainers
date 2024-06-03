@@ -97,10 +97,8 @@ def initiate_cluster(jobqueue_config, n_job, logdir):
         cluster_by_config.scale(jobs=n_job)
     elif "local" in jobqueue_config["manager"]:
         logger.debug("defining local cluster")
-        cluster_by_config = LocalCluster(
-            #silence_logs = True,
-            processes = False,
-            #worker_class = "Worker",
+        cluster_by_config = LocalCluster(  
+            processes = False,       
             n_workers = n_job,
             threads_per_worker = jobqueue_config["threads_per_worker"],
             memory_limit = jobqueue_config["memory_limit"],
