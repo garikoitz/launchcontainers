@@ -139,13 +139,17 @@ def read_yaml(path_to_config_file):
 
     container = config["general"]["container"]
     host = config["general"]["host"]
+    njobs = config["host_options"][host]["njobs"]
+    if njobs == "" or njobs is None:
+        njobs = 2
     host_str = f"{host}"
     if host == "local":
         launch_mode = config["host_options"]["local"]["launch_mode"]
         valid_options = ["serial", "parallel","dask_worker"]
         if launch_mode in valid_options:
             host_str = (
-                f"{host_str}, and commands will be launched in {launch_mode} mode. "
+                f"{host_str}, and commands will be launched in {launch_mode} mode "
+                f"every {njobs} jobs. "
                 f"Serial is safe but it will take longer. "
                 f"If you launch in parallel be aware that some of the "
                 f"processes might be killed if the limit (usually memory) "
