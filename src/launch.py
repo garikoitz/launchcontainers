@@ -18,6 +18,7 @@ import subprocess as sp
 from subprocess import Popen
 import numpy as np
 import logging
+import math
 
 # modules in lc
 
@@ -449,13 +450,28 @@ def launchcontainer(
 
     if run_lc and host == "local":
         if launch_mode == "parallel":
+            k = 0
+            njobs = jobqueue_config["njobs"]
+            if njobs == "" or njobs is None:
+                njobs = 2
+            steps = math.ceil(len(commands)/njobs)
             logger.critical(
-                f"\nLocally launching {len(commands)} jobs in parallel, check "
-                f"your server's memory, some jobs might fail\n"
+                f"\nLocally launching {len(commands)} jobs in parallel every {njobs} jobs "
+                f"in {steps} steps, check your server's memory, some jobs might fail\n"
             )
-            procs = [ Popen(i, shell=True) for i in commands ]
-            for p in procs:
-                p.wait()
+            for stp in range(steps):
+                if stp == range(steps)[-1] and (k+njobs > len(commands) or k+njobs == len(commands)):
+                    selected_commands = commands[k:len(commands)]
+                else:
+                    selected_commands = commands[k:k+njobs]
+                logger.critical(
+                    f"JOBS in step {stp+1}:\n{selected_commands}\n"
+                )
+                procs = [ Popen(i, shell=True) for i in selected_commands ]
+                for p in procs:
+                    p.wait()
+                k = k+njobs
+
         elif launch_mode == "dask_worker":
             logger.critical(
                 f"\nLocally launching {len(commands)} jobs with dask-worker, "
