@@ -204,5 +204,6 @@ host_options:
       manager: 'local'
       launch_mode: 'dask_worker'  # This can only be serial or parallel, any other options will make it fail.
       # Arguments below only affect to parallel launch mode
+      njobs:  # This indicates the number of jobs LC will launc each time in parallel mode until finish your subSesList. If empty, LC will launch 2 jobs in parallel each time by default.
       memory_limit: '16GiB'  #
       threads_per_worker: 6  # 
