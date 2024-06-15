@@ -22,16 +22,16 @@ import os
 import shutil
 import sys
 import pandas as pd
+import os.path as op
 
-logger = logging.getLogger("GENERAL")
+logger = logging.getLogger("Launchcontainers")
 
 
 def die(*args):
-    logger.info(*args)
+    logger.error(*args)
     sys.exit(1)
 
 
-# %% parser
 def get_parser():
     """
     Input:
@@ -95,16 +95,20 @@ def get_parser():
                         check all the configurations are correct and ready, you type --run_lc to make it run",
     )
 
+    # parser.add_argument(
+    #     "--quite",
+    #     action="store_true",
+    #     help="if you want to open quite mode, type --quite, then it will print you only the warning level ",
+    # )
     parser.add_argument(
-        "-v",
         "--verbose",
         action="store_true",
-        help="if you want to open verbose mode, type -v or --verbose, other wise the program is non-verbose mode",
+        help="if you want to open verbose mode, type --verbose, the the level will be info",
     )
     parser.add_argument(
-        "--DEBUG",
+        "--debug",
         action="store_true",
-        help="if you want to find out what is happening of particular step, this will print you more detailed information",
+        help="if you want to find out what is happening of particular step, --type debug, this will print you more detailed information",
     )
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
@@ -113,18 +117,9 @@ def get_parser():
     parse_dict = vars(parser.parse_args())
     parse_namespace = parser.parse_args()
 
-    logger.info(
-        "\n"
-        + "#####################################################\n"
-        + "This is the result from get_parser()\n"
-        + f"{parse_dict}\n"
-        + "#####################################################\n"
-    )
-
-    return parse_namespace
+    return parse_namespace, parse_dict
 
 
-# %% read yaml
 def read_yaml(path_to_config_file):
     """
     Input:
@@ -137,44 +132,43 @@ def read_yaml(path_to_config_file):
     with open(path_to_config_file, "r") as v:
         config = yaml.load(v, Loader=SafeLoader)
 
-    container = config["general"]["container"]
-    host = config["general"]["host"]
-    njobs = config["host_options"][host]["njobs"]
-    if njobs == "" or njobs is None:
-        njobs = 2
-    host_str = f"{host}"
-    if host == "local":
-        launch_mode = config["host_options"]["local"]["launch_mode"]
-        valid_options = ["serial", "parallel","dask_worker"]
-        if launch_mode in valid_options:
-            host_str = (
-                f"{host_str}, and commands will be launched in {launch_mode} mode "
-                f"every {njobs} jobs. "
-                f"Serial is safe but it will take longer. "
-                f"If you launch in parallel be aware that some of the "
-                f"processes might be killed if the limit (usually memory) "
-                f"of the machine is reached. "
-            )
-        else:
-            die(
-                f"local:launch_mode {launch_mode} was passed, valid options are {valid_options}"
-            )
+    """     container = config["general"]["container"]
+        host = config["general"]["host"]
+        njobs = config["host_options"][host]["njobs"]
+        if njobs == "" or njobs is None:
+            njobs = 2
+        host_str = f"{host}"
+        if host == "local":
+            launch_mode = config["host_options"]["local"]["launch_mode"]
+            valid_options = ["serial", "parallel","dask_worker"]
+            if launch_mode in valid_options:
+                host_str = (
+                    f"{host_str}, and commands will be launched in {launch_mode} mode "
+                    f"every {njobs} jobs. "
+                    f"Serial is safe but it will take longer. "
+                    f"If you launch in parallel be aware that some of the "
+                    f"processes might be killed if the limit (usually memory) "
+                    f"of the machine is reached. "
+                )
+            else:
+                die(
+                    f"local:launch_mode {launch_mode} was passed, valid options are {valid_options}"
+                )
 
-    logger.warning(
-        "\n"
-        + "#####################################################\n"
-        + f"Successfully read the config file {path_to_config_file} \n"
-        + f'Basedir is: {config["general"]["basedir"]} \n'
-        + f'Container is: {container}_{config["container_specific"][container]["version"]} \n'
-        + f"Host is: {host_str} \n"
-        + f'analysis folder is: {config["general"]["analysis_name"]} \n'
-        + f"##################################################### \n"
-    )
-
+        logger.warning(
+            "\n"
+            + "#####################################################\n"
+            + f"Successfully read the config file {path_to_config_file} \n"
+            + f'Basedir is: {config["general"]["basedir"]} \n'
+            + f'Container is: {container}_{config["container_specific"][container]["version"]} \n'
+            + f"Host is: {host_str} \n"
+            + f'analysis folder is: {config["general"]["analysis_name"]} \n'
+            + f"##################################################### \n"
+        )
+    """
     return config
 
 
-# %% function to read subSesList. txt
 def read_df(path_to_df_file):
     """
     Input:
@@ -185,42 +179,86 @@ def read_df(path_to_df_file):
 
     """
     outputdf = pd.read_csv(path_to_df_file, sep=",", dtype=str)
-    num_rows = len(outputdf)
+    num_of_true_run = len(outputdf.loc[outputdf['RUN']=="True"])
 
-    # Print the result
-    logger.info(
-        "\n"
-        + "#####################################################\n"
-        + f"The dataframe{path_to_df_file} is successfully read\n"
-        + f"The DataFrame has {num_rows} rows \n"
-        + "#####################################################\n"
-    )
+    """     # Print the result
+        logger.info(
+            "\n"
+            + "#####################################################\n"
+            + f"The dataframe{path_to_df_file} is successfully read\n"
+            + f"The DataFrame has {num_rows} rows \n"
+            + "#####################################################\n"
+        )
+    """
+    return outputdf,num_of_true_run
 
-    return outputdf
+def setup_logger(print_command_only, force, verbose=False, debug=False, log_dir=None, log_filename=None):
+    '''
+    stream_handler_level: str,  optional
+        if no input, it will be default at INFO level, this will be the setting for the command line logging
 
+    verbose: bool, optional
+    debug: bool, optional
+    log_dir: str, optional
+        if no input, there will have nothing to be saved in log file but only the command line output
 
-# %% function setup_logger
-def setup_logger():
-    # instantiate logger
-    logger = logging.getLogger()
-    # define handler and formatter
-    handler = (
-        logging.StreamHandler()
-    )  # TODO: this should dbe implement to filehandler also , so that we have lc logs
-    formatter = logging.Formatter(
-        "%(asctime)s %(levelname)8s  %(module)8s:%(funcName)s:%(lineno)d %(message)s",
+    log_filename: str, optional
+        the name of your log_file.
+
+    '''
+    # set up the lowest level for the logger first, so that all the info will be get
+    logger.setLevel(logging.DEBUG)
+    
+
+    # set up formatter and handler so that the logging info can go to stream or log files 
+    # with specific format
+    log_formatter = logging.Formatter(
+        "%(asctime)s (%(name)s):[%(levelname)s] %(module)s - %(funcName)s() - line:%(lineno)d   $ %(message)s ",
         datefmt="%Y-%m-%d %H:%M:%S",
+    )    
+
+    stream_formatter = logging.Formatter(
+        "(%(name)s):[%(levelname)s]  %(module)s:%(funcName)s:%(lineno)d %(message)s"
     )
-    # add formatter to handler
-    handler.setFormatter(formatter)
-    # add handler to logger
-    logger.addHandler(handler)
-    logger.setLevel(logging.WARNING)
+    # Define handler and formatter
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(stream_formatter)
+    if verbose:
+        stream_handler.setLevel(logging.INFO)
+    elif print_command_only:
+        stream_handler.setLevel(logging.CRITICAL)
+    elif debug:
+        stream_handler.setLevel(logging.DEBUG)
+    else:
+        stream_handler.setLevel(logging.WARNING)
+    logger.addHandler(stream_handler)
+
+    if log_dir:
+        if force:
+            file_handler_info = (
+                logging.FileHandler(op.join(log_dir, f'{log_filename}_info.log'), mode='w') 
+            ) 
+            file_handler_error = (
+                logging.FileHandler(op.join(log_dir, f'{log_filename}_error.log'), mode='w') 
+            ) 
+        else:
+            file_handler_info = (
+                logging.FileHandler(op.join(log_dir, f'{log_filename}_info.log'), mode='a') 
+            ) 
+            file_handler_error = (
+                logging.FileHandler(op.join(log_dir, f'{log_filename}_error.log'), mode='a') 
+            ) 
+        file_handler_info.setFormatter(log_formatter)
+        file_handler_error.setFormatter(log_formatter)
+    
+        file_handler_info.setLevel(logging.INFO)
+        file_handler_error.setLevel(logging.ERROR)
+        logger.addHandler(file_handler_info)
+        logger.addHandler(file_handler_error)
+
 
     return logger
-
-
-# %% copy file
+# %% generic function shared in the program
 def copy_file(src_file, dst_file, force):
     logger.info("\n" + "#####################################################\n")
     if not os.path.isfile(src_file):

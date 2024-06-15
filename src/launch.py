@@ -29,7 +29,7 @@ from prepare_inputs import dask_scheduler_config as dsq
 from prepare_inputs import prepare as prepare
 from prepare_inputs import utils as do
 
-logger = logging.getLogger("GENERAL")
+logger = logging.getLogger("Launchcontainers")
 
 
 # %% launchcontainers
@@ -554,46 +554,71 @@ def run_dask(
 
 # %% main()
 def main():
-    # Set the logging level to get the command
-    do.setup_logger()
-
-    # Get the path from command line input
-    parser_namespace = do.get_parser()
+    # read ymal and setup the launchcontainer program
+    parser_namespace,parse_dict = do.get_parser()
     lc_config_path = parser_namespace.lc_config
     lc_config = do.read_yaml(lc_config_path)
 
-    # Get general information from the config.yaml file
-    container = lc_config["general"]["container"]
-    basedir = lc_config["general"]["basedir"]
-    bidsdir_name = lc_config["general"]["bidsdir_name"]
-    sub_ses_list_path = parser_namespace.sub_ses_list
-    sub_ses_list = do.read_df(sub_ses_list_path)
-
-    # Stored value
     verbose = parser_namespace.verbose
-    debug = parser_namespace.DEBUG
+    debug = parser_namespace.debug
 
-    # Set the verbosity level
-    print_command_only = lc_config["general"][
-        "print_command_only"
-    ]  # TODO: this should be defined using -v and -print command only
+    # Get general information from the config.yaml file
+    basedir=lc_config["general"]["basedir"]
+    bidsdir_name=lc_config["general"]["bidsdir_name"]
+    containerdir=lc_config["general"]["containerdir"]
+    container=lc_config["general"]["container"]
+    analysis_name=lc_config["general"]["analysis_name"]
+    host=lc_config["general"]["host"]
+    force=lc_config["general"]["force"]
+    print_command_only=lc_config["general"]["print_command_only"]
+    log_dir=lc_config["general"]["log_dir"]
+    log_filename=lc_config["general"]["log_filename"]
+    
+    # get stuff from subseslist for future jobs scheduling
+    sub_ses_list_path = parser_namespace.sub_ses_list
+    sub_ses_list,num_of_true_run = do.read_df(sub_ses_list_path)
+    
 
-    # Set logger message level
-    # TODO: this implementation should allow changing the level of verbosity in the three levels
-    if print_command_only:
-        logger.setLevel(logging.CRITICAL)
-    if verbose:
-        logger.setLevel(logging.INFO)
-    if debug:
-        logger.setLevel(logging.DEBUG)
-    logger.critical("Reading the BIDS layout...")
+    do.setup_logger(print_command_only,force,verbose, debug, log_dir, log_filename)
+    
+    #before doing anything, logger the thing we have read:
+    
+    if host == "local":
+        launch_mode = lc_config["host_options"]["local"]["launch_mode"]
+        valid_options = ["serial", "parallel","dask_worker"]
+        if launch_mode in valid_options:
+            host_str = (
+                f"{host}, and commands will be launched in {launch_mode} mode "
+                f"Serial is safe but it will take longer. "
+                f"If you launch in parallel be aware that some of the "
+                f"processes might be killed if the limit (usually memory) "
+                f"of the machine is reached. "
+            )
+        else:
+            do.die(
+                f"local:launch_mode {launch_mode} was passed, valid options are {valid_options}"
+            )
+
+    logger.critical(
+        "\n"
+        + "#####################################################\n"
+        + f"Successfully read the config file {lc_config_path} \n"
+        + f"SubsesList is read, there are {num_of_true_run} jobs needed to be launched"
+        + f'Basedir is: {lc_config["general"]["basedir"]} \n'
+        + f'Container is: {container}_{lc_config["container_specific"][container]["version"]} \n'
+        + f"Host is: {host_str} \n"
+        + f'analysis folder is: {lc_config["general"]["analysis_name"]} \n'
+        + f"##################################################### \n"
+    )
+
+    logger.info("Reading the BIDS layout...")
     # Prepare file and launch containers
     # First of all prepare the analysis folder: it create you the analysis folder automatically so that you are not messing up with different analysis
     dir_analysis, path_to_analysis_container_specific_config = (
         prepare.prepare_analysis_folder(parser_namespace, lc_config)
     )
     layout = BIDSLayout(os.path.join(basedir, bidsdir_name))
-    logger.critical("                       ... finished reading the BIDS layout.")
+    logger.info("finished reading the BIDS layout.")
 
     # Prepare mode
     if container in [
@@ -609,7 +634,7 @@ def main():
             parser_namespace, dir_analysis, lc_config, sub_ses_list, layout, path_to_analysis_container_specific_config
         )
     else:
-        logger.warning(f"{container} is not in the list")
+        logger.error(f"{container} is not in the list")
 
 
     # Run mode

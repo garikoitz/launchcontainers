@@ -29,7 +29,7 @@ from . import utils as do
 from .utils import read_df
 
 
-logger=logging.getLogger("GENERAL")
+logger = logging.getLogger("Launchcontainers")
 
 
 #%% the force version of create symlink
@@ -567,8 +567,8 @@ def rtppreproc(parser_namespace, Dir_analysis, lc_config, sub, ses, layout):
         # If bval and bvec do not exist because it is only b0-s, create them
         # (it would be better if dcm2niix would output them but...)
         # build the img matrix according to the shape of nii.gz
-        img = nib.load(srcFileDwi_nii_R)
-        volumes = img.shape[3]
+        img = nib.load(srcFileDwi_nii_R) # type: ignore
+        volumes = img.shape[3] # type: ignore
         # if one of the bvec and bval are not there, re-write them
         if (not os.path.isfile(srcFileDwi_bval_R)) or (not os.path.isfile(srcFileDwi_bvec_R)):
             # Write bval file

@@ -28,7 +28,7 @@ from scipy.io import loadmat
 from . import utils as do
 from . import prepare_dwi as dwipre
 
-logger=logging.getLogger("GENERAL")
+logger = logging.getLogger("Launchcontainers")
 
 
 #%% copy configs or create new analysis
