@@ -182,6 +182,7 @@ def read_df(path_to_df_file):
     try:
         num_of_true_run = len(outputdf.loc[outputdf['RUN']=="True"])
     except:
+        num_of_true_run=None
         logger.warn(f"The df you are reading is not subseslist")
     """     # Print the result
         logger.info(
