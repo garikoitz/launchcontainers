@@ -142,7 +142,6 @@ def check_tractparam(lc_config, sub, ses, tractparam_df):
     basedir = lc_config["general"]["basedir"]
     container = lc_config["general"]["container"]
     bidsdir_name= lc_config["general"]["bidsdir_name"]
-    version = lc_config["container_specific"][container]["version"]  # TODO: This is unused :(
     precontainer_anat = lc_config["container_specific"][container]["precontainer_anat"]
     anat_analysis_name = lc_config["container_specific"][container]["anat_analysis_name"]
     
