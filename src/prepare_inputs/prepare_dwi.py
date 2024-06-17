@@ -761,7 +761,7 @@ def rtppipeline(parser_namespace, Dir_analysis,lc_config,sub, ses, layout):
     dstFile_tractparams = os.path.join(Dir_analysis, "tractparams.csv")
 
     # the tractparams check, at the analysis folder 
-    tractparam_df =read_df(dstFile_tractparams)
+    tractparam_df,_ =read_df(dstFile_tractparams)
     check_tractparam(lc_config, sub, ses, tractparam_df)
 
 

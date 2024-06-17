@@ -179,8 +179,10 @@ def read_df(path_to_df_file):
 
     """
     outputdf = pd.read_csv(path_to_df_file, sep=",", dtype=str)
-    num_of_true_run = len(outputdf.loc[outputdf['RUN']=="True"])
-
+    try:
+        num_of_true_run = len(outputdf.loc[outputdf['RUN']=="True"])
+    except:
+        logger.warn(f"The df you are reading is not subseslist")
     """     # Print the result
         logger.info(
             "\n"
