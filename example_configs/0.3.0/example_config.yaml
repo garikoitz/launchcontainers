@@ -38,10 +38,10 @@ general:
       # type: str or int
       # description: The name of your analysis, e.g. 01, 001, abcd, etc. It will help you create a corresponding folder under derivetives/container
   # force:
-      # type: bool / don't sensitive to capital letters True and true both okay
+      # type: bool / don't sensitive to capital letters True and True both okay
       # description: Options whether you want to overwritte the existing file or not
       # author note: 
-      #   1.This force command applies to symlinks and analyses, if it set to true, it will always overwrite everything
+      #   1.This force command applies to symlinks and analyses, if it set to True, it will always overwrite everything
       #   2.For PREPARE MODE
       #     if file_exists and force: overwrite
       #     if file_exists and not force: do nothing and print(say that the file existed but you kept it)
@@ -55,9 +55,9 @@ general:
   containerdir: /bcbl/home/public/Gari/singularity_images
   container: "rtp2-preproc"  # VALID OPTIONS: anatrois, rtppreproc, rtp-pipeline, TODO: heudiconv, prfprepare, prfanalyze, prfresults, fmriprep
   analysis_name: "control_points_02"
-  force: true
+  force: True
   host: local #valid options: local, BCBL, DIPC.
-  print_command_only: true
+  print_command_only: True
   bidsdir_name: "BIDS"
  
 container_specific:
@@ -67,9 +67,9 @@ container_specific:
     space: ""
   anatrois:
     version: 4.6.1-7.3.2
-    # If you have run FS previously, you can say true here and it will use the existing output
-    pre_fs: true
-    # If pre_fs is true, it will try to find it using the options below
+    # If you have run FS previously, you can say True here and it will use the existing output
+    pre_fs: True
+    # If pre_fs is True, it will try to find it using the options below
     # Add the container name and versions used to create the pre_fs
     source_path_fszip: "anatrois" #options: anatrois, fmriprep
     # 
@@ -91,7 +91,7 @@ container_specific:
     version: 1.2.0-3.0.3
     # It checks if there is a reverse phase encoding acquisition
     # Old dcm2nixx will not create empty bvec and bval files if there was an acquisition with just b0-s
-    rpe: true # if you have reverse phase encoding
+    rpe: True # if you have reverse phase encoding
     # Find where the input files are. It will take the T1 and the brainmask from here
     #
     #this thing was pretoolfs originally
@@ -110,11 +110,11 @@ container_specific:
     version: 
   freesurferator:
     version: 0.2.0-7.4.1rc19
-    # If you have run FS previously, you can say true here and it will use the existing output
-    pre_fs: true
-    # If you want to use the control points created in the previous analysis (control.dat), set this true:
-    control_points: true
-    # If pre_fs is true, it will try to find it using the options below
+    # If you have run FS previously, you can say True here and it will use the existing output
+    pre_fs: True
+    # If you want to use the control points created in the previous analysis (control.dat), set this True:
+    control_points: True
+    # If pre_fs is True, it will try to find it using the options below
     # Add the container name and versions used to create the pre_fs
     source_path_fszip: "anatrois" #options: anatrois, fmriprep
     # 
@@ -133,8 +133,8 @@ container_specific:
     prefs_unzipname: 'S.*$'
     # These are optional input files. If there is none, leave it empty string
     # If it is empty, it will ignore it and will not create the input/folder
-    annotfile: ""
-    mniroizip: ""
+    annotfile: 
+    mniroizip: 
   rtp2-preproc:
     version: 0.1.0_3.0.4rc31
     # It checks if there is a reverse phase encoding acquisition
