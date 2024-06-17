@@ -14,6 +14,7 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 """
 import os
+import os.path as op
 import subprocess as sp
 from subprocess import Popen
 import numpy as np
@@ -558,7 +559,8 @@ def main():
     parser_namespace,parse_dict = do.get_parser()
     lc_config_path = parser_namespace.lc_config
     lc_config = do.read_yaml(lc_config_path)
-
+    
+    run_lc = parser_namespace.run_lc
     verbose = parser_namespace.verbose
     debug = parser_namespace.debug
 
@@ -574,12 +576,16 @@ def main():
     log_dir=lc_config["general"]["log_dir"]
     log_filename=lc_config["general"]["log_filename"]
     
+    version = lc_config["container_specific"][container]["version"] 
     # get stuff from subseslist for future jobs scheduling
     sub_ses_list_path = parser_namespace.sub_ses_list
     sub_ses_list,num_of_true_run = do.read_df(sub_ses_list_path)
     
+    
+    if log_dir=="analysis_dir":
+        log_dir=op.join(basedir,bidsdir_name,'derivatives',f'{container}_{version}',f"analysis-{analysis_name}")
 
-    do.setup_logger(print_command_only,force,verbose, debug, log_dir, log_filename)
+    do.setup_logger(print_command_only,verbose, debug, log_dir, log_filename)
     
     #before doing anything, logger the thing we have read:
     

@@ -23,7 +23,7 @@ import shutil
 import sys
 import pandas as pd
 import os.path as op
-
+from os import makedirs
 logger = logging.getLogger("Launchcontainers")
 
 
@@ -192,7 +192,7 @@ def read_df(path_to_df_file):
     """
     return outputdf,num_of_true_run
 
-def setup_logger(print_command_only, force, verbose=False, debug=False, log_dir=None, log_filename=None):
+def setup_logger(print_command_only, verbose=False, debug=False, log_dir=None, log_filename=None):
     '''
     stream_handler_level: str,  optional
         if no input, it will be default at INFO level, this will be the setting for the command line logging
@@ -234,20 +234,16 @@ def setup_logger(print_command_only, force, verbose=False, debug=False, log_dir=
     logger.addHandler(stream_handler)
 
     if log_dir:
-        if force:
-            file_handler_info = (
-                logging.FileHandler(op.join(log_dir, f'{log_filename}_info.log'), mode='w') 
-            ) 
-            file_handler_error = (
-                logging.FileHandler(op.join(log_dir, f'{log_filename}_error.log'), mode='w') 
-            ) 
-        else:
-            file_handler_info = (
-                logging.FileHandler(op.join(log_dir, f'{log_filename}_info.log'), mode='a') 
-            ) 
-            file_handler_error = (
-                logging.FileHandler(op.join(log_dir, f'{log_filename}_error.log'), mode='a') 
-            ) 
+        if not os.path.isdir(log_dir):
+            makedirs(log_dir)
+            
+
+        file_handler_info = (
+            logging.FileHandler(op.join(log_dir, f'{log_filename}_info.log'), mode='a') 
+        ) 
+        file_handler_error = (
+            logging.FileHandler(op.join(log_dir, f'{log_filename}_error.log'), mode='a') 
+        ) 
         file_handler_info.setFormatter(log_formatter)
         file_handler_error.setFormatter(log_formatter)
     

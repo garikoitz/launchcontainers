@@ -224,11 +224,10 @@ def anatrois(parser_namespace, dir_analysis,lc_config, sub, ses, layout):
     mniroizip = lc_config["container_specific"][container]["mniroizip"]
     
     version = lc_config["container_specific"][container]["version"]
-    source_path_fszip= lc_config["container_specific"][container]["source_path_fszip"]
-    precontainer_anat = lc_config["container_specific"][container]["precontainer_anat"]
-    anat_analysis_name = lc_config["container_specific"][container]["anat_analysis_name"]
-    precontainer_fmriprep = lc_config["container_specific"][container]["precontainer_fmriprep"]
-    fmriprep_analysis_name = lc_config["container_specific"][container]["fmriprep_analysis_name"]
+    source_fszip= lc_config["container_specific"][container]["source_fszip"]
+    prefs_dir_name = lc_config["container_specific"][container]["prefs_dir_name"]
+    prefs_analysis_name = lc_config["container_specific"][container]["prefs_analysis_name"]
+
     
     srcFile_container_config_json= container_specific_config_path[0]
     new_container_specific_config_path=[]
@@ -245,28 +244,22 @@ def anatrois(parser_namespace, dir_analysis,lc_config, sub, ses, layout):
     if pre_fs:
         logger.info("\n"
                    +"########\n the sourceFile T1 will be pre_fs\n#########\n")
-        if source_path_fszip == "anatrois":
+        if source_fszip in ["anatrois","fmriprep", "freesurferator","freesurfer"]:
             srcAnatPath = os.path.join(
                 basedir,
                 bidsdir_name,
                 "derivatives",
-                f'{precontainer_anat}',
-                "analysis-" + anat_analysis_name,
+                f'{prefs_dir_name}',
+                "analysis-" + prefs_analysis_name,
                 "sub-" + sub,
                 "ses-" + ses,
                 "output",
             )
-        elif source_path_fszip == "fmriprep":
-            srcAnatPath = os.path.join(
-                basedir,
-                bidsdir_name,
-                "derivatives",
-                f'{precontainer_fmriprep}',
-                "analysis-" + fmriprep_analysis_name,
-                'sourcedata',
-                "freesurfer"
-                "sub-" + sub,
-            )
+        else:
+            logger.error(f"Your input fszip source are incorrect, valid options are: \
+                         anatrois,fmriprep, freesurferator,freesurfer")
+            sys.exit(1)
+            
         logger.info("\n"
                    +f"---the patter of fs.zip filename we are searching is {prefs_zipname}\n"
                    +f"---the directory we are searching for is {srcAnatPath}")
