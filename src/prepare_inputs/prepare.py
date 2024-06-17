@@ -136,7 +136,7 @@ def prepare_dwi_input(parser_namespace, analysis_dir, lc_config, df_subSes, layo
                 "#####################################################\n"
                 +f"Prepare 1, write config.json RTP2-{container}\n")
     
-    if prepare_dwi_config_json(parser_namespace,lc_config,force):
+    if prepare_dwi_config_json(container_configs_under_analysis_folder,lc_config,force):
         logger.info("\n"+
                 "#####################################################\n"
                 +f"Prepare 1, finished\n")
@@ -218,7 +218,7 @@ def prepare_dwi_input(parser_namespace, analysis_dir, lc_config, df_subSes, layo
                 "#####################################################\n")
     return  
 
-def prepare_dwi_config_json(parser_namespace,lc_config,force):
+def prepare_dwi_config_json(container_configs_under_analysis_folder,lc_config,force):
     '''
     This function is used to automatically read config.yaml and get the input file info and put them in the config.json
     
@@ -286,8 +286,8 @@ def prepare_dwi_config_json(parser_namespace,lc_config,force):
         fs_json_keys=['pre_fs','control_points','annotfile', 'mniroizip']
         fs_json_val=['pre_fs/existingFS.zip','control_points/control.dat','mniroizip/mniroizip.zip','annotfile/annotfile.zip']
         config_json_extra=get_config_dict(container,lc_config,fs_json_keys,fs_json_val)
-        json_file_input_path=parser_namespace.container_specific_config[0]
-        json_file_output_path=parser_namespace.container_specific_config[0]
+        json_file_input_path=container_configs_under_analysis_folder[0]
+        json_file_output_path=container_configs_under_analysis_folder[0]
         if write_json(config_json_extra, json_file_input_path, json_file_output_path,force):
             logger.info(f"Successfully write json for {container}")
         
@@ -302,8 +302,8 @@ def prepare_dwi_config_json(parser_namespace,lc_config,force):
         preproc_json_keys=['ANAT','BVAL','BVEC', 'DIFF','FSMASK']
         preproc_json_val=['ANAT/T1.nii.gz','BVAL/dwiF.bval','BVEC/dwiF.bvec','DIFF/dwiF.nii.gz','FSMASK/brainmask.nii.gz']
         config_json_extra=get_config_dict(container,lc_config,preproc_json_keys,preproc_json_val)
-        json_file_input_path=parser_namespace.container_specific_config[0]
-        json_file_output_path=parser_namespace.container_specific_config[0]
+        json_file_input_path=container_configs_under_analysis_folder[0]
+        json_file_output_path=container_configs_under_analysis_folder[0]
         if write_json(config_json_extra, json_file_input_path, json_file_output_path,force):
             logger.info(f"Successfully write json for {container}")
 
@@ -311,8 +311,8 @@ def prepare_dwi_config_json(parser_namespace,lc_config,force):
         pipeline_json_keys=['anatomical','bval','bvec', 'dwi','fs','tractparams']
         pipeline_json_val=['anatomical/T1.nii.gz','bval/dwi.bval','bvec/dwi.bvec','dwi/dwi.nii.gz','fs/fs.zip','tractparams/tractparams.csv']
         config_json_extra=get_config_dict(container,lc_config,pipeline_json_keys,pipeline_json_val)
-        json_file_input_path=parser_namespace.container_specific_config[0]
-        json_file_output_path=parser_namespace.container_specific_config[0]
+        json_file_input_path=container_configs_under_analysis_folder[0]
+        json_file_output_path=container_configs_under_analysis_folder[0]
         if write_json(config_json_extra, json_file_input_path, json_file_output_path,force):
             logger.info(f"Successfully write json for {container}")
         # "fsmask": gear_context.get_input_path("fsmask"),
