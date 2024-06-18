@@ -76,12 +76,9 @@ def get_parser():
     parser.add_argument(
         "-cc",
         "--container_specific_config",
-        nargs="*",
-        default=[],
+        type=str,
         # default=["/export/home/tlei/tlei/PROJDATA/TESTDATA_LC/Testing_02/BIDS/config.json"],
-        help="path to the container specific config file(s). First file needs to be the config.json file of the container. \
-        Some containers might need more config files (e.g., rtp-pipeline needs tractparams.csv). \
-        some don't need any configs (e.g fmriprep)    Add them here separated with a space.",
+        help="path to the container specific config file, it stores the parameters for the container."
     )
 
     parser.add_argument(

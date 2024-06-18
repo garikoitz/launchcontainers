@@ -16,30 +16,24 @@ The above copyright notice and this permission notice shall be included in all c
 import logging
 import os
 import os.path as op
-from os import rename
-from os import path, symlink, unlink
 import json
-from glob import glob
 import zipfile
-import numpy as np 
-from scipy.io import loadmat
 
 from . import utils as do
 from . import prepare_dwi as dwipre
 
 logger = logging.getLogger("Launchcontainers")
 
-
-#%% copy configs or create new analysis
 def prepare_analysis_folder(parser_namespace, lc_config):
     '''
-    this function is the very very first step of everything, it is IMPORTANT, 
-    it will provide a check if your desired analysis has been running before
-    and it will help you keep track of your input parameters so that you know what you are doing in your analysis    
-
-    the option force will not be useful at the analysis_folder level, if you insist to do so, you need to delete the old analysis folder by hand
+    Description: create analysis folder based on your container and your analysis.
     
-    after determine the analysis folder, this function will copy your input configs to the analysis folder, and it will read only from there
+    In the meantime, it will copy your input config files to the analysis folder. 
+
+    In the end, it will check if everything are in place and ready for the next level preparation 
+    which is at the subject and session level
+
+    After this step, the following preparing method will based on the config files under the analysis folder instread of your input
     '''
     # read parameters from lc_config
     basedir = lc_config['general']['basedir']
@@ -58,81 +52,160 @@ def prepare_analysis_folder(parser_namespace, lc_config):
         container_folder,
         f"analysis-{analysis_name}",
                 )
-    
+    if not op.isdir(analysis_dir):
+        os.makedirs(analysis_dir)
+
+    ############################################################################################
+    ############################Copy the configs################################################
+    ############################################################################################
     # define the potential exist config files
     lc_config_under_analysis_folder = op.join(analysis_dir, "lc_config.yaml")
     subSeslist_under_analysis_folder = op.join(analysis_dir, "subSesList.txt")
+    # the name of container_specific configs is consitant with your input name, it is not necessary a .json file
+    container_configs_under_analysis_folder = op.join(analysis_dir,os.path.basename(parser_namespace.container_specific_config))
     
-    cc_number={
-        'anatrois':1 ,
-        'freesurferator':1 ,
-        'rtppreproc':1 ,
-        'rtp2-preproc': 1 ,
-        'rtp-pipeline': 2 , 
-        'rtp2-pipeline': 2
-    }
-
-    if container  not in ['rtp-pipeline', 'rtp2-pipeline','fmriprep']:    
-        container_configs_under_analysis_folder = [op.join(analysis_dir, "config.json")] 
-    elif container in ['rtp-pipeline', 'rtp2-pipeline']:
-        container_configs_under_analysis_folder = [op.join(analysis_dir, "config.json"), op.join(analysis_dir, "tractparams.csv")]
-    
-
-    if not op.isdir(analysis_dir):
-        os.makedirs(analysis_dir)
-    
-
+    # then we have optional configs we need to add to the list
     # copy the config under the analysis folder
     do.copy_file(parser_namespace.lc_config, lc_config_under_analysis_folder, force) 
     do.copy_file(parser_namespace.sub_ses_list,subSeslist_under_analysis_folder,force)
-    for orig_config_json, copy_config_json in zip(parser_namespace.container_specific_config, container_configs_under_analysis_folder):
-        do.copy_file(orig_config_json, copy_config_json, force)    
+    do.copy_file(parser_namespace.container_specific_config, container_configs_under_analysis_folder, force)    
+    
     logger.debug(f'\n The analysis folder is {analysis_dir}, all the configs has been copied') 
     
-    def zip_file(file_path, zip_path):
-        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            zipf.write(file_path, os.path.basename(file_path))
-    def process_file(mni_roi, analysis_dir):
+    dict_store_cs_configs={}
+    dict_store_cs_configs['config_path']=container_configs_under_analysis_folder
+    
+    def process_optional_input(container,file_path, analysis_dir, option=None):
+        if os.path.isfile(file_path):
+            logger.info("\n"
+                +f" You have choossen to pass  {file_path} to {container}, it will be first copy to {analysis_dir}")
+        else:
+            logger.error("\n"
+                        f"{file_path} does not exist")        
         
-        file_name = os.path.basename(mni_roi)
+        file_name = os.path.basename(file_path)
         file_ext = os.path.splitext(file_name)[1]
         
-        if file_ext in ['.nii', '.gz']:
-            # If the input file is a .nii or .nii.gz file, zip it
-            zip_path = os.path.join(analysis_dir, "mniroizip.zip")
-            zip_file(mni_roi, zip_path)
-
-        elif file_ext == '.zip':
-
-            do.copy_file(mni_roi, os.path.join(analysis_dir, "mniroizip.zip"), force)          
-        else:
-            raise ValueError("Unsupported file type.")
-
-    # prepare the annot and mniroi file for freesurferator, it is part of the configs that should be under the analysis folder
-    if container in ['anatrois','freesurferator']:
+        if container in ['anatrois','freesurferator']:
+            if file_ext in ['.nii', '.gz','.zip']:
+                do.copy_file(file_path, os.path.join(analysis_dir, file_name), force)          
+            else:
+                raise ValueError("Unsupported file type.")
+        if container in ['rtp2-preproc']:
+            if file_ext in ['.nii', '.gz']:
+                do.copy_file(file_path, os.path.join(analysis_dir, file_name), force)                          
+            else:
+                raise ValueError("Unsupported file type.")
+                    
+        if container in ['rtp2-pipeline']:
+            if option == "tractparams":
+                if file_ext in ['.csv']:    
+                    do.copy_file(file_path, os.path.join(analysis_dir, file_name), force)
+                else:
+                    raise ValueError("Unsupported file type.")                    
+            if option == "fsmask":
+                if file_ext in ['.nii', '.gz']:
+                    do.copy_file(file_path, os.path.join(analysis_dir, file_name), force)            
+                else:
+                    raise ValueError("Unsupported file type.")                
+            if option == "qmap_zip":
+                if file_ext == '.zip':
+                    do.copy_file(file_path, os.path.join(analysis_dir, file_name), force)          
+                else:
+                    raise ValueError("Unsupported file type.")
+        return file_name
+    
+    # copy annotfile or mnizip file to analysis folder
+    if container in ['anatrois']:
+        dict_store_cs_configs[container]={}
+        pre_fs= lc_config["container_specific"][container]["pre_fs"]
         annotfile = lc_config["container_specific"][container]["annotfile"]
         mniroizip = lc_config["container_specific"][container]["mniroizip"]
-        
+        if pre_fs:
+            file_name="existingFS.zip"
+            dict_store_cs_configs[container]['pre_fs']=f"pre_fs/{file_name}"         
         if annotfile:
-            if os.path.isfile(annotfile):
-                logger.info("\n"
-                        +f" You have choossen to pass  {annotfile} to {container}, it will be first copy to {analysis_dir}")
-
-                do.copy_file(annotfile, os.path.join(analysis_dir, "annotfile.zip"), force)
-            else:
-                logger.info("\n"
-                        f"{annotfile} does not exist")
+            file_name=process_optional_input(container,annotfile,analysis_dir)
+            dict_store_cs_configs[container]['annotfile']=f"annotfile/{file_name}"
         if mniroizip:
-            if os.path.isfile(mniroizip):
-                logger.info("\n"
-                       +f" You have choossen to pass  {mniroizip} to {container}, it will be first copy to {analysis_dir}")
-                process_file(mniroizip, analysis_dir)
-            else:
-                logger.info("\n"
-                        f"{mniroizip} does not exist")
+            file_name=process_optional_input(container,mniroizip,analysis_dir)
+            dict_store_cs_configs[container]['mniroizip']=f"mniroizip/{file_name}"
+        # copy annotfile or mnizip file to analysis folder
+    if container in ['freesurferator']:
+        dict_store_cs_configs[container]={}
+        pre_fs= lc_config["container_specific"][container]["pre_fs"]
+        control_points= lc_config["container_specific"][container]["control_points"]
+        annotfile = lc_config["container_specific"][container]["annotfile"]
+        mniroizip = lc_config["container_specific"][container]["mniroizip"]
+        if pre_fs:
+            file_name="existingFS.zip"
+            dict_store_cs_configs[container]['pre_fs']=f"pre_fs/{file_name}"
+        if control_points:
+            file_name="control.dat"
+            dict_store_cs_configs[container]['control_points']=f"control_points/{file_name}"            
+        if annotfile:
+            file_name=process_optional_input(container,annotfile,analysis_dir)
+            dict_store_cs_configs[container]['annotfile']=f"annotfile/{file_name}"
+        if mniroizip:
+            file_name=process_optional_input(container,mniroizip,analysis_dir)
+            dict_store_cs_configs[container]['mniroizip']=f"mniroizip/{file_name}"
+    # copy qmap.nii of qmap.nii.gz to analysis folder
+    if container in ['rtppreproc']:
+        preproc_json_keys=['ANAT','BVAL','BVEC', 'DIFF','FSMASK']
+        preproc_json_val=['ANAT/T1.nii.gz','BVAL/dwiF.bval','BVEC/dwiF.bvec','DIFF/dwiF.nii.gz','FSMASK/brain.nii.gz']
+        dict_store_cs_configs[container]= {key: value for key, value in zip(preproc_json_keys, preproc_json_val)}
+        rpe=lc_config["container_specific"][container]["rpe"]
+        if rpe:
+            dict_store_cs_configs[container]['RBVC']= 'RBVC/dwiR.bvec'
+            dict_store_cs_configs[container]['RBVL']= 'RBVL/dwiR.bval'
+            dict_store_cs_configs[container]['RDIF']= 'RDIF/dwiR.nii.gz'            
+    if container in ['rtp2-preproc']:
+        preproc_json_keys=['ANAT','BVAL','BVEC', 'DIFF','FSMASK']
+        preproc_json_val=['ANAT/T1.nii.gz','BVAL/dwiF.bval','BVEC/dwiF.bvec','DIFF/dwiF.nii.gz','FSMASK/brain.nii.gz']
+        dict_store_cs_configs[container]= {key: value for key, value in zip(preproc_json_keys, preproc_json_val)}
+        
+        rpe=lc_config["container_specific"][container]["rpe"]
+        qmap=lc_config["container_specific"][container]["qmap_nifti"]
+        if rpe:
+            dict_store_cs_configs[container]['RBVC']= 'RBVC/dwiR.bvec'
+            dict_store_cs_configs[container]['RBVL']= 'RBVL/dwiR.bval'
+            dict_store_cs_configs[container]['RDIF']= 'RDIF/dwiR.nii.gz'            
+        if qmap:
+            file_name=process_optional_input(container,qmap,analysis_dir)
+            dict_store_cs_configs[container]['qmap']=f"qmap/{file_name}"
+        
+    if container in ['rtp-pipeline']:
+        pipeline_json_keys=['anatomical','bval','bvec', 'dwi','fs']
+        pipeline_json_val=['anatomical/T1.nii.gz','bval/dwi.bval','bvec/dwi.bvec','dwi/dwi.nii.gz','fs/fs.zip']
+        dict_store_cs_configs[container]= {key: value for key, value in zip(pipeline_json_keys, pipeline_json_val)}
+        
+        tractparams=lc_config["container_specific"][container]["tractparams"]
+        if tractparams:
+            file_name=process_optional_input(container,tractparams,analysis_dir,"tractparams")    
+            dict_store_cs_configs[container]['tractparams']=f"tractparams/{file_name}"
+    if container in ['rtp2-pipeline']:
+        pipeline_json_keys=['anatomical','bval','bvec', 'dwi','fs']
+        pipeline_json_val=['anatomical/T1.nii.gz','bval/dwi.bval','bvec/dwi.bvec','dwi/dwi.nii.gz','fs/fs.zip']
+        dict_store_cs_configs[container]= {key: value for key, value in zip(pipeline_json_keys, pipeline_json_val)}        
+        tractparams=lc_config["container_specific"][container]["tractparams"]
+        fsmask=lc_config["container_specific"][container]["fsmask"]
+        qmap_zip=lc_config["container_specific"][container]["qmap_zip"]
+        if tractparams:
+            file_name=process_optional_input(container,tractparams,analysis_dir,"tractparams")
+            dict_store_cs_configs[container]['tractparams']=f"tractparams/{file_name}"
+        if fsmask:
+            file_name=process_optional_input(container,fsmask,analysis_dir,"fsmask")
+            dict_store_cs_configs[container]['fsmask']=f"fsmask/{file_name}"
+        if qmap_zip:
+            file_name=process_optional_input(container,qmap_zip,analysis_dir,"qmap_zip")           
+            dict_store_cs_configs[container]['qmap_zip']=f"qmap_zip/{file_name}"       
 
 
-    copies = [lc_config_under_analysis_folder, subSeslist_under_analysis_folder] + container_configs_under_analysis_folder
+    ############################################################################################
+    ############################Do the checks###################################################
+    ############################################################################################
+
+    copies = [lc_config_under_analysis_folder, subSeslist_under_analysis_folder, container_configs_under_analysis_folder]
 
     all_copies_present= all(op.isfile(copy_path) for copy_path in copies)
 
@@ -141,10 +214,115 @@ def prepare_analysis_folder(parser_namespace, lc_config):
     else:
         logger.error(f'\n did NOT detect back up configs in the analysis folder, Please check then continue the run mode')
 
-    return analysis_dir, container_configs_under_analysis_folder
+    return analysis_dir, dict_store_cs_configs
 
-# %% prepare_mni_rois
-def prepare_dwi_input(parser_namespace, analysis_dir, lc_config, df_subSes, layout, container_configs_under_analysis_folder):
+def prepare_dwi_config_json(dict_store_cs_configs,lc_config,force):
+    '''
+    This function is used to automatically read config.yaml and get the input file info and put them in the config.json
+    
+    '''
+    
+    def write_json(config_json_extra, json_under_analysis_dir, force):
+        config_json_instance = json.load(open(json_under_analysis_dir))
+        if not "input" in config_json_instance:
+            config_json_instance["inputs"] = config_json_extra
+        else:
+            logger.warn(f"{json_under_analysis_dir} json file already has field input, we will overwrite it if you set force to true")
+            if force:
+               config_json_instance["inputs"] = config_json_extra
+            else:
+                pass         
+        with open(json_under_analysis_dir , "w") as outfile:
+            json.dump(config_json_instance, outfile, indent = 4)
+        
+        return True
+    
+    def get_config_dict(container,lc_config,dict_store_cs_configs):
+        
+        yaml_info=lc_config["container_specific"][container]
+        
+        rtp2_json_dict= dict_store_cs_configs[container]
+
+        
+        if container == "freesurferator":
+            config_json_extra={'anat': 
+                        {'location': {
+                            'path': '/flywheel/v0/input/anat/T1.nii.gz', 
+                            'name': 'T1.nii.gz',
+                        },
+                        'base': 'file'}
+                        }
+            for key in rtp2_json_dict.keys():
+                if key in yaml_info.keys() and yaml_info[key]:
+                    config_json_extra[key] = {
+                            'location': {
+                                'path': op.join('/flywheel/v0/input', rtp2_json_dict[key]), 
+                                'name': op.basename(rtp2_json_dict[key])
+                            },
+                            'base': 'file'
+                        }
+
+        else:
+            config_json_extra={}
+            for key in rtp2_json_dict.keys():
+                config_json_extra[key] = {
+                        'location': {
+                            'path': op.join('/flywheel/v0/input', rtp2_json_dict[key]), 
+                            'name': op.basename(rtp2_json_dict[key])
+                        },
+                        'base': 'file'
+                    }
+               
+        return config_json_extra
+
+    container = lc_config["general"]["container"]   
+    print(f"THIS IS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~{dict_store_cs_configs}")
+    config_json_extra=get_config_dict(container,lc_config,dict_store_cs_configs)
+    
+    json_under_analysis_dir=dict_store_cs_configs['config_path']
+
+    if write_json(config_json_extra, json_under_analysis_dir,force):
+        logger.info(f"Successfully write json for {container}")    
+    '''    
+    if container == "freesurferator":
+        # fs_json_keys=['pre_fs','control_points','annotfile', 'mniroizip']
+        # fs_json_val=['pre_fs/existingFS.zip','control_points/control.dat','annotfile/annotfile.zip','mniroizip/mniroizip.zip']
+        config_json_extra=get_config_dict(container,lc_config,dict_store_cs_configs)
+        json_under_analysis_dir=dict_store_cs_configs['config_path']
+
+        if write_json(config_json_extra, json_under_analysis_dir,force):
+            logger.info(f"Successfully write json for {container}")
+        
+        # TODO:
+        # "t1w_anatomical_2": gear_context.get_input_path("t1w_anatomical_2"),
+        # "t1w_anatomical_3": gear_context.get_input_path("t1w_anatomical_3"),
+        # "t1w_anatomical_4": gear_context.get_input_path("t1w_anatomical_4"),
+        # "t1w_anatomical_5": gear_context.get_input_path("t1w_anatomical_5"),
+        # "t2w_anatomical": gear_context.get_input_path("t2w_anatomical"),
+        
+    if container in "rtp2-preproc":
+        # preproc_json_keys=['ANAT','BVAL','BVEC', 'DIFF','FSMASK']
+        # preproc_json_val=['ANAT/T1.nii.gz','BVAL/dwiF.bval','BVEC/dwiF.bvec','DIFF/dwiF.nii.gz','FSMASK/brainmask.nii.gz']
+        config_json_extra=get_config_dict(container,lc_config,dict_store_cs_configs)
+        json_under_analysis_dir=dict_store_cs_configs['config_path']
+
+        if write_json(config_json_extra, json_under_analysis_dir,force):
+            logger.info(f"Successfully write json for {container}")
+
+    if container in "rtp2-pipeline":
+        # pipeline_json_keys=['anatomical','bval','bvec', 'dwi','fs','tractparams']
+        # pipeline_json_val=['anatomical/T1.nii.gz','bval/dwi.bval','bvec/dwi.bvec','dwi/dwi.nii.gz','fs/fs.zip','tractparams/tractparams.csv']
+        config_json_extra=get_config_dict(container,lc_config,dict_store_cs_configs)
+        json_under_analysis_dir=dict_store_cs_configs['config_path']
+
+        if write_json(config_json_extra, json_under_analysis_dir,force):
+            logger.info(f"Successfully write json for {container}")
+        # "fsmask": gear_context.get_input_path("fsmask"),
+    '''    
+    return True   
+
+
+def prepare_dwi_input(parser_namespace, analysis_dir, lc_config, df_subSes, layout, dict_store_cs_configs):
     """
     This is the major function for doing the preparation, it is doing the work 
     1. write the config.json (analysis level)
@@ -182,7 +360,7 @@ def prepare_dwi_input(parser_namespace, analysis_dir, lc_config, df_subSes, layo
                 "#####################################################\n"
                 +f"Prepare 1, write config.json RTP2-{container}\n")
     
-    if prepare_dwi_config_json(container_configs_under_analysis_folder,lc_config,force):
+    if prepare_dwi_config_json(dict_store_cs_configs,lc_config,force):
         logger.info("\n"+
                 "#####################################################\n"
                 +f"Prepare 1, finished\n")
@@ -227,34 +405,20 @@ def prepare_dwi_input(parser_namespace, analysis_dir, lc_config, df_subSes, layo
 
             if not op.isdir(tmpdir):
                 os.makedirs(tmpdir)
-            logger.info(f"\n the tmp dir is created at {tmpdir}, and it is {op.isdir(tmpdir)} that this file exists")
             if not op.isdir(logdir):
                 os.makedirs(logdir)
             
             do.copy_file(parser_namespace.lc_config, op.join(logdir,'lc_config.yaml'), force) 
-               
-  
+            file_path=dict_store_cs_configs['config_path']
+            do.copy_file(file_path, op.join(logdir,os.path.basename(file_path)), force)   
+
 
             if container in ["rtppreproc" ,"rtp2-preproc"]:
-                do.copy_file(container_configs_under_analysis_folder[0], op.join(logdir,'config.json'), force)
                 dwipre.rtppreproc(parser_namespace, analysis_dir, lc_config, sub, ses, layout)
-            
             elif container in ["rtp-pipeline", "rtp2-pipeline"]:
-                
-                if not len(parser_namespace.container_specific_config) == 2:
-                    logger.error("\n"
-                              +f"Input file error: the RTP-PIPELINE config is not provided completely")
-                    raise FileNotFoundError('The RTP-PIPELINE needs the config.json and tratparams.csv as container specific configs')
-                
-                do.copy_file(container_configs_under_analysis_folder[0],op.join(logdir, "config.json"), force) 
-                do.copy_file(container_configs_under_analysis_folder[-1],op.join(logdir, "tractparams.csv"), force) 
-                
                 dwipre.rtppipeline(parser_namespace, analysis_dir,lc_config, sub, ses, layout)
-            
             elif container in ["anatrois","freesurferator"]:
-                do.copy_file(container_configs_under_analysis_folder[0], op.join(logdir,'config.json'), force)
-                dwipre.anatrois(parser_namespace, analysis_dir,lc_config,sub, ses, layout)
-            
+                dwipre.anatrois(dict_store_cs_configs, analysis_dir,lc_config,sub, ses, layout,run_lc)
             else:
                 logger.error("\n"+
                              f"***An error occurred"
@@ -265,105 +429,4 @@ def prepare_dwi_input(parser_namespace, analysis_dir, lc_config, df_subSes, layo
     logger.info("\n"+
                 "#####################################################\n")
     return  
-
-def prepare_dwi_config_json(container_configs_under_analysis_folder,lc_config,force):
-    '''
-    This function is used to automatically read config.yaml and get the input file info and put them in the config.json
-    
-    '''
-    
-    def write_json(config_json_extra, json_file_input_path, json_file_output_path, force):
-        config_json_instance = json.load(open(json_file_input_path))
-        if not "input" in config_json_instance:
-            config_json_instance["inputs"] = config_json_extra
-        else:
-            logger.warn(f"{json_file_input_path} json file already has field input, we will overwrite it if you set force to true")
-            if force:
-               config_json_instance["inputs"] = config_json_extra
-            else:
-                pass         
-        with open(json_file_output_path , "w") as outfile:
-            json.dump(config_json_instance, outfile, indent = 4)
-        
-        return True
-    
-    def get_config_dict(container,lc_config,rtp2_json_keys,rtp2_json_val):
-        config_info_dict = {}
-        yaml_info=lc_config["container_specific"][container]
-        
-        rtp2_json_dict= {key: value for key, value in zip(rtp2_json_keys, rtp2_json_val)}
-
-        
-        if container == "freesurferator":
-            config_json_extra={'anat': 
-                        {'location': {
-                            'path': '/flywheel/v0/input/anat/T1.nii.gz', 
-                            'name': 'T1.nii.gz',
-                        },
-                        'base': 'file'}
-                        }
-            for key in rtp2_json_dict.keys():
-                if key in yaml_info.keys() and yaml_info[key]:
-                    config_json_extra[key] = {
-                            'location': {
-                                'path': op.join('/flywheel/v0/input', rtp2_json_dict[key]), 
-                                'name': op.basename(rtp2_json_dict[key])
-                            },
-                            'base': 'file'
-                        }
-                if 'anat' in config_json_extra.keys() and 'pre_fs' in config_json_extra.keys():
-                    config_json_extra.pop('anat')
-
-        else:
-            config_json_extra={}
-            for key in rtp2_json_dict.keys():
-                config_json_extra[key] = {
-                        'location': {
-                            'path': op.join('/flywheel/v0/input', rtp2_json_dict[key]), 
-                            'name': op.basename(rtp2_json_dict[key])
-                        },
-                        'base': 'file'
-                    }
-               
-        return config_json_extra
-
-    container = lc_config["general"]["container"]   
-    
-    
-    if container == "freesurferator":
-        fs_json_keys=['pre_fs','control_points','annotfile', 'mniroizip']
-        fs_json_val=['pre_fs/existingFS.zip','control_points/control.dat','annotfile/annotfile.zip','mniroizip/mniroizip.zip']
-        config_json_extra=get_config_dict(container,lc_config,fs_json_keys,fs_json_val)
-        json_file_input_path=container_configs_under_analysis_folder[0]
-        json_file_output_path=container_configs_under_analysis_folder[0]
-        if write_json(config_json_extra, json_file_input_path, json_file_output_path,force):
-            logger.info(f"Successfully write json for {container}")
-        
-        # TODO:
-        # "t1w_anatomical_2": gear_context.get_input_path("t1w_anatomical_2"),
-        # "t1w_anatomical_3": gear_context.get_input_path("t1w_anatomical_3"),
-        # "t1w_anatomical_4": gear_context.get_input_path("t1w_anatomical_4"),
-        # "t1w_anatomical_5": gear_context.get_input_path("t1w_anatomical_5"),
-        # "t2w_anatomical": gear_context.get_input_path("t2w_anatomical"),
-         
-    if container in "rtp2-preproc":
-        preproc_json_keys=['ANAT','BVAL','BVEC', 'DIFF','FSMASK']
-        preproc_json_val=['ANAT/T1.nii.gz','BVAL/dwiF.bval','BVEC/dwiF.bvec','DIFF/dwiF.nii.gz','FSMASK/brainmask.nii.gz']
-        config_json_extra=get_config_dict(container,lc_config,preproc_json_keys,preproc_json_val)
-        json_file_input_path=container_configs_under_analysis_folder[0]
-        json_file_output_path=container_configs_under_analysis_folder[0]
-        if write_json(config_json_extra, json_file_input_path, json_file_output_path,force):
-            logger.info(f"Successfully write json for {container}")
-
-    if container in "rtp2-pipeline":
-        pipeline_json_keys=['anatomical','bval','bvec', 'dwi','fs','tractparams']
-        pipeline_json_val=['anatomical/T1.nii.gz','bval/dwi.bval','bvec/dwi.bvec','dwi/dwi.nii.gz','fs/fs.zip','tractparams/tractparams.csv']
-        config_json_extra=get_config_dict(container,lc_config,pipeline_json_keys,pipeline_json_val)
-        json_file_input_path=container_configs_under_analysis_folder[0]
-        json_file_output_path=container_configs_under_analysis_folder[0]
-        if write_json(config_json_extra, json_file_input_path, json_file_output_path,force):
-            logger.info(f"Successfully write json for {container}")
-        # "fsmask": gear_context.get_input_path("fsmask"),
-    
-    return True   
 

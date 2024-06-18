@@ -15,9 +15,10 @@ The above copyright notice and this permission notice shall be included in all c
 #%% import libraries
 
 import os
+import os.path as op
 import re
 import errno
-import glob
+import shutil
 import sys
 import nibabel as nib
 import json
@@ -146,7 +147,7 @@ def check_tractparam(lc_config, sub, ses, tractparam_df):
     anat_analysis_name = lc_config["container_specific"][container]["anat_analysis_name"]
     
     # Define where the fs.zip file is
-    fs_zip = os.path.join(
+    fs_zip = op.join(
         basedir,
         bidsdir_name,
         "derivatives",
@@ -184,12 +185,11 @@ def check_tractparam(lc_config, sub, ses, tractparam_df):
     return ROIs_are_there
 
 #%%
-def anatrois(parser_namespace, analysis_dir,lc_config, sub, ses, layout):
+def anatrois(dict_store_cs_configs, analysis_dir,lc_config, sub, ses, layout,run_lc):
     
     """anatrois function creates symbolic links for the anatrois container
 
     Args:
-        parser_namespace (argparse.Namespace): it stores all the input information from the get parser
         analysis_dir (_type_): directory to analyze
         lc_config (dict): the lc_config dictionary from _read_config
         sub (str): subject name
@@ -200,34 +200,58 @@ def anatrois(parser_namespace, analysis_dir,lc_config, sub, ses, layout):
         FileNotFoundError: _description_
         FileNotFoundError: _description_
     """
-    # Define local variables from lc_config dict
-    # Input from get_parser
-    container_specific_config_path= parser_namespace.container_specific_config
-    run_lc=parser_namespace.run_lc
-    
+
     # General level variables:
     basedir = lc_config["general"]["basedir"]
     container = lc_config["general"]["container"]    
     bidsdir_name=lc_config["general"]["bidsdir_name"]  
-        # If force is False, then we don't want to overwrite anything
-        # If force is true, and we didn't run_lc(in the prepare mode), we will do the overwrite and so on
-        # If force is true and we do run_lc, then we will never overwrite
+    # If force is False, then we don't want to overwrite anything
+    # If force is true, and we didn't run_lc(in the prepare mode), we will do the overwrite and so on
+    # If force is true and we do run_lc, then we will never overwrite
     force = (lc_config["general"]["force"])
     force = force and (not run_lc)
-     
+
     # Container specific:
     pre_fs = lc_config["container_specific"][container]["pre_fs"]
-    prefs_zipname = lc_config["container_specific"][container]["prefs_zipname"]
-    # I added this line, shall we modify config yaml
-    annotfile = lc_config["container_specific"][container]["annotfile"]
-    mniroizip = lc_config["container_specific"][container]["mniroizip"]
     prefs_dir_name = lc_config["container_specific"][container]["prefs_dir_name"]
     prefs_analysis_name = lc_config["container_specific"][container]["prefs_analysis_name"]
-
+    prefs_zipname = lc_config["container_specific"][container]["prefs_zipname"]
+    annotfile = lc_config["container_specific"][container]["annotfile"]
+    mniroizip = lc_config["container_specific"][container]["mniroizip"]
     
-    srcFile_container_config_json= container_specific_config_path[0]
-    new_container_specific_config_path=[]
-
+    # define input output folder for this container
+    dstDir_input = op.join(
+        analysis_dir,
+        "sub-" + sub,
+        "ses-" + ses,
+        "input",
+    )
+    dstDir_output = op.join(
+        analysis_dir,
+        "sub-" + sub,
+        "ses-" + ses,
+        "output",
+    )
+    if container == "freesurferator":
+        dstDir_work = op.join(
+            analysis_dir,
+            "sub-" + sub,
+            "ses-" + ses,
+            "work",
+        )
+        if not op.exists(dstDir_work):
+            os.makedirs(dstDir_work)
+    # create corresponding folder
+    if op.exists(dstDir_input) and force:
+        shutil.rmtree(dstDir_input)    
+    if op.exists(dstDir_output) and force:        
+        shutil.rmtree(dstDir_output)
+    
+    if not op.exists(dstDir_input):
+        os.makedirs(dstDir_input)
+    if not op.exists(dstDir_output):
+        os.makedirs(dstDir_output)
+ 
     # specific for freesurferator
     if container == "freesurferator":
         control_points = lc_config["container_specific"][container]["control_points"]
@@ -236,12 +260,28 @@ def anatrois(parser_namespace, analysis_dir,lc_config, sub, ses, layout):
         # if not running freesurferator control_points field is not available, then we set it False
         control_points = False
     
-    # If we ran freesurfer before:
-    if pre_fs:
-        logger.info("\n"
-                   +"########\n the sourceFile T1 will be pre_fs\n#########\n")
+    # read json, this json is already written from previous preparasion step
+    json_under_analysis_dir=dict_store_cs_configs['config_path']
+    config_json_instance = json.load(open(json_under_analysis_dir))
+    required_inputfiles=config_json_instance['inputs'].keys()
+    
+    # 5 main filed needs to be in anatrois if all specified, so there will be 5 checks
+    if "anat" in required_inputfiles:
+        src_path_anat_lst= layout.get(subject= sub, session=ses, extension='nii.gz',suffix= 'T1w',return_type='filename')
+        if len(src_path_anat_lst) == 0:
+            raise FileNotFoundError(f'the T1w.nii.gz you are specifying for sub-{sub}_ses-{ses} does NOT exist or the folder is not BIDS format, please check')
+        else:
+            src_path_anat = src_path_anat_lst[0]        
+        dst_fname_anat=config_json_instance['inputs']['anat']['location']['name']
+        dst_path_anat=op.join(dstDir_input, "anat", dst_fname_anat)
         
-        srcAnatPath = os.path.join(
+        if not op.exists(op.join(dstDir_input, "anat")):
+            os.makedirs(op.join(dstDir_input, "anat"))
+        force_symlink(src_path_anat, dst_path_anat, force)
+
+    # If we ran freesurfer before:
+    if "pre_fs" in required_inputfiles:   
+        pre_fs_path = op.join(
             basedir,
             bidsdir_name,
             "derivatives",
@@ -253,122 +293,80 @@ def anatrois(parser_namespace, analysis_dir,lc_config, sub, ses, layout):
         )
         logger.info("\n"
                    +f"---the patter of fs.zip filename we are searching is {prefs_zipname}\n"
-                   +f"---the directory we are searching for is {srcAnatPath}")
+                   +f"---the directory we are searching for is {pre_fs_path}")
         logger.debug("\n"
                      +f'the tpye of patter is {type(prefs_zipname)}')
         zips=[]
-        for filename in os.listdir(srcAnatPath):
+        for filename in os.listdir(pre_fs_path):
             if filename.endswith(".zip") and re.match(prefs_zipname, filename):
                 zips.append(filename)
-            if control_points and os.path.isdir(os.path.join(srcAnatPath,filename)) and re.match(prefs_unzipname, filename):
-                srcControlPoints = os.path.join(
-                    srcAnatPath,
-                    filename,
-                    "tmp",
-                    "control.dat"
-                )
+                if "control_points" in required_inputfiles:
+                    if op.isdir(op.join(pre_fs_path,filename)) and re.match(prefs_unzipname, filename):
+                        src_path_ControlPoints = op.join(
+                            pre_fs_path,
+                            filename,
+                            "tmp",
+                            "control.dat"
+                            )
+                    else:
+                        raise FileNotFoundError("Didn't found control_points .zip file")
+                    
         if len(zips) == 0:
-            logger.warning("\n"+
-                f"There are no files with pattern: {prefs_zipname} in {srcAnatPath}, we will listed potential zip file for you"
+            logger.error("\n"+
+                f"There are no files with pattern: {prefs_zipname} in {pre_fs_path}, we will listed potential zip file for you"
             )
-            zips_new = sorted(glob.glob(os.path.join(srcAnatPath, "*")), key=os.path.getmtime)
-            if len(zips_new) == 0:
-                logger.error("\n"+
-                    f"The {srcAnatPath} directory is empty, aborting, please check the output file of previous analysis."
-                )
-                raise FileNotFoundError("srcAnatPath is empty, no previous analysis was found")
+            raise FileNotFoundError("pre_fs_path is empty, no previous analysis was found")
+        elif len(zips) == 1:
+            src_path_fszip = op.join(pre_fs_path,zips[0])            
+        else:    
+            zips_by_time = sorted(zips, key=op.getmtime)
+            answer = input(
+                f"Do you want to use the newset fs.zip: \n{zips_by_time[-1]} \n we get for you? \n input y for yes, n for no"
+            )
+            if answer in "y":
+                src_path_fszip = zips_by_time[-1]
             else:
-                answer = input(
-                    f"Do you want to use the file: \n{zips_new[-1]} \n we get for you? \n input y for yes, n for no"
-                )
-                if answer in "y":
-                    srcFileT1 = zips_new[-1]
-                else:
-                    logger.error("\n"+"An error occurred"
-                               +zips_new +"\n" # type: ignore
-                               +"no target preanalysis.zip file exist, please check the config_lc.yaml file")
-                    sys.exit(1)
-        else:
-            srcFileT1 = os.path.join(srcAnatPath,zips[0])
-
-    else:
-        srcFileT1_lst= layout.get(subject= sub, session=ses, extension='nii.gz',suffix= 'T1w',return_type='filename')
-        if len(srcFileT1_lst) == 0:
-            raise FileNotFoundError(f'the T1w.nii.gz you are specifying for sub-{sub}_ses-{ses} does NOT exist or the folder is not BIDS format, please check')
-        else:
-            srcFileT1 = srcFileT1_lst[0]
-
-
-    # define input output folder for this container
-    dstDir_input = os.path.join(
-        analysis_dir,
-        "sub-" + sub,
-        "ses-" + ses,
-        "input",
-    )
-    dstDir_output = os.path.join(
-        analysis_dir,
-        "sub-" + sub,
-        "ses-" + ses,
-        "output",
-    )
+                logger.error("\n"+"An error occurred"
+                            +zips_by_time +"\n" # type: ignore
+                            +"no target preanalysis.zip file exist, please check the config_lc.yaml file")
+                sys.exit(1)
+        
+        dst_fname_fs=config_json_instance['inputs']['pre_fs']['location']['name']
+        dst_path_fszip=op.join(dstDir_input, "pre_fs", dst_fname_fs)        
+        if not op.exists(op.join(dstDir_input, "pre_fs")):
+            os.makedirs(op.join(dstDir_input, "pre_fs"))
+        force_symlink(src_path_fszip, dst_path_fszip, force)  
+        
+        if "control_points" in required_inputfiles:
+            dst_fname_cp=config_json_instance['inputs']['control_points']['location']['name']
+            dst_path_cp=op.join(dstDir_input, "pre_fs", dst_fname_cp)                 
+            if not op.exists(op.join(dstDir_input,"control_points")):
+                os.makedirs(op.join(dstDir_input,"control_points"))       
+            force_symlink(src_path_ControlPoints, dst_path_cp, force) 
+              
+    if "annotfile" in required_inputfiles:
+        
+        fname_annot=config_json_instance['inputs']['annotfile']['location']['name']
+        src_path_annot = op.join(analysis_dir, fname_annot)
+        dst_path_annot=op.join(dstDir_input, "annotfile", fname_annot)  
+        
+        if not op.exists(op.join(dstDir_input, "annotfile")):
+            os.makedirs(op.join(dstDir_input, "annotfile"))
+        force_symlink(src_path_annot, dst_path_annot, force)
     
-    # create corresponding folder
-    if not os.path.exists(dstDir_input):
-        os.makedirs(dstDir_input)
-    if not os.path.exists(dstDir_output):
-        os.makedirs(dstDir_output)
-    
-    if container == "freesurferator":
-        dstDir_work = os.path.join(
-            analysis_dir,
-            "sub-" + sub,
-            "ses-" + ses,
-            "work",
-        )
-        if not os.path.exists(dstDir_work):
-            os.makedirs(dstDir_work)
+    if "mniroizip" in required_inputfiles:
+        
+        fname_mniroi=config_json_instance['inputs']['mniroizip']['location']['name']
+        src_path_mniroi = op.join(analysis_dir, fname_mniroi)
+        dst_path_mniroi=op.join(dstDir_input, "mniroizip", fname_mniroi)  
+        
+        if not op.exists(op.join(dstDir_input, "mniroizip")):
+            os.makedirs(op.join(dstDir_input, "mniroizip"))
+        force_symlink(src_path_mniroi, dst_path_mniroi, force)
 
-    if pre_fs:
-        if not os.path.exists(os.path.join(dstDir_input, "pre_fs")):
-            os.makedirs(os.path.join(dstDir_input, "pre_fs"))
-        if control_points:
-            if not os.path.exists(os.path.join(dstDir_input,"control_points")):
-                os.makedirs(os.path.join(dstDir_input,"control_points"))
-    else:
-        if not os.path.exists(os.path.join(dstDir_input, "anat")):
-            os.makedirs(os.path.join(dstDir_input, "anat"))
-    
-    if annotfile:
-        srcFileAnnot = os.path.join(analysis_dir, "annotfile.zip")
-        if not os.path.exists(os.path.join(dstDir_input, "annotfile")):
-            os.makedirs(os.path.join(dstDir_input, "annotfile"))
-    if mniroizip:
-        srcFileMiniroizip = os.path.join(analysis_dir, "mniroizip.zip")
-        if not os.path.exists(os.path.join(dstDir_input, "mniroizip")):
-            os.makedirs(os.path.join(dstDir_input, "mniroizip"))
 
-    # Create the target files
-    if pre_fs:
-        dstFileT1 = os.path.join(dstDir_input, "pre_fs", "existingFS.zip")
-        if control_points:
-            dstControlPoints = os.path.join(dstDir_input, "control_points", "control.dat")
-            force_symlink(srcControlPoints,dstControlPoints,force)
-    else:
-        dstFileT1 = os.path.join(dstDir_input, "anat", "T1.nii.gz")
-
-    dstFileAnnot = os.path.join(dstDir_input, "annotfile", "annots.zip")
-    dstFileMniroizip = os.path.join(dstDir_input, "mniroizip", "mniroizip.zip")
-
-    # Create the symbolic links
-    
-    force_symlink(srcFileT1, dstFileT1, force)
     logger.info("\n"
                +"-----------------The symlink created-----------------------\n")
-    if annotfile:
-        force_symlink(srcFileAnnot, dstFileAnnot, force)
-    if mniroizip:
-        force_symlink(srcFileMiniroizip, dstFileMniroizip, force)
    
     return 
    
@@ -428,7 +426,7 @@ def rtppreproc(parser_namespace, analysis_dir, lc_config, sub, ses, layout):
     if container == "rtppreproc":
         phaseEnco_direc = container_specific_config_data["config"]["acqd"]
     # the source directory that stores the output of previous anatrois analysis
-    srcDirFs = os.path.join(
+    srcDirFs = op.join(
         basedir,
         bidsdir_name,
         "derivatives",
@@ -441,13 +439,13 @@ def rtppreproc(parser_namespace, analysis_dir, lc_config, sub, ses, layout):
 
     # define the source file, this is where symlink will point to
     # T1 file in anatrois output
-    srcFileT1 = os.path.join(srcDirFs, "T1.nii.gz")
+    srcFileT1 = op.join(srcDirFs, "T1.nii.gz")
     # brain mask file in anatrois output
     logger.debug(f'\n the precontainer_ana is {precontainer_anat}')
     if int(precontainer_anat.split('.')[1])<6: 
-        srcFileMask = os.path.join(srcDirFs, "brainmask.nii.gz")
+        srcFileMask = op.join(srcDirFs, "brainmask.nii.gz")
     if int(precontainer_anat.split('.')[1])>5: 
-        srcFileMask = os.path.join(srcDirFs, "brain.nii.gz")
+        srcFileMask = op.join(srcDirFs, "brain.nii.gz")
     
     # 3 dwi file that needs to be preprocessed, under BIDS/sub/ses/dwi
     # the nii
@@ -469,7 +467,7 @@ def rtppreproc(parser_namespace, analysis_dir, lc_config, sub, ses, layout):
             logger.warning("\n"
                        +f"Found only {dwi_acq[0]} to concatenate. There must be at least two files with different acq.\n")
         elif len(dwi_acq) > 1:
-            if not os.path.isfile(srcFileDwi_nii):
+            if not op.isfile(srcFileDwi_nii):
                 logger.info("\n"
                            +f"Concatenating with mrcat of mrtrix3 these files: {dwi_acq} in: {srcFileDwi_nii} \n")
                 dwi_acq.sort()
@@ -479,7 +477,7 @@ def rtppreproc(parser_namespace, analysis_dir, lc_config, sub, ses, layout):
             bvecs_dir = layout.get(subject= sub, session=ses, extension='bvec',suffix= 'dwi', direction=phaseEnco_direc, return_type='filename')
             bvals_acq = [f for f in bvals_dir if 'acq-' in f]
             bvecs_acq = [f for f in bvecs_dir if 'acq-' in f]
-            if len(dwi_acq) == len(bvals_acq) and not os.path.isfile(srcFileDwi_bval):
+            if len(dwi_acq) == len(bvals_acq) and not op.isfile(srcFileDwi_bval):
                 bvals_acq.sort()
                 bval_cmd = "paste -d ' '"
                 for bvalF in bvals_acq:
@@ -489,7 +487,7 @@ def rtppreproc(parser_namespace, analysis_dir, lc_config, sub, ses, layout):
             else:
                 logger.warning("\n"
                            +"Missing bval files")
-            if len(dwi_acq) == len(bvecs_acq) and not os.path.isfile(srcFileDwi_bvec):
+            if len(dwi_acq) == len(bvecs_acq) and not op.isfile(srcFileDwi_bvec):
                 bvecs_acq.sort()
                 bvec_cmd = "paste -d ' '"
                 for bvecF in bvecs_acq:
@@ -532,7 +530,7 @@ def rtppreproc(parser_namespace, analysis_dir, lc_config, sub, ses, layout):
         img = nib.load(srcFileDwi_nii_R) # type: ignore
         volumes = img.shape[3] # type: ignore
         # if one of the bvec and bval are not there, re-write them
-        if (not os.path.isfile(srcFileDwi_bval_R)) or (not os.path.isfile(srcFileDwi_bvec_R)):
+        if (not op.isfile(srcFileDwi_bval_R)) or (not op.isfile(srcFileDwi_bvec_R)):
             # Write bval file
             f = open(srcFileDwi_bval_R, "x")
             f.write(volumes * "0 ")
@@ -549,54 +547,54 @@ def rtppreproc(parser_namespace, analysis_dir, lc_config, sub, ses, layout):
             f.close()
             logger.warning(f"\n Finish writing the bvec Reverse file with all 0 !!!")
     # create input and output directory for this container, the dstDir_output should be empty, the dstDir_input should contains all the symlinks
-    dstDir_input = os.path.join(
+    dstDir_input = op.join(
         analysis_dir,
         "sub-" + sub,
         "ses-" + ses,
         "input",
     )
-    dstDir_output = os.path.join(
+    dstDir_output = op.join(
         analysis_dir,
         "sub-" + sub,
         "ses-" + ses,
         "output",
     )
 
-    if not os.path.exists(dstDir_input):
+    if not op.exists(dstDir_input):
         os.makedirs(dstDir_input)
-    if not os.path.exists(dstDir_output):
+    if not op.exists(dstDir_output):
         os.makedirs(dstDir_output)
     # destination directory under dstDir_input
-    if not os.path.exists(os.path.join(dstDir_input, "ANAT")):
-        os.makedirs(os.path.join(dstDir_input, "ANAT"))
-    if not os.path.exists(os.path.join(dstDir_input, "FSMASK")):
-        os.makedirs(os.path.join(dstDir_input, "FSMASK"))
-    if not os.path.exists(os.path.join(dstDir_input, "DIFF")):
-        os.makedirs(os.path.join(dstDir_input, "DIFF"))
-    if not os.path.exists(os.path.join(dstDir_input, "BVAL")):
-        os.makedirs(os.path.join(dstDir_input, "BVAL"))
-    if not os.path.exists(os.path.join(dstDir_input, "BVEC")):
-        os.makedirs(os.path.join(dstDir_input, "BVEC"))
+    if not op.exists(op.join(dstDir_input, "ANAT")):
+        os.makedirs(op.join(dstDir_input, "ANAT"))
+    if not op.exists(op.join(dstDir_input, "FSMASK")):
+        os.makedirs(op.join(dstDir_input, "FSMASK"))
+    if not op.exists(op.join(dstDir_input, "DIFF")):
+        os.makedirs(op.join(dstDir_input, "DIFF"))
+    if not op.exists(op.join(dstDir_input, "BVAL")):
+        os.makedirs(op.join(dstDir_input, "BVAL"))
+    if not op.exists(op.join(dstDir_input, "BVEC")):
+        os.makedirs(op.join(dstDir_input, "BVEC"))
     if rpe:
-        if not os.path.exists(os.path.join(dstDir_input, "RDIF")):
-            os.makedirs(os.path.join(dstDir_input, "RDIF"))
-        if not os.path.exists(os.path.join(dstDir_input, "RBVL")):
-            os.makedirs(os.path.join(dstDir_input, "RBVL"))
-        if not os.path.exists(os.path.join(dstDir_input, "RBVC")):
-            os.makedirs(os.path.join(dstDir_input, "RBVC"))
+        if not op.exists(op.join(dstDir_input, "RDIF")):
+            os.makedirs(op.join(dstDir_input, "RDIF"))
+        if not op.exists(op.join(dstDir_input, "RBVL")):
+            os.makedirs(op.join(dstDir_input, "RBVL"))
+        if not op.exists(op.join(dstDir_input, "RBVC")):
+            os.makedirs(op.join(dstDir_input, "RBVC"))
 
     # Create the destination paths
-    dstT1file = os.path.join(dstDir_input, "ANAT", "T1.nii.gz")
-    dstMaskFile = os.path.join(dstDir_input, "FSMASK", "brainmask.nii.gz")
+    dstT1file = op.join(dstDir_input, "ANAT", "T1.nii.gz")
+    dstMaskFile = op.join(dstDir_input, "FSMASK", "brainmask.nii.gz")
 
-    dstFileDwi_nii = os.path.join(dstDir_input, "DIFF", "dwiF.nii.gz")
-    dstFileDwi_bval = os.path.join(dstDir_input, "BVAL", "dwiF.bval")
-    dstFileDwi_bvec = os.path.join(dstDir_input, "BVEC", "dwiF.bvec")
+    dstFileDwi_nii = op.join(dstDir_input, "DIFF", "dwiF.nii.gz")
+    dstFileDwi_bval = op.join(dstDir_input, "BVAL", "dwiF.bval")
+    dstFileDwi_bvec = op.join(dstDir_input, "BVEC", "dwiF.bvec")
 
     if rpe:
-        dstFileDwi_nii_R = os.path.join(dstDir_input, "RDIF", "dwiR.nii.gz")
-        dstFileDwi_bval_R = os.path.join(dstDir_input, "RBVL", "dwiR.bval")
-        dstFileDwi_bvec_R = os.path.join(dstDir_input, "RBVC", "dwiR.bvec")
+        dstFileDwi_nii_R = op.join(dstDir_input, "RDIF", "dwiR.nii.gz")
+        dstFileDwi_bval_R = op.join(dstDir_input, "RBVL", "dwiR.bval")
+        dstFileDwi_bvec_R = op.join(dstDir_input, "RBVC", "dwiR.bvec")
 
     
     
@@ -657,10 +655,10 @@ def rtppipeline(parser_namespace, analysis_dir,lc_config,sub, ses, layout):
     precontainer_preproc = lc_config["container_specific"][container]["precontainer_preproc"]
     preproc_analysis_num = lc_config["container_specific"][container]["preproc_analysis_name"]
     # There is a bug before, when create symlinks the full path of trachparams are not passed, very weired
-    srcFile_tractparams= os.path.join(analysis_dir, "tractparams.csv")
+    srcFile_tractparams= op.join(analysis_dir, "tractparams.csv")
 
     # The source directory
-    srcDirfs = os.path.join(
+    srcDirfs = op.join(
         basedir,
         bidsdir_name,
         "derivatives",
@@ -670,7 +668,7 @@ def rtppipeline(parser_namespace, analysis_dir,lc_config,sub, ses, layout):
         "ses-" + ses,
         "output",
     )
-    srcDirpp = os.path.join(
+    srcDirpp = op.join(
         basedir,
         bidsdir_name,
         "derivatives",
@@ -681,21 +679,21 @@ def rtppipeline(parser_namespace, analysis_dir,lc_config,sub, ses, layout):
         "output",
     )
     # The source file
-    srcFileT1 = os.path.join(srcDirpp, "t1.nii.gz")
-    srcFileFs = os.path.join(srcDirfs, "fs.zip")
-    srcFileDwi_bvals = os.path.join(srcDirpp, "dwi.bvals")
-    srcFileDwi_bvec = os.path.join(srcDirpp, "dwi.bvecs")
-    srcFileDwi_nii = os.path.join(srcDirpp, "dwi.nii.gz")
+    srcFileT1 = op.join(srcDirpp, "t1.nii.gz")
+    srcFileFs = op.join(srcDirfs, "fs.zip")
+    srcFileDwi_bvals = op.join(srcDirpp, "dwi.bvals")
+    srcFileDwi_bvec = op.join(srcDirpp, "dwi.bvecs")
+    srcFileDwi_nii = op.join(srcDirpp, "dwi.nii.gz")
 
     # Create input and output directory for this container, 
     # the dstDir_output should be empty, the dstDir_input should contains all the symlinks
-    dstDir_input = os.path.join(
+    dstDir_input = op.join(
         analysis_dir,
         "sub-" + sub,
         "ses-" + ses,
         "input",
     )
-    dstDir_output = os.path.join(
+    dstDir_output = op.join(
         analysis_dir,
         "sub-" + sub,
         "ses-" + ses,
@@ -703,32 +701,32 @@ def rtppipeline(parser_namespace, analysis_dir,lc_config,sub, ses, layout):
     )
 
     # under dstDir_input there are a lot of dir also needs to be there to have symlinks
-    if not os.path.exists(dstDir_input):
+    if not op.exists(dstDir_input):
         os.makedirs(dstDir_input)
-    if not os.path.exists(dstDir_output):
+    if not op.exists(dstDir_output):
         os.makedirs(dstDir_output)
-    if not os.path.exists(os.path.join(dstDir_input, "anatomical")):
-        os.makedirs(os.path.join(dstDir_input, "anatomical"))
-    if not os.path.exists(os.path.join(dstDir_input, "fs")):
-        os.makedirs(os.path.join(dstDir_input, "fs"))
-    if not os.path.exists(os.path.join(dstDir_input, "dwi")):
-        os.makedirs(os.path.join(dstDir_input, "dwi"))
-    if not os.path.exists(os.path.join(dstDir_input, "bval")):
-        os.makedirs(os.path.join(dstDir_input, "bval"))
-    if not os.path.exists(os.path.join(dstDir_input, "bvec")):
-        os.makedirs(os.path.join(dstDir_input, "bvec"))
-    if not os.path.exists(os.path.join(dstDir_input, "tractparams")):
-        os.makedirs(os.path.join(dstDir_input, "tractparams"))
+    if not op.exists(op.join(dstDir_input, "anatomical")):
+        os.makedirs(op.join(dstDir_input, "anatomical"))
+    if not op.exists(op.join(dstDir_input, "fs")):
+        os.makedirs(op.join(dstDir_input, "fs"))
+    if not op.exists(op.join(dstDir_input, "dwi")):
+        os.makedirs(op.join(dstDir_input, "dwi"))
+    if not op.exists(op.join(dstDir_input, "bval")):
+        os.makedirs(op.join(dstDir_input, "bval"))
+    if not op.exists(op.join(dstDir_input, "bvec")):
+        os.makedirs(op.join(dstDir_input, "bvec"))
+    if not op.exists(op.join(dstDir_input, "tractparams")):
+        os.makedirs(op.join(dstDir_input, "tractparams"))
 
     # Create the destination file
-    dstAnatomicalFile = os.path.join(dstDir_input, "anatomical", "T1.nii.gz")
-    dstFsfile = os.path.join(dstDir_input, "fs", "fs.zip")
-    dstDwi_niiFile = os.path.join(dstDir_input, "dwi", "dwi.nii.gz")
-    dstDwi_bvalFile = os.path.join(dstDir_input, "bval", "dwi.bval")
-    dstDwi_bvecFile = os.path.join(dstDir_input, "bvec", "dwi.bvec")
-    dst_tractparams = os.path.join(dstDir_input, "tractparams", "tractparams.csv")
+    dstAnatomicalFile = op.join(dstDir_input, "anatomical", "T1.nii.gz")
+    dstFsfile = op.join(dstDir_input, "fs", "fs.zip")
+    dstDwi_niiFile = op.join(dstDir_input, "dwi", "dwi.nii.gz")
+    dstDwi_bvalFile = op.join(dstDir_input, "bval", "dwi.bval")
+    dstDwi_bvecFile = op.join(dstDir_input, "bvec", "dwi.bvec")
+    dst_tractparams = op.join(dstDir_input, "tractparams", "tractparams.csv")
 
-    dstFile_tractparams = os.path.join(analysis_dir, "tractparams.csv")
+    dstFile_tractparams = op.join(analysis_dir, "tractparams.csv")
 
     # the tractparams check, at the analysis folder 
     tractparam_df,_ =read_df(dstFile_tractparams)
