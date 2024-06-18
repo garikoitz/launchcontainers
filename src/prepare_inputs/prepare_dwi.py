@@ -340,33 +340,11 @@ def anatrois(parser_namespace, analysis_dir,lc_config, sub, ses, layout):
             os.makedirs(os.path.join(dstDir_input, "anat"))
     
     if annotfile:
-        if os.path.isfile(annotfile):
-            logger.info("\n"
-                       +"Passed " + annotfile + ", copying to " + analysis_dir)
-            srcFileAnnot = os.path.join(analysis_dir, "annotfile.zip")
-            if os.path.isfile(srcFileAnnot):
-                logger.info("\n"
-                           +srcFileAnnot + " exists, if you want it new, delete it first")
-            else:
-                do.copy_file(annotfile, os.path.join(analysis_dir, "annotfile.zip"), force)
-        else:
-            logger.info("\n"
-                       +annotfile + " does not exist")
+        srcFileAnnot = os.path.join(analysis_dir, "annotfile.zip")
         if not os.path.exists(os.path.join(dstDir_input, "annotfile")):
             os.makedirs(os.path.join(dstDir_input, "annotfile"))
     if mniroizip:
-        if os.path.isfile(mniroizip):
-            logger.info("\n"
-                       +f"Passed { mniroizip} copying to {analysis_dir}")
-            srcFileMiniroizip = os.path.join(analysis_dir, "mniroizip.zip")
-            if os.path.isfile(srcFileMiniroizip):
-                logger.warning("\n"+
-                           srcFileMiniroizip + " exists, if you want it new, delete it first")
-            else:
-                do.copy_file(mniroizip, os.path.join(analysis_dir, "mniroizip.zip"), force)
-        else:
-            logger.warning("\n"
-                       +mniroizip + " does not exist")
+        srcFileMiniroizip = os.path.join(analysis_dir, "mniroizip.zip")
         if not os.path.exists(os.path.join(dstDir_input, "mniroizip")):
             os.makedirs(os.path.join(dstDir_input, "mniroizip"))
 

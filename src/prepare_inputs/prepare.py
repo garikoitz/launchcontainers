@@ -20,7 +20,7 @@ from os import rename
 from os import path, symlink, unlink
 import json
 from glob import glob
-
+import zipfile
 import numpy as np 
 from scipy.io import loadmat
 
@@ -77,14 +77,60 @@ def prepare_analysis_folder(parser_namespace, lc_config):
     elif container in ['rtp-pipeline', 'rtp2-pipeline']:
         container_configs_under_analysis_folder = [op.join(analysis_dir, "config.json"), op.join(analysis_dir, "tractparams.csv")]
     
+
     if not op.isdir(analysis_dir):
         os.makedirs(analysis_dir)
+    
+
     # copy the config under the analysis folder
     do.copy_file(parser_namespace.lc_config, lc_config_under_analysis_folder, force) 
     do.copy_file(parser_namespace.sub_ses_list,subSeslist_under_analysis_folder,force)
     for orig_config_json, copy_config_json in zip(parser_namespace.container_specific_config, container_configs_under_analysis_folder):
         do.copy_file(orig_config_json, copy_config_json, force)    
     logger.debug(f'\n The analysis folder is {analysis_dir}, all the configs has been copied') 
+    
+    def zip_file(file_path, zip_path):
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            zipf.write(file_path, os.path.basename(file_path))
+    def process_file(mni_roi, analysis_dir):
+        
+        file_name = os.path.basename(mni_roi)
+        file_ext = os.path.splitext(file_name)[1]
+        
+        if file_ext in ['.nii', '.gz']:
+            # If the input file is a .nii or .nii.gz file, zip it
+            zip_path = os.path.join(analysis_dir, "mniroizip.zip")
+            zip_file(mni_roi, zip_path)
+
+        elif file_ext == '.zip':
+
+            do.copy_file(mni_roi, os.path.join(analysis_dir, "mniroizip.zip"), force)          
+        else:
+            raise ValueError("Unsupported file type.")
+
+    # prepare the annot and mniroi file for freesurferator, it is part of the configs that should be under the analysis folder
+    if container in ['anatrois','freesurferator']:
+        annotfile = lc_config["container_specific"][container]["annotfile"]
+        mniroizip = lc_config["container_specific"][container]["mniroizip"]
+        
+        if annotfile:
+            if os.path.isfile(annotfile):
+                logger.info("\n"
+                        +f" You have choossen to pass  {annotfile} to {container}, it will be first copy to {analysis_dir}")
+
+                do.copy_file(annotfile, os.path.join(analysis_dir, "annotfile.zip"), force)
+            else:
+                logger.info("\n"
+                        f"{annotfile} does not exist")
+        if mniroizip:
+            if os.path.isfile(mniroizip):
+                logger.info("\n"
+                       +f" You have choossen to pass  {mniroizip} to {container}, it will be first copy to {analysis_dir}")
+                process_file(mniroizip, analysis_dir)
+            else:
+                logger.info("\n"
+                        f"{mniroizip} does not exist")
+
 
     copies = [lc_config_under_analysis_folder, subSeslist_under_analysis_folder] + container_configs_under_analysis_folder
 
@@ -97,7 +143,7 @@ def prepare_analysis_folder(parser_namespace, lc_config):
 
     return analysis_dir, container_configs_under_analysis_folder
 
-# %% prepare_input_files
+# %% prepare_mni_rois
 def prepare_dwi_input(parser_namespace, analysis_dir, lc_config, df_subSes, layout, container_configs_under_analysis_folder):
     """
     This is the major function for doing the preparation, it is doing the work 
@@ -146,9 +192,11 @@ def prepare_dwi_input(parser_namespace, analysis_dir, lc_config, df_subSes, layo
                 +f"Prepare json not finished. Please check\n")
         raise Exception("Sorry the Json file seems not being written correctly, it may cause container dysfunction")
 
+    
     logger.info("\n"+
                 "#####################################################\n"
                 +f"Prepare 2, create the symlinks of all the input files RTP2-{container}\n")
+    
     
     for row in df_subSes.itertuples(index=True, name="Pandas"):
         sub = row.sub
