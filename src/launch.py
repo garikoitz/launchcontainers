@@ -587,14 +587,18 @@ def main():
 
     do.setup_logger(print_command_only,verbose, debug, log_dir, log_filename)
     
-    #before doing anything, logger the thing we have read:
-    
+    # logger the settings
+
     if host == "local":
+        njobs = lc_config["host_options"][host]["njobs"]
+        if njobs == "" or njobs is None:
+            njobs = 2
         launch_mode = lc_config["host_options"]["local"]["launch_mode"]
         valid_options = ["serial", "parallel","dask_worker"]
         if launch_mode in valid_options:
             host_str = (
                 f"{host}, and commands will be launched in {launch_mode} mode "
+                f"every {njobs} jobs. "
                 f"Serial is safe but it will take longer. "
                 f"If you launch in parallel be aware that some of the "
                 f"processes might be killed if the limit (usually memory) "
