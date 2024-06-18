@@ -184,13 +184,13 @@ def check_tractparam(lc_config, sub, ses, tractparam_df):
     return ROIs_are_there
 
 #%%
-def anatrois(parser_namespace, dir_analysis,lc_config, sub, ses, layout):
+def anatrois(parser_namespace, analysis_dir,lc_config, sub, ses, layout):
     
     """anatrois function creates symbolic links for the anatrois container
 
     Args:
         parser_namespace (argparse.Namespace): it stores all the input information from the get parser
-        dir_analysis (_type_): directory to analyze
+        analysis_dir (_type_): directory to analyze
         lc_config (dict): the lc_config dictionary from _read_config
         sub (str): subject name
         ses (str): session name
@@ -221,9 +221,6 @@ def anatrois(parser_namespace, dir_analysis,lc_config, sub, ses, layout):
     # I added this line, shall we modify config yaml
     annotfile = lc_config["container_specific"][container]["annotfile"]
     mniroizip = lc_config["container_specific"][container]["mniroizip"]
-    
-    version = lc_config["container_specific"][container]["version"]
-    source_fszip= lc_config["container_specific"][container]["source_fszip"]
     prefs_dir_name = lc_config["container_specific"][container]["prefs_dir_name"]
     prefs_analysis_name = lc_config["container_specific"][container]["prefs_analysis_name"]
 
@@ -243,22 +240,17 @@ def anatrois(parser_namespace, dir_analysis,lc_config, sub, ses, layout):
     if pre_fs:
         logger.info("\n"
                    +"########\n the sourceFile T1 will be pre_fs\n#########\n")
-        if source_fszip in ["anatrois","fmriprep", "freesurferator","freesurfer"]:
-            srcAnatPath = os.path.join(
-                basedir,
-                bidsdir_name,
-                "derivatives",
-                f'{prefs_dir_name}',
-                "analysis-" + prefs_analysis_name,
-                "sub-" + sub,
-                "ses-" + ses,
-                "output",
-            )
-        else:
-            logger.error(f"Your input fszip source are incorrect, valid options are: \
-                         anatrois,fmriprep, freesurferator,freesurfer")
-            sys.exit(1)
-            
+        
+        srcAnatPath = os.path.join(
+            basedir,
+            bidsdir_name,
+            "derivatives",
+            f'{prefs_dir_name}',
+            "analysis-" + prefs_analysis_name,
+            "sub-" + sub,
+            "ses-" + ses,
+            "output",
+        )
         logger.info("\n"
                    +f"---the patter of fs.zip filename we are searching is {prefs_zipname}\n"
                    +f"---the directory we are searching for is {srcAnatPath}")
@@ -309,13 +301,13 @@ def anatrois(parser_namespace, dir_analysis,lc_config, sub, ses, layout):
 
     # define input output folder for this container
     dstDir_input = os.path.join(
-        dir_analysis,
+        analysis_dir,
         "sub-" + sub,
         "ses-" + ses,
         "input",
     )
     dstDir_output = os.path.join(
-        dir_analysis,
+        analysis_dir,
         "sub-" + sub,
         "ses-" + ses,
         "output",
@@ -329,7 +321,7 @@ def anatrois(parser_namespace, dir_analysis,lc_config, sub, ses, layout):
     
     if container == "freesurferator":
         dstDir_work = os.path.join(
-            dir_analysis,
+            analysis_dir,
             "sub-" + sub,
             "ses-" + ses,
             "work",
@@ -350,13 +342,13 @@ def anatrois(parser_namespace, dir_analysis,lc_config, sub, ses, layout):
     if annotfile:
         if os.path.isfile(annotfile):
             logger.info("\n"
-                       +"Passed " + annotfile + ", copying to " + dir_analysis)
-            srcFileAnnot = os.path.join(dir_analysis, "annotfile.zip")
+                       +"Passed " + annotfile + ", copying to " + analysis_dir)
+            srcFileAnnot = os.path.join(analysis_dir, "annotfile.zip")
             if os.path.isfile(srcFileAnnot):
                 logger.info("\n"
                            +srcFileAnnot + " exists, if you want it new, delete it first")
             else:
-                do.copy_file(annotfile, os.path.join(dir_analysis, "annotfile.zip"), force)
+                do.copy_file(annotfile, os.path.join(analysis_dir, "annotfile.zip"), force)
         else:
             logger.info("\n"
                        +annotfile + " does not exist")
@@ -365,13 +357,13 @@ def anatrois(parser_namespace, dir_analysis,lc_config, sub, ses, layout):
     if mniroizip:
         if os.path.isfile(mniroizip):
             logger.info("\n"
-                       +"Passed " + mniroizip + ", copying to " + dir_analysis)
-            srcFileMiniroizip = os.path.join(dir_analysis, "mniroizip.zip")
+                       +f"Passed { mniroizip} copying to {analysis_dir}")
+            srcFileMiniroizip = os.path.join(analysis_dir, "mniroizip.zip")
             if os.path.isfile(srcFileMiniroizip):
                 logger.warning("\n"+
                            srcFileMiniroizip + " exists, if you want it new, delete it first")
             else:
-                do.copy_file(mniroizip, os.path.join(dir_analysis, "mniroizip.zip"), force)
+                do.copy_file(mniroizip, os.path.join(analysis_dir, "mniroizip.zip"), force)
         else:
             logger.warning("\n"
                        +mniroizip + " does not exist")
@@ -404,7 +396,7 @@ def anatrois(parser_namespace, dir_analysis,lc_config, sub, ses, layout):
    
 
 #%%
-def rtppreproc(parser_namespace, Dir_analysis, lc_config, sub, ses, layout):
+def rtppreproc(parser_namespace, analysis_dir, lc_config, sub, ses, layout):
     """
     Parameters
     ----------
@@ -580,13 +572,13 @@ def rtppreproc(parser_namespace, Dir_analysis, lc_config, sub, ses, layout):
             logger.warning(f"\n Finish writing the bvec Reverse file with all 0 !!!")
     # create input and output directory for this container, the dstDir_output should be empty, the dstDir_input should contains all the symlinks
     dstDir_input = os.path.join(
-        Dir_analysis,
+        analysis_dir,
         "sub-" + sub,
         "ses-" + ses,
         "input",
     )
     dstDir_output = os.path.join(
-        Dir_analysis,
+        analysis_dir,
         "sub-" + sub,
         "ses-" + ses,
         "output",
@@ -649,7 +641,7 @@ def rtppreproc(parser_namespace, Dir_analysis, lc_config, sub, ses, layout):
 
 
 #%%
-def rtppipeline(parser_namespace, Dir_analysis,lc_config,sub, ses, layout):
+def rtppipeline(parser_namespace, analysis_dir,lc_config,sub, ses, layout):
     """"""
     
     """
@@ -687,7 +679,7 @@ def rtppipeline(parser_namespace, Dir_analysis,lc_config,sub, ses, layout):
     precontainer_preproc = lc_config["container_specific"][container]["precontainer_preproc"]
     preproc_analysis_num = lc_config["container_specific"][container]["preproc_analysis_name"]
     # There is a bug before, when create symlinks the full path of trachparams are not passed, very weired
-    srcFile_tractparams= os.path.join(Dir_analysis, "tractparams.csv")
+    srcFile_tractparams= os.path.join(analysis_dir, "tractparams.csv")
 
     # The source directory
     srcDirfs = os.path.join(
@@ -720,13 +712,13 @@ def rtppipeline(parser_namespace, Dir_analysis,lc_config,sub, ses, layout):
     # Create input and output directory for this container, 
     # the dstDir_output should be empty, the dstDir_input should contains all the symlinks
     dstDir_input = os.path.join(
-        Dir_analysis,
+        analysis_dir,
         "sub-" + sub,
         "ses-" + ses,
         "input",
     )
     dstDir_output = os.path.join(
-        Dir_analysis,
+        analysis_dir,
         "sub-" + sub,
         "ses-" + ses,
         "output",
@@ -758,7 +750,7 @@ def rtppipeline(parser_namespace, Dir_analysis,lc_config,sub, ses, layout):
     dstDwi_bvecFile = os.path.join(dstDir_input, "bvec", "dwi.bvec")
     dst_tractparams = os.path.join(dstDir_input, "tractparams", "tractparams.csv")
 
-    dstFile_tractparams = os.path.join(Dir_analysis, "tractparams.csv")
+    dstFile_tractparams = os.path.join(analysis_dir, "tractparams.csv")
 
     # the tractparams check, at the analysis folder 
     tractparam_df,_ =read_df(dstFile_tractparams)

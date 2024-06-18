@@ -284,7 +284,7 @@ def prepare_dwi_config_json(container_configs_under_analysis_folder,lc_config,fo
     
     if container == "freesurferator":
         fs_json_keys=['pre_fs','control_points','annotfile', 'mniroizip']
-        fs_json_val=['pre_fs/existingFS.zip','control_points/control.dat','mniroizip/mniroizip.zip','annotfile/annotfile.zip']
+        fs_json_val=['pre_fs/existingFS.zip','control_points/control.dat','annotfile/annotfile.zip','mniroizip/mniroizip.zip']
         config_json_extra=get_config_dict(container,lc_config,fs_json_keys,fs_json_val)
         json_file_input_path=container_configs_under_analysis_folder[0]
         json_file_output_path=container_configs_under_analysis_folder[0]
