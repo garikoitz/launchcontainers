@@ -212,12 +212,15 @@ def anatrois(dict_store_cs_configs, analysis_dir,lc_config, sub, ses, layout,run
     force = force and (not run_lc)
 
     # Container specific:
-    pre_fs = lc_config["container_specific"][container]["pre_fs"]
     prefs_dir_name = lc_config["container_specific"][container]["prefs_dir_name"]
     prefs_analysis_name = lc_config["container_specific"][container]["prefs_analysis_name"]
     prefs_zipname = lc_config["container_specific"][container]["prefs_zipname"]
-    annotfile = lc_config["container_specific"][container]["annotfile"]
-    mniroizip = lc_config["container_specific"][container]["mniroizip"]
+    # specific for freesurferator
+    if container == "freesurferator":
+        control_points = lc_config["container_specific"][container]["control_points"]
+        if control_points:
+            prefs_unzipname = lc_config["container_specific"][container]["prefs_unzipname"]   
+   
     
     # define input output folder for this container
     dstDir_input = op.join(
@@ -251,15 +254,7 @@ def anatrois(dict_store_cs_configs, analysis_dir,lc_config, sub, ses, layout,run
         os.makedirs(dstDir_input)
     if not op.exists(dstDir_output):
         os.makedirs(dstDir_output)
- 
-    # specific for freesurferator
-    if container == "freesurferator":
-        control_points = lc_config["container_specific"][container]["control_points"]
-        prefs_unzipname = lc_config["container_specific"][container]["prefs_unzipname"]   
-    else:
-        # if not running freesurferator control_points field is not available, then we set it False
-        control_points = False
-    
+   
     # read json, this json is already written from previous preparasion step
     json_under_analysis_dir=dict_store_cs_configs['config_path']
     config_json_instance = json.load(open(json_under_analysis_dir))
@@ -372,7 +367,7 @@ def anatrois(dict_store_cs_configs, analysis_dir,lc_config, sub, ses, layout,run
    
 
 #%%
-def rtppreproc(parser_namespace, analysis_dir, lc_config, sub, ses, layout):
+def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout, run_lc):
     """
     Parameters
     ----------
@@ -391,14 +386,8 @@ def rtppreproc(parser_namespace, analysis_dir, lc_config, sub, ses, layout):
     none, create symbolic links
 
     """
-
-    # define local variables from lc_config dict
-    # input from get_parser
-    container_specific_config_path= parser_namespace.container_specific_config
-    run_lc=parser_namespace.run_lc
-    
+  
     # general level variables:
-    
     basedir = lc_config["general"]["basedir"]
     container = lc_config["general"]["container"]
     bidsdir_name=lc_config["general"]["bidsdir_name"]  
@@ -411,22 +400,44 @@ def rtppreproc(parser_namespace, analysis_dir, lc_config, sub, ses, layout):
     precontainer_anat = lc_config["container_specific"][container]["precontainer_anat"]
     anat_analysis_name = lc_config["container_specific"][container]["anat_analysis_name"]
     rpe = lc_config["container_specific"][container]["rpe"]
-    version = lc_config["container_specific"][container]["version"]
-    
-    srcFile_container_config_json= container_specific_config_path[0]
-    
 
-    container_specific_config_data = json.load(open(srcFile_container_config_json))
-    # if version =='1.2.0-3.0.3':
-    #     phaseEnco_direc = container_specific_config_data["config"]["pe_dir"]
-    # if version =='1.1.3':
-    #     phaseEnco_direc = container_specific_config_data["config"]["acqd"]
+    # define input output folder for this container
+    dstDir_input = op.join(
+        analysis_dir,
+        "sub-" + sub,
+        "ses-" + ses,
+        "input",
+    )
+    dstDir_output = op.join(
+        analysis_dir,
+        "sub-" + sub,
+        "ses-" + ses,
+        "output",
+    )
+    # create corresponding folder
+    if op.exists(dstDir_input) and force:
+        shutil.rmtree(dstDir_input)    
+        logger.info("Remove input dir under analysis because you set force to True")
+    if op.exists(dstDir_output) and force:        
+        shutil.rmtree(dstDir_output)
+        logger.info("Remove output dir under analysis because you set force to True")
+    if not op.exists(dstDir_input):
+        os.makedirs(dstDir_input)
+    if not op.exists(dstDir_output):
+        os.makedirs(dstDir_output)
+   
+    # read json, this json is already written from previous preparasion step
+    json_under_analysis_dir=dict_store_cs_configs['config_path']
+    config_json_instance = json.load(open(json_under_analysis_dir))
+    required_inputfiles=config_json_instance['inputs'].keys()
+    
+    config_json_data = json.load(open(json_under_analysis_dir))
     if container == "rtp2-preproc":
-        phaseEnco_direc = container_specific_config_data["config"]["pe_dir"]
+        phaseEnco_direc = config_json_data["config"]["pe_dir"]
     if container == "rtppreproc":
-        phaseEnco_direc = container_specific_config_data["config"]["acqd"]
-    # the source directory that stores the output of previous anatrois analysis
-    srcDirFs = op.join(
+        phaseEnco_direc = config_json_data["config"]["acqd"]
+        
+    precontainer_anat_dir = op.join(
         basedir,
         bidsdir_name,
         "derivatives",
@@ -436,67 +447,66 @@ def rtppreproc(parser_namespace, analysis_dir, lc_config, sub, ses, layout):
         "ses-" + ses,
         "output",
     )
-
-    # define the source file, this is where symlink will point to
+    # there are 8 fieids in the rtppreproc, and 9 fields in rtp2-preproc(qmap), so we will loop for the 
+    # required_inputfiles to prepare them 
+    # required: ANAT BVAL BVEC DIFF FSMASK
+    # optional for rtppreproc RBVL RBVC RDIF
+    # optional for rtp2-preproc extra: qmap
+    
+    # prepare the required filed 
+    # the previous container anatrois/freesurferator analysis
+    # ANAT
     # T1 file in anatrois output
-    srcFileT1 = op.join(srcDirFs, "T1.nii.gz")
+    src_path_ANAT = op.join(precontainer_anat_dir, "T1.nii.gz") 
+    # FSMASK
     # brain mask file in anatrois output
-    logger.debug(f'\n the precontainer_ana is {precontainer_anat}')
     if int(precontainer_anat.split('.')[1])<6: 
-        srcFileMask = op.join(srcDirFs, "brainmask.nii.gz")
+        src_path_FSMASK = op.join(precontainer_anat_dir, "brainmask.nii.gz")
     if int(precontainer_anat.split('.')[1])>5: 
-        srcFileMask = op.join(srcDirFs, "brain.nii.gz")
-    
+        src_path_FSMASK = op.join(precontainer_anat_dir, "brain.nii.gz")
     # 3 dwi file that needs to be preprocessed, under BIDS/sub/ses/dwi
-    # the nii
-    srcFileDwi_nii = layout.get(subject= sub, session=ses, extension='nii.gz',suffix= 'dwi', direction=phaseEnco_direc, return_type='filename')[0]
     # the bval
-    srcFileDwi_bval = layout.get(subject= sub, session=ses, extension='bval',suffix= 'dwi', direction=phaseEnco_direc, return_type='filename')[0]
+    src_path_BVAL = layout.get(subject= sub, session=ses, extension='bval',suffix= 'dwi', direction=phaseEnco_direc, return_type='filename')[0]
     # the bve
-    srcFileDwi_bvec =layout.get(subject= sub, session=ses, extension='bvec',suffix= 'dwi',direction=phaseEnco_direc, return_type='filename')[0]
-    
+    src_path_BVEC =layout.get(subject= sub, session=ses, extension='bvec',suffix= 'dwi',direction=phaseEnco_direc, return_type='filename')[0]
     # check how many *dir_dwi.nii.gz there are in the BIDS/sub/ses/dwi directory
-    phaseEnco_direc_dwi_files = layout.get(subject= sub, session=ses, extension='nii.gz',suffix= 'dwi', direction=phaseEnco_direc, return_type='filename')
-    
-    if len(phaseEnco_direc_dwi_files) > 1:
-        dwi_acq = [f for f in phaseEnco_direc_dwi_files if 'acq-' in f]
-        if len(dwi_acq) == 0:
-            logger.warning("\n"
-                       +f"No files with different acq- to concatenate.\n")
-        elif len(dwi_acq) == 1:
-            logger.warning("\n"
-                       +f"Found only {dwi_acq[0]} to concatenate. There must be at least two files with different acq.\n")
-        elif len(dwi_acq) > 1:
-            if not op.isfile(srcFileDwi_nii):
-                logger.info("\n"
-                           +f"Concatenating with mrcat of mrtrix3 these files: {dwi_acq} in: {srcFileDwi_nii} \n")
-                dwi_acq.sort()
-                sp.run(['mrcat',*dwi_acq,srcFileDwi_nii])
-            # also get the bvecs and bvals
-            bvals_dir = layout.get(subject= sub, session=ses, extension='bval',suffix= 'dwi', direction=phaseEnco_direc, return_type='filename')
-            bvecs_dir = layout.get(subject= sub, session=ses, extension='bvec',suffix= 'dwi', direction=phaseEnco_direc, return_type='filename')
-            bvals_acq = [f for f in bvals_dir if 'acq-' in f]
-            bvecs_acq = [f for f in bvecs_dir if 'acq-' in f]
-            if len(dwi_acq) == len(bvals_acq) and not op.isfile(srcFileDwi_bval):
-                bvals_acq.sort()
-                bval_cmd = "paste -d ' '"
-                for bvalF in bvals_acq:
-                    bval_cmd = bval_cmd+" "+bvalF
-                bval_cmd = bval_cmd+" > "+srcFileDwi_bval
-                sp.run(bval_cmd,shell=True)
-            else:
-                logger.warning("\n"
-                           +"Missing bval files")
-            if len(dwi_acq) == len(bvecs_acq) and not op.isfile(srcFileDwi_bvec):
-                bvecs_acq.sort()
-                bvec_cmd = "paste -d ' '"
-                for bvecF in bvecs_acq:
-                    bvec_cmd = bvec_cmd+" "+bvecF
-                bvec_cmd = bvec_cmd+" > "+srcFileDwi_bvec
-                sp.run(bvec_cmd,shell=True)
-            else:
-                logger.warning("\n"
-                           +"Missing bvec files")
+    diff_files = layout.get(subject= sub, session=ses, extension='nii.gz',suffix= 'dwi', direction=phaseEnco_direc, return_type='filename')
+    # the nii
+    if len(diff_files) == 1:
+        src_path_DIFF = diff_files[0]
+    elif len(diff_files) == 0:
+        logger.error("DIFF file for rtppreproc/rtp2-preproc not found")
+        raise FileNotFoundError("No DIFF in the BIDS folder, check your configs")
+    else:
+        raise FileExistsError("You have multiple DIFF files under sub-{sub}/ses-{ses}, \
+                              don't know which one to use, please prepare your BIDS folder and run again")
+    # destination directory under dstDir_input
+    if not op.exists(op.join(dstDir_input, "ANAT")):
+        os.makedirs(op.join(dstDir_input, "ANAT"))
+    if not op.exists(op.join(dstDir_input, "FSMASK")):
+        os.makedirs(op.join(dstDir_input, "FSMASK"))
+    if not op.exists(op.join(dstDir_input, "DIFF")):
+        os.makedirs(op.join(dstDir_input, "DIFF"))
+    if not op.exists(op.join(dstDir_input, "BVAL")):
+        os.makedirs(op.join(dstDir_input, "BVAL"))
+    if not op.exists(op.join(dstDir_input, "BVEC")):
+        os.makedirs(op.join(dstDir_input, "BVEC"))
+
+    # Create the destination paths
+    dstT1file = op.join(dstDir_input, "ANAT", "T1.nii.gz")
+    dstMaskFile = op.join(dstDir_input, "FSMASK", "brainmask.nii.gz")
+
+    dstFileDwi_nii = op.join(dstDir_input, "DIFF", "dwiF.nii.gz")
+    dstFileDwi_bval = op.join(dstDir_input, "BVAL", "dwiF.bval")
+    dstFileDwi_bvec = op.join(dstDir_input, "BVEC", "dwiF.bvec")
+    # Create the symbolic links
+    force_symlink(src_path_ANAT, dstT1file, force)
+    force_symlink(src_path_FSMASK, dstMaskFile, force)
+    force_symlink(src_path_DIFF, dstFileDwi_nii, force)
+    force_symlink(src_path_BVAL, dstFileDwi_bval, force)
+    force_symlink(src_path_BVEC, dstFileDwi_bvec, force)
+    logger.info("\n"
+               +"-----------------The rtppreproc symlinks created\n")    
     # check_create_bvec_bval（force) one of the todo here
     if rpe:
         if phaseEnco_direc == "PA":
@@ -546,36 +556,8 @@ def rtppreproc(parser_namespace, analysis_dir, lc_config, sub, ses, layout):
             f.write("\n")
             f.close()
             logger.warning(f"\n Finish writing the bvec Reverse file with all 0 !!!")
-    # create input and output directory for this container, the dstDir_output should be empty, the dstDir_input should contains all the symlinks
-    dstDir_input = op.join(
-        analysis_dir,
-        "sub-" + sub,
-        "ses-" + ses,
-        "input",
-    )
-    dstDir_output = op.join(
-        analysis_dir,
-        "sub-" + sub,
-        "ses-" + ses,
-        "output",
-    )
 
-    if not op.exists(dstDir_input):
-        os.makedirs(dstDir_input)
-    if not op.exists(dstDir_output):
-        os.makedirs(dstDir_output)
-    # destination directory under dstDir_input
-    if not op.exists(op.join(dstDir_input, "ANAT")):
-        os.makedirs(op.join(dstDir_input, "ANAT"))
-    if not op.exists(op.join(dstDir_input, "FSMASK")):
-        os.makedirs(op.join(dstDir_input, "FSMASK"))
-    if not op.exists(op.join(dstDir_input, "DIFF")):
-        os.makedirs(op.join(dstDir_input, "DIFF"))
-    if not op.exists(op.join(dstDir_input, "BVAL")):
-        os.makedirs(op.join(dstDir_input, "BVAL"))
-    if not op.exists(op.join(dstDir_input, "BVEC")):
-        os.makedirs(op.join(dstDir_input, "BVEC"))
-    if rpe:
+
         if not op.exists(op.join(dstDir_input, "RDIF")):
             os.makedirs(op.join(dstDir_input, "RDIF"))
         if not op.exists(op.join(dstDir_input, "RBVL")):
@@ -583,35 +565,16 @@ def rtppreproc(parser_namespace, analysis_dir, lc_config, sub, ses, layout):
         if not op.exists(op.join(dstDir_input, "RBVC")):
             os.makedirs(op.join(dstDir_input, "RBVC"))
 
-    # Create the destination paths
-    dstT1file = op.join(dstDir_input, "ANAT", "T1.nii.gz")
-    dstMaskFile = op.join(dstDir_input, "FSMASK", "brainmask.nii.gz")
-
-    dstFileDwi_nii = op.join(dstDir_input, "DIFF", "dwiF.nii.gz")
-    dstFileDwi_bval = op.join(dstDir_input, "BVAL", "dwiF.bval")
-    dstFileDwi_bvec = op.join(dstDir_input, "BVEC", "dwiF.bvec")
-
-    if rpe:
         dstFileDwi_nii_R = op.join(dstDir_input, "RDIF", "dwiR.nii.gz")
         dstFileDwi_bval_R = op.join(dstDir_input, "RBVL", "dwiR.bval")
         dstFileDwi_bvec_R = op.join(dstDir_input, "RBVC", "dwiR.bvec")
 
-    
-    
-    # Create the symbolic links
-    force_symlink(srcFileT1, dstT1file, force)
-    force_symlink(srcFileMask, dstMaskFile, force)
-    force_symlink(srcFileDwi_nii, dstFileDwi_nii, force)
-    force_symlink(srcFileDwi_bval, dstFileDwi_bval, force)
-    force_symlink(srcFileDwi_bvec, dstFileDwi_bvec, force)
-    logger.info("\n"
-               +"-----------------The rtppreproc symlinks created\n")
-    if rpe:
         force_symlink(srcFileDwi_nii_R, dstFileDwi_nii_R, force)
         force_symlink(srcFileDwi_bval_R, dstFileDwi_bval_R, force)
         force_symlink(srcFileDwi_bvec_R, dstFileDwi_bvec_R, force)
         logger.info("\n"
                    +"---------------The rtppreproc rpe=True symlinks created")
+    
     return 
 
 

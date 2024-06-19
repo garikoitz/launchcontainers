@@ -10,7 +10,7 @@ general:
   basedir: /home/tlei/tlei/LMC_DWI_course # Base directory of project
   bidsdir_name: "BIDS" # Name of bids directory, 1 level under basedir, must contain dataset_description
   containerdir: /home/tlei/tlei/LMC_DWI_course/containers # Directory contains singularity images
-  container: "freesurferator"  # Name of the container
+  container: "rtp2-preproc"  # Name of the container
                               # VALID OPTIONS: freesurferator, rtp2-preproc, rtp2-pipeline, anatrois, rtppreproc, rtp-pipeline, l1_glm, fmriprep 
   analysis_name: "test_on_lmc02_for_mniroi" # Name of analysis folder 
   host: local # Place the computing will be held. 
@@ -62,14 +62,13 @@ container_specific:
   
   rtp2-preproc:
     version: 0.1.0_3.0.4rc31 # Version identifier for container      
-    precontainer_anat: anatrois_4.6.1-7.3.2 # anatrois or freesurferator dir, used to find the brainmask
-    anat_analysis_name: "fMRIprep_brainmask" # Analysis name 
+    precontainer_anat: freesurferator_0.2.0-7.4.1rc19 # anatrois or freesurferator dir, used to find the brainmask
+    anat_analysis_name: "control_points_02" # Analysis name 
     # optional
     rpe: True # If reverse phase encoding is applied in the sequence
               # It checks if there is a reverse phase encoding acquisition
               # if not, launchcontainers will create mock files
-    qmap_nifti: # Full Path to qunatitative MRI maps, must be nifti format
-    qmap_zip: # implement in the future
+    qmap_nifti: /home/tlei/Desktop/FG.nii.gz # Full Path to qunatitative MRI maps, must be nifti format
   rtp2-pipeline:
     version: 0.1.0_3.0.4rc20 # Version identifier for container 
     precontainer_anat: anatrois_4.6.1-7.3.2  # anatrois or freesurferator dir, used to find the brainmask and fs/ROIs

@@ -344,11 +344,6 @@ def prepare_dwi_input(parser_namespace, analysis_dir, lc_config, df_subSes, layo
                 "#####################################################\n"
                 +"Preparing for DWI pipeline RTP2\n")
     
-    # first check, if the container specific config is passed, if not, prepare will stop
-    if len(parser_namespace.container_specific_config)==0:
-                logger.critical("\n"
-                              +"Input file error: the container specific config is not provided")
-                raise FileNotFoundError("Didn't input container_specific_config, please indicate it in your command line flag -cc")
     
     container = lc_config["general"]["container"]
     force = lc_config["general"]["force"]   
@@ -409,14 +404,14 @@ def prepare_dwi_input(parser_namespace, analysis_dir, lc_config, df_subSes, layo
                 os.makedirs(logdir)
             
             do.copy_file(parser_namespace.lc_config, op.join(logdir,'lc_config.yaml'), force) 
-            file_path=dict_store_cs_configs['config_path']
-            do.copy_file(file_path, op.join(logdir,os.path.basename(file_path)), force)   
+            config_file_path=dict_store_cs_configs['config_path']
+            do.copy_file(config_file_path, op.join(logdir,os.path.basename(config_file_path)), force)   
 
 
             if container in ["rtppreproc" ,"rtp2-preproc"]:
-                dwipre.rtppreproc(parser_namespace, analysis_dir, lc_config, sub, ses, layout)
+                dwipre.rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout,run_lc)
             elif container in ["rtp-pipeline", "rtp2-pipeline"]:
-                dwipre.rtppipeline(parser_namespace, analysis_dir,lc_config, sub, ses, layout)
+                dwipre.rtppipeline(dict_store_cs_configs, analysis_dir,lc_config, sub, ses, layout,run_lc)
             elif container in ["anatrois","freesurferator"]:
                 dwipre.anatrois(dict_store_cs_configs, analysis_dir,lc_config,sub, ses, layout,run_lc)
             else:
