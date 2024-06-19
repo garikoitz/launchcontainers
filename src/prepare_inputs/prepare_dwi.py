@@ -564,7 +564,7 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout,
     logger.info("\n"
                +"-----------------The rtppreproc symlinks created\n")    
     # check_create_bvec_bval（force) one of the todo here
-    if "rpe" in required_inputfiles:
+    if rpe:
         if PE_direction == "PA":
             rpe_dir = "AP"
         elif PE_direction == "AP":
