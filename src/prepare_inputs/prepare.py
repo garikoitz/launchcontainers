@@ -91,13 +91,13 @@ def prepare_analysis_folder(parser_namespace, lc_config):
                 do.copy_file(file_path, os.path.join(analysis_dir, file_name), force)          
             else:
                 raise ValueError("Unsupported file type.")
-        if container in ['rtp2-preproc']:
+        if container in ['rtp2-preproc','rtppreproc']:
             if file_ext in ['.nii', '.gz']:
                 do.copy_file(file_path, os.path.join(analysis_dir, file_name), force)                          
             else:
                 raise ValueError("Unsupported file type.")
                     
-        if container in ['rtp2-pipeline']:
+        if container in ['rtp2-pipeline','rtp-pipeline']:
             if option == "tractparams":
                 if file_ext in ['.csv']:    
                     do.copy_file(file_path, os.path.join(analysis_dir, file_name), force)

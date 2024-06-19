@@ -7,12 +7,12 @@
 #       None: python None type, Usually used for optional arguement, don't put anything after column, not even ""
 general:
   # general setting of launchcontainer soft
-  basedir: /home/tlei/tlei/LMC_DWI_course # Base directory of project
-  bidsdir_name: "BIDS" # Name of bids directory, 1 level under basedir, must contain dataset_description
+  basedir: /home/tlei/tlei/multishell_dwi # Base directory of project
+  bidsdir_name: nifti # Name of bids directory, 1 level under basedir, must contain dataset_description
   containerdir: /home/tlei/tlei/LMC_DWI_course/containers # Directory contains singularity images
-  container: "rtp2-preproc"  # Name of the container
+  container: rtp2-preproc  # Name of the container
                               # VALID OPTIONS: freesurferator, rtp2-preproc, rtp2-pipeline, anatrois, rtppreproc, rtp-pipeline, l1_glm, fmriprep 
-  analysis_name: "test_on_lmc02_for_mniroi" # Name of analysis folder 
+  analysis_name: test_rewrite_bval # Name of analysis folder 
   host: local # Place the computing will be held. 
               # VALID OPTIONS: local, BCBL, DIPC.
   force: True # Whether force to overwrite
@@ -34,24 +34,27 @@ container_specific:
   
   rtppreproc:
     version: 1.2.0-3.0.3 # Version identifier for container
+    precontainer_anat: anatrois_4.6.1-7.3.2 # anatrois or freesurferator dir, used to find the brainmask
+    anat_analysis_name: fMRIprep_brainmask # Analysis name 
+    # optional
+    multishell: True # if your encoding direction DWI is multishell sequence
     rpe: True # If reverse phase encoding is applied in the sequence
               # It checks if there is a reverse phase encoding acquisition
               # Old dcm2nixx will not create empty bvec and bval files if there was an acquisition with just b0-s
-    precontainer_anat: anatrois_4.6.1-7.3.2 # anatrois or freesurferator dir, used to find the brainmask
-    anat_analysis_name: "fMRIprep_brainmask" # Analysis name 
+
   
   rtp-pipeline:
     version: 4.5.2-3.0.3 # Version identifier for container      
     precontainer_anat: anatrois_4.6.1-7.3.2  # anatrois or freesurferator dir, used to find the brainmask and fs/ROIs
-    anat_analysis_name: "fulltract_anatrerun" # Analysis name 
+    anat_analysis_name: fulltract_anatrerun # Analysis name 
     precontainer_preproc: rtppreproc_1.2.0-3.0.3 # rtppreproc or rtp2-preproc dir, used to find the dwi.nii.gz, bvec and bval
-    preproc_analysis_name: "6sub_wrongbvec" # Analysis name 
+    preproc_analysis_name: 6sub_wrongbvec # Analysis name 
 
   freesurferator:
     version: 0.2.0-7.4.1rc19  # Version identifier for container 
     pre_fs: True # Pre-run freesurfer or not?
     prefs_dir_name: freesurferator_0.2.0-7.4.1rc19 # Directory name of your pre-run freesurfer, this directory should be under /basedir/bidsdir/derivatives
-    prefs_analysis_name: "control_points_02" # Analysis name of pre-run freesurfer
+    prefs_analysis_name: control_points_02 # Analysis name of pre-run freesurfer
     prefs_zipname: '^freesurferator_S.*\.zip$' # A super identifier to find the pattern 
     control_points: False # If you want to use the control points created in the previous analysis (control.dat), set this True:
     prefs_unzipname: 'S.*$'    # If you created control points, you'll have an unzipped folder in the output analysis. Fill prefs_unzipname
@@ -63,22 +66,23 @@ container_specific:
   rtp2-preproc:
     version: 0.1.0_3.0.4rc31 # Version identifier for container      
     precontainer_anat: freesurferator_0.2.0-7.4.1rc19 # anatrois or freesurferator dir, used to find the brainmask
-    anat_analysis_name: "control_points_02" # Analysis name 
+    anat_analysis_name: control_points_02 # Analysis name 
     # optional
+    multishell: True # if your encoding direction DWI is multishell sequence
     rpe: True # If reverse phase encoding is applied in the sequence
               # It checks if there is a reverse phase encoding acquisition
               # if not, launchcontainers will create mock files
     qmap_nifti: /home/tlei/Desktop/FG.nii.gz # Full Path to qunatitative MRI maps, must be nifti format
   rtp2-pipeline:
     version: 0.1.0_3.0.4rc20 # Version identifier for container 
-    precontainer_anat: anatrois_4.6.1-7.3.2  # anatrois or freesurferator dir, used to find the brainmask and fs/ROIs
-    anat_analysis_name: "fulltract_anatrerun" # Analysis name 
-    precontainer_preproc: rtppreproc_1.2.0-3.0.3 # rtppreproc or rtp2-preproc dir, used to find the dwi.nii.gz, bvec and bval
-    preproc_analysis_name: "6sub_wrongbvec" # Analysis name 
+    precontainer_anat: freesurferator_0.2.0-7.4.1rc19 # anatrois or freesurferator dir, used to find the brainmask and fs/ROIs
+    anat_analysis_name: control_points_02 # Analysis name 
+    precontainer_preproc: rtp2-preproc_0.1.0_3.0.4rc31 # rtppreproc or rtp2-preproc dir, used to find the dwi.nii.gz, bvec and bval
+    preproc_analysis_name: control_points_02 # Analysis name 
     #optional
-    tractparams: # Path to tractparams files, needs to be a .csv
-    fsmask: # Path to brain.nii.gz of freesurfer If use fsmask or define manually, this option is set in case you need 
-    qmap_zip: # zip file for rtp2-pipeline
+    tractparams: /home/tlei/tlei/LMC_DWI_course/scripts/tractparams_short_course.csv # Path to tractparams files, needs to be a .csv
+    fsmask: /home/tlei/Desktop/FG.nii.gz # Path to brain.nii.gz of freesurfer If use fsmask or define manually, this option is set in case you need 
+    qmap_zip: /home/tlei/Desktop/annnnooott.zip # zip file for rtp2-pipeline
 host_options:
     # SGE manager
     BCBL:
