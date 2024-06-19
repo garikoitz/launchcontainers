@@ -480,7 +480,13 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout,
         diff_files = layout.get(subject= sub, session=ses, extension='nii.gz',suffix= 'dwi', direction=PE_direction, return_type='filename')
         dwi_acq = [f for f in diff_files if 'acq-' in f]
         target_dwi_concat=re.sub(r'acq-[^_]+', '', diff_files[0])
-        
+        src_path_DIFF=target_dwi_concat
+        bval_files = layout.get(subject= sub, session=ses, extension='bval',suffix= 'dwi', direction=PE_direction, return_type='filename')
+        bvec_files = layout.get(subject= sub, session=ses, extension='bvec',suffix= 'dwi', direction=PE_direction, return_type='filename')
+        target_bvec=re.sub(r'acq-[^_]+', '', bvec_files[0])
+        target_bval=re.sub(r'acq-[^_]+', '', bval_files[0])
+        src_path_BVEC=target_bvec
+        src_path_BVAL=target_bval
         if len(dwi_acq) == 0:
             logger.error("\n"
                        +f"No files with different acq- to concatenate.\n")
@@ -495,7 +501,7 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout,
                     +f"Concatenating with mrcat of mrtrix3 these files: {dwi_acq} in: {target_dwi_concat} \n")
                 dwi_acq.sort()
                 sp.run(['mrcat',*dwi_acq,target_dwi_concat])
-            src_path_DIFF=target_dwi_concat
+           
             # also get the bvecs and bvals
             bval_files = layout.get(subject= sub, session=ses, extension='bval',suffix= 'dwi', direction=PE_direction, return_type='filename')
             bvec_files = layout.get(subject= sub, session=ses, extension='bvec',suffix= 'dwi', direction=PE_direction, return_type='filename')
