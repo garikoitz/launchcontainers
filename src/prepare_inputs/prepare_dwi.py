@@ -510,8 +510,9 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout,
                     bval_cmd = bval_cmd+" "+bvalF
                 bval_cmd = bval_cmd+" > "+target_bval
                 sp.run(bval_cmd,shell=True)
+                src_path_BVAL=target_bval
             else:
-                logger.warning("\n"
+                logger.error("\n"
                            +"Missing bval files")
             if len(dwi_acq) == len(bvecs_acq) and not os.path.isfile(target_bvec):
                 bvecs_acq.sort()
@@ -520,8 +521,9 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout,
                     bvec_cmd = bvec_cmd+" "+bvecF
                 bvec_cmd = bvec_cmd+" > "+target_bvec
                 sp.run(bvec_cmd,shell=True)
+                src_path_BVEC=target_bvec
             else:
-                logger.warning("\n"
+                logger.error("\n"
                            +"Missing bvec files")        
 
         elif len(diff_files) == 0:

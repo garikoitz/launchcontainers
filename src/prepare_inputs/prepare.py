@@ -276,49 +276,12 @@ def prepare_dwi_config_json(dict_store_cs_configs,lc_config,force):
         return config_json_extra
 
     container = lc_config["general"]["container"]   
-    print(f"THIS IS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~{dict_store_cs_configs}")
     config_json_extra=get_config_dict(container,lc_config,dict_store_cs_configs)
     
     json_under_analysis_dir=dict_store_cs_configs['config_path']
 
     if write_json(config_json_extra, json_under_analysis_dir,force):
-        logger.info(f"Successfully write json for {container}")    
-    '''    
-    if container == "freesurferator":
-        # fs_json_keys=['pre_fs','control_points','annotfile', 'mniroizip']
-        # fs_json_val=['pre_fs/existingFS.zip','control_points/control.dat','annotfile/annotfile.zip','mniroizip/mniroizip.zip']
-        config_json_extra=get_config_dict(container,lc_config,dict_store_cs_configs)
-        json_under_analysis_dir=dict_store_cs_configs['config_path']
-
-        if write_json(config_json_extra, json_under_analysis_dir,force):
-            logger.info(f"Successfully write json for {container}")
-        
-        # TODO:
-        # "t1w_anatomical_2": gear_context.get_input_path("t1w_anatomical_2"),
-        # "t1w_anatomical_3": gear_context.get_input_path("t1w_anatomical_3"),
-        # "t1w_anatomical_4": gear_context.get_input_path("t1w_anatomical_4"),
-        # "t1w_anatomical_5": gear_context.get_input_path("t1w_anatomical_5"),
-        # "t2w_anatomical": gear_context.get_input_path("t2w_anatomical"),
-        
-    if container in "rtp2-preproc":
-        # preproc_json_keys=['ANAT','BVAL','BVEC', 'DIFF','FSMASK']
-        # preproc_json_val=['ANAT/T1.nii.gz','BVAL/dwiF.bval','BVEC/dwiF.bvec','DIFF/dwiF.nii.gz','FSMASK/brainmask.nii.gz']
-        config_json_extra=get_config_dict(container,lc_config,dict_store_cs_configs)
-        json_under_analysis_dir=dict_store_cs_configs['config_path']
-
-        if write_json(config_json_extra, json_under_analysis_dir,force):
-            logger.info(f"Successfully write json for {container}")
-
-    if container in "rtp2-pipeline":
-        # pipeline_json_keys=['anatomical','bval','bvec', 'dwi','fs','tractparams']
-        # pipeline_json_val=['anatomical/T1.nii.gz','bval/dwi.bval','bvec/dwi.bvec','dwi/dwi.nii.gz','fs/fs.zip','tractparams/tractparams.csv']
-        config_json_extra=get_config_dict(container,lc_config,dict_store_cs_configs)
-        json_under_analysis_dir=dict_store_cs_configs['config_path']
-
-        if write_json(config_json_extra, json_under_analysis_dir,force):
-            logger.info(f"Successfully write json for {container}")
-        # "fsmask": gear_context.get_input_path("fsmask"),
-    '''    
+        logger.info(f"Successfully write json for {container}")     
     return True   
 
 
