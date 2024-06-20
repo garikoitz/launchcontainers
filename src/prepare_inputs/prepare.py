@@ -368,7 +368,7 @@ def prepare_dwi_input(parser_namespace, analysis_dir, lc_config, df_subSes, layo
             
             do.copy_file(parser_namespace.lc_config, op.join(logdir,'lc_config.yaml'), force) 
             config_file_path=dict_store_cs_configs['config_path']
-            do.copy_file(config_file_path, op.join(logdir,os.path.basename(config_file_path)), force)   
+            do.copy_file(config_file_path, op.join(logdir,'config.json'), force)   
 
 
             if container in ["rtppreproc" ,"rtp2-preproc"]:
