@@ -12,7 +12,7 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 """
-
+import requests
 import argparse
 from argparse import RawDescriptionHelpFormatter
 import yaml
@@ -24,6 +24,17 @@ import sys
 import pandas as pd
 import os.path as op
 from os import makedirs
+try:
+    from importlib.metadata import version, PackageNotFoundError
+except ImportError:  # For Python < 3.8
+    from pkg_resources import get_distribution, DistributionNotFound
+
+    def version(package_name):
+        try:
+            return get_distribution(package_name).version
+        except DistributionNotFound:
+            return None
+        
 logger = logging.getLogger("Launchcontainers")
 
 
@@ -80,7 +91,10 @@ def get_parser():
         # default=["/export/home/tlei/tlei/PROJDATA/TESTDATA_LC/Testing_02/BIDS/config.json"],
         help="path to the container specific config file, it stores the parameters for the container."
     )
-
+    parser.add_argument(
+        '--download_configs', 
+        type=str, 
+        help='Path to download the configs')
     parser.add_argument(
         "--run_lc",
         action="store_true",
@@ -110,7 +124,7 @@ def get_parser():
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
         sys.exit(1)
-
+    
     parse_dict = vars(parser.parse_args())
     parse_namespace = parser.parse_args()
 
@@ -292,3 +306,28 @@ def copy_file(src_file, dst_file, force):
     logger.info("\n" + "#####################################################\n")
 
     return dst_file
+def get_launchcontainers_version():
+    try:
+        from importlib.metadata import version
+    except ImportError:  # For Python < 3.8
+        from pkg_resources import get_distribution as version
+    
+    try:
+        return version('launchcontainers')
+    except Exception as e:
+        logger.error(f"Error getting launchcontainers version: {e}")
+        return None
+def get_mocked_launchcontainers_version():
+    # Specify the version you want to mock for testing purposes
+    return "0.3.0"
+def download_configs(version, download_path):
+    github_url = f"https://github.com/garikoitz/launchcontainers/raw/main/example_configs/{version}/example_config.yaml"  #https://github.com/garikoitz/launchcontainers/tree/master/example_configs/0.3.0
+    response = requests.get(github_url)
+    
+    if response.status_code == 200:
+        config_path = os.path.join(download_path, f"{version}_config.yaml")
+        with open(config_path, 'wb') as file:
+            file.write(response.content)
+        logger.info(f"Configs for version {version} downloaded successfully.")
+    else:
+        logger.error(f"Failed to download configs for version {version}. HTTP Status Code: {response.status_code}")
