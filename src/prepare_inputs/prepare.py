@@ -244,7 +244,7 @@ def prepare_dwi_config_json(dict_store_cs_configs,lc_config,force):
         rtp2_json_dict= dict_store_cs_configs[container]
 
         
-        if container == "freesurferator":
+        if container in ["freesurferator", "anatrois"]:
             config_json_extra={'anat': 
                         {'location': {
                             'path': '/flywheel/v0/input/anat/T1.nii.gz', 
@@ -261,7 +261,8 @@ def prepare_dwi_config_json(dict_store_cs_configs,lc_config,force):
                             },
                             'base': 'file'
                         }
-
+            if 'anat' in  config_json_extra.keys() and 'pre_fs' in config_json_extra.keys():
+                del config_json_extra['anat']
         else:
             config_json_extra={}
             for key in rtp2_json_dict.keys():
