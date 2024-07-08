@@ -27,14 +27,14 @@ from bids import BIDSLayout
 from dask.distributed import progress
 
 # for package mode, the import needs to import launchcontainer module
-# from launchcontainers.prepare_inputs import dask_scheduler_config as dsq
-# from launchcontainers.prepare_inputs import prepare as prepare
-# from launchcontainers.prepare_inputs import utils as do
+from launchcontainers.prepare_inputs import dask_scheduler_config as dsq
+from launchcontainers.prepare_inputs import prepare as prepare
+from launchcontainers.prepare_inputs import utils as do
 
 # for testing mode through , we can use relative import 
-from prepare_inputs import dask_scheduler_config as dsq
-from prepare_inputs import prepare as prepare
-from prepare_inputs import utils as do
+# from prepare_inputs import dask_scheduler_config as dsq
+# from prepare_inputs import prepare as prepare
+# from prepare_inputs import utils as do
 
 
 logger = logging.getLogger("Launchcontainers")
