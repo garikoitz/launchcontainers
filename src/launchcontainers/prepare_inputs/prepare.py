@@ -26,6 +26,8 @@ from launchcontainers.prepare_inputs import prepare_dwi as dwipre
 # for testing mode using repo
 # from prepare_inputs import utils as do
 # from prepare_inputs import prepare_dwi as dwipre
+import utils as do
+from prepare_inputs import prepare_dwi as dwipre
 
 logger = logging.getLogger("Launchcontainers")
 
@@ -88,7 +90,7 @@ def prepare_analysis_folder(parser_namespace, lc_config):
     
     dict_store_cs_configs={}
     dict_store_cs_configs['config_path']=container_configs_under_analysis_folder
-    
+    dict_store_cs_configs['lc_yaml_path']=lc_config_under_analysis_folder
     def process_optional_input(container,file_path, analysis_dir, option=None):
         if os.path.isfile(file_path):
             logger.info("\n"
@@ -258,7 +260,7 @@ def prepare_dwi_config_json(dict_store_cs_configs,lc_config,force):
         rtp2_json_dict= dict_store_cs_configs[container]
 
         
-        if container in ["freesurferator", "anatrois"]:
+        if container == "freesurferator":
             config_json_extra={'anat': 
                         {'location': {
                             'path': '/flywheel/v0/input/anat/T1.nii.gz', 
@@ -275,8 +277,7 @@ def prepare_dwi_config_json(dict_store_cs_configs,lc_config,force):
                             },
                             'base': 'file'
                         }
-            if 'anat' in  config_json_extra.keys() and 'pre_fs' in config_json_extra.keys():
-                del config_json_extra['anat']
+
         else:
             config_json_extra={}
             for key in rtp2_json_dict.keys():
@@ -352,53 +353,48 @@ def prepare_dwi_input(parser_namespace, analysis_dir, lc_config, df_subSes, layo
     for row in df_subSes.itertuples(index=True, name="Pandas"):
         sub = row.sub
         ses = row.ses
-        RUN = row.RUN
-        dwi = row.dwi
-        
-        logger.info(f'dwi is {dwi}')
+
         logger.info("\n"
                     +"The current run is: \n"
                     +f"{sub}_{ses}_{container}_{version}\n")
         
 
-        if RUN == "True" and dwi == "True":
-                        
-            tmpdir = op.join(
-                analysis_dir,
-                "sub-" + sub,
-                "ses-" + ses,
-                "output", "tmp"
-            )
-            container_logdir = op.join(
-                analysis_dir,
-                "sub-" + sub,
-                "ses-" + ses,
-                "output", "log"
-            )
+                    
+        tmpdir = op.join(
+            analysis_dir,
+            "sub-" + sub,
+            "ses-" + ses,
+            "output", "tmp"
+        )
+        container_logdir = op.join(
+            analysis_dir,
+            "sub-" + sub,
+            "ses-" + ses,
+            "output", "log"
+        )
 
-            if not op.isdir(tmpdir):
-                os.makedirs(tmpdir)
-            if not op.isdir(container_logdir):
-                os.makedirs(container_logdir)
-            
-            do.copy_file(parser_namespace.lc_config, op.join(container_logdir,'lc_config.yaml'), force) 
-            config_file_path=dict_store_cs_configs['config_path']
-            do.copy_file(config_file_path, op.join(container_logdir,'config.json'), force)   
+        if not op.isdir(tmpdir):
+            os.makedirs(tmpdir)
+        if not op.isdir(container_logdir):
+            os.makedirs(container_logdir)
+        
+        do.copy_file(parser_namespace.lc_config, op.join(container_logdir,'lc_config.yaml'), force) 
+        config_file_path=dict_store_cs_configs['config_path']
+        do.copy_file(config_file_path, op.join(container_logdir,'config.json'), force)   
 
 
-            if container in ["rtppreproc" ,"rtp2-preproc"]:
-                dwipre.rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout,run_lc)
-            elif container in ["rtp-pipeline", "rtp2-pipeline"]:
-                dwipre.rtppipeline(dict_store_cs_configs, analysis_dir,lc_config, sub, ses, layout,run_lc)
-            elif container in ["anatrois","freesurferator"]:
-                dwipre.anatrois(dict_store_cs_configs, analysis_dir,lc_config,sub, ses, layout,run_lc)
-            else:
-                logger.error("\n"+
-                             f"***An error occurred"
-                             +f"{container} is not created, check for typos or contact admin for singularity images\n"
-                )
+        if container in ["rtppreproc" ,"rtp2-preproc"]:
+            dwipre.rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout,run_lc)
+        elif container in ["rtp-pipeline", "rtp2-pipeline"]:
+            dwipre.rtppipeline(dict_store_cs_configs, analysis_dir,lc_config, sub, ses, layout,run_lc)
+        elif container in ["anatrois","freesurferator"]:
+            dwipre.anatrois(dict_store_cs_configs, analysis_dir,lc_config,sub, ses, layout,run_lc)
         else:
-            continue
+            logger.error("\n"+
+                            f"***An error occurred"
+                            +f"{container} is not created, check for typos or contact admin for singularity images\n"
+            )
+
     logger.info("\n"+
                 "#####################################################\n")
     return  

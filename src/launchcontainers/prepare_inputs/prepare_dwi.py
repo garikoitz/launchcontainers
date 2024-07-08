@@ -26,6 +26,8 @@ import subprocess as sp
 import zipfile
 import logging
 
+import utils as do
+from utils import read_df
 # for package mode, the import needs to import launchcontainer module
 from launchcontainers.prepare_inputs import utils as do
 from launchcontainers.prepare_inputs.utils import read_df
@@ -249,6 +251,11 @@ def anatrois(dict_store_cs_configs, analysis_dir,lc_config, sub, ses, layout,run
         )
         if not op.exists(dstDir_work):
             os.makedirs(dstDir_work)
+    # create corresponding folder
+    if op.exists(dstDir_input) and force:
+        shutil.rmtree(dstDir_input)    
+    if op.exists(dstDir_output) and force:        
+        shutil.rmtree(dstDir_output)
     
     if not op.exists(dstDir_input):
         os.makedirs(dstDir_input)
@@ -416,7 +423,13 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout,
         "ses-" + ses,
         "output",
     )
-
+    # create corresponding folder
+    if op.exists(dstDir_input) and force:
+        shutil.rmtree(dstDir_input)    
+        logger.info("Remove input dir under analysis because you set force to True")
+    if op.exists(dstDir_output) and force:        
+        shutil.rmtree(dstDir_output)
+        logger.info("Remove output dir under analysis because you set force to True")
     if not op.exists(dstDir_input):
         os.makedirs(dstDir_input)
     if not op.exists(dstDir_output):
@@ -683,7 +696,13 @@ def rtppipeline(dict_store_cs_configs, analysis_dir,lc_config, sub, ses, layout,
         "ses-" + ses,
         "output",
     )    
-
+    # create corresponding folder
+    if op.exists(dstDir_input) and force:
+        shutil.rmtree(dstDir_input)    
+        logger.info("Remove input dir under analysis because you set force to True")
+    if op.exists(dstDir_output) and force:        
+        shutil.rmtree(dstDir_output)
+        logger.info("Remove output dir under analysis because you set force to True")
     if not op.exists(dstDir_input):
         os.makedirs(dstDir_input)
     if not op.exists(dstDir_output):

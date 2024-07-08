@@ -13,20 +13,20 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 """
 import logging
+import os
 from dask import config
 from dask.distributed import Client, LocalCluster
 from dask_jobqueue import SGECluster, SLURMCluster
 
 logger = logging.getLogger("Launchcontainers")
 
-def initiate_cluster(jobqueue_config, n_job, logdir):
+def initiate_cluster(jobqueue_config, optimal_n_workers, logdir):
     '''
     Parameters
     ----------
     jobqueue_config : dictionary
         read the jobquene_yaml from the yaml file
-    n_job : not clear what should it be
-        basically it's a quene specific thing, needs to check if it's dask specific.
+    optimal_n_workers : number of workers you give to the dask cluster
 
     Returns
     -------
@@ -36,12 +36,11 @@ def initiate_cluster(jobqueue_config, n_job, logdir):
     '''
     config.set(distributed__comm__timeouts__tcp="90s")
     config.set(distributed__comm__timeouts__connect="90s")
-    config.set(scheduler="single-threaded")
     config.set({"distributed.scheduler.allowed-failures": 50})
     config.set(admin__tick__limit="3h")
-    #config.set({"distributed.worker.use-file-locking": False})
-
-
+    if not os.path.exists(logdir):
+        os.makedirs(logdir)
+    
     if "sge" in jobqueue_config["manager"]:
         envextra = [f"module load {jobqueue_config['apptainer']} " 
                    #f"conda activate /export/home/tlei/tlei/conda_env/launchcontainers"
@@ -50,7 +49,6 @@ def initiate_cluster(jobqueue_config, n_job, logdir):
                                        memory = jobqueue_config["memory"],
                                        queue = jobqueue_config["queue"],
                                        name = jobqueue_config["name"],
-                                        
                                        # project = jobqueue_config["project"],
                                        # processes = jobqueue_config["processes"],
                                        # interface = jobqueue_config["interface"],
@@ -66,7 +64,7 @@ def initiate_cluster(jobqueue_config, n_job, logdir):
                                        # shebang=jobqueue_config["shebang"],
                                        # python=None,
                                        # config_name=None,
-                                       # n_workers=n_job,
+                                       # n_workers=optimal_n_workers,
                                        # silence_logs=None,
                                        # asynchronous=None,
                                        # security=None,
@@ -76,7 +74,7 @@ def initiate_cluster(jobqueue_config, n_job, logdir):
                                        # resource_spec=jobqueue_config["resource-spec"],
                                        walltime=jobqueue_config["walltime"])#,
                                        #job_extra_directives=job_extra_directives)
-        cluster_by_config.scale(jobs=n_job)
+        cluster_by_config.scale(jobs=optimal_n_workers)
 
     elif "slurm" in jobqueue_config["manager"]:
         envextra = [f"module load {jobqueue_config['apptainer']} ",\
@@ -92,18 +90,20 @@ def initiate_cluster(jobqueue_config, n_job, logdir):
                                          death_timeout = 300,#jobqueue_config["death-timeout"],
                                          walltime=jobqueue_config["walltime"],
                                          job_extra_directives = ["--export=ALL"])
-        cluster_by_config.scale(jobs=n_job)
+        cluster_by_config.scale(jobs=optimal_n_workers)
     elif "local" in jobqueue_config["manager"]:
-        logger.debug("defining local cluster")
-        cluster_by_config = LocalCluster(  
-            processes = False,       
-            n_workers = n_job,
-            threads_per_worker = jobqueue_config["threads_per_worker"],
-            memory_limit = jobqueue_config["memory_limit"],
-        )
-        
+        launch_mode=jobqueue_config['launch_mode']
+        if launch_mode=="parallel":
+            logger.debug("defining local cluster in parallel mode")
+            cluster_by_config = LocalCluster(  
+                processes = jobqueue_config["processes"],       
+                n_workers = optimal_n_workers,
+                threads_per_worker = jobqueue_config["threads_per_worker"],
+                memory_limit = jobqueue_config["memory_limit"],
+            )
+         
     else:
-        logger.warning(
+        logger.error(
             "dask configuration wasn't detected, "
             "if you are using a cluster please look at "
             "the jobqueue YAML example, modify it so it works in your cluster "
@@ -112,14 +112,11 @@ def initiate_cluster(jobqueue_config, n_job, logdir):
             "You can find a jobqueue YAML example in the pySPFM/jobqueue.yaml file."
         )
         cluster_by_config = None
-   # print(f"----------------This is the self report of function initiate_cluster()\n, the cluster was defined as the {jobqueue_config['manager']}cluster \n")
-   # print(f"----------------------------The cluster job_scipt is  {cluster_by_config.job_script()} \n")
-   # print(f"----check for job scale,  the number of jobs is {n_job}")
-   # print(f"-----under of initiate_cluster() report the cluster is {cluster_by_config}")
     return cluster_by_config
 
 
-def dask_scheduler(jobqueue_config, n_job, logdir):
+def dask_scheduler(jobqueue_config, optimal_n_workers, logdir):
+    
     if jobqueue_config is None:
         logger.warning(
             "dask configuration wasn't detected, "
@@ -131,8 +128,14 @@ def dask_scheduler(jobqueue_config, n_job, logdir):
         )
         cluster = None
     else:
-        cluster = initiate_cluster(jobqueue_config, n_job, logdir)
-
+        if not "local" in jobqueue_config["manager"]:
+            cluster = initiate_cluster(jobqueue_config, optimal_n_workers, logdir)
+        
+        elif "local" in jobqueue_config["manager"]:
+            launch_mode=jobqueue_config['launch_mode']
+            if not launch_mode=="serial":
+                cluster = initiate_cluster(jobqueue_config, optimal_n_workers, logdir)
+                 
     client = None if cluster is None else Client(cluster)
    
     return client, cluster
