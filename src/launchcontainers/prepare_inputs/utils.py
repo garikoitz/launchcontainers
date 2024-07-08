@@ -92,9 +92,9 @@ def get_parser():
         help="path to the container specific config file, it stores the parameters for the container."
     )
     parser.add_argument(
-        '--download_configs', 
+        '--copy_configs', 
         type=str, 
-        help='Path to download the configs')
+        help='Path to copy the configs, usually your working directory')
     parser.add_argument(
         "--run_lc",
         action="store_true",
@@ -321,7 +321,8 @@ def get_mocked_launchcontainers_version():
     # Specify the version you want to mock for testing purposes
     return "0.3.0"
 def download_configs(version, download_path):
-    github_url = f"https://github.com/garikoitz/launchcontainers/raw/main/example_configs/{version}/example_config.yaml"  #https://github.com/garikoitz/launchcontainers/tree/master/example_configs/0.3.0
+    #https://github.com/garikoitz/launchcontainers/tree/master/example_configs/0.3.0
+    github_url = f"https://github.com/garikoitz/launchcontainers/raw/main/example_configs/{version}/example_config.yaml" 
     response = requests.get(github_url)
     
     if response.status_code == 200:
@@ -331,3 +332,17 @@ def download_configs(version, download_path):
         logger.info(f"Configs for version {version} downloaded successfully.")
     else:
         logger.error(f"Failed to download configs for version {version}. HTTP Status Code: {response.status_code}")
+def copy_configs(output_path, force=True):
+    # first, know where the tar file is stored
+    import pkg_resources
+
+    config_path = pkg_resources.resource_filename('launchcontainers', f'configs')
+
+    # second, copy all the files from the source folder to the output_path
+    all_cofig_files=os.listdir(config_path)
+    for src_fname in all_cofig_files:
+        src_file_fullpath=op.join(config_path,src_fname)
+        targ_file_fullpath=op.join(output_path,src_fname)
+        copy_file(src_file_fullpath,targ_file_fullpath,force)
+
+    return

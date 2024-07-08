@@ -19,8 +19,13 @@ import os.path as op
 import json
 import zipfile
 
-from . import utils as do
-from . import prepare_dwi as dwipre
+# for package mode, the import needs to import launchcontainer module
+# from launchcontainers.prepare_inputs import utils as do
+# from launchcontainers.prepare_inputs import prepare_dwi as dwipre
+
+# for testing mode using repo
+from prepare_inputs import utils as do
+from prepare_inputs import prepare_dwi as dwipre
 
 logger = logging.getLogger("Launchcontainers")
 

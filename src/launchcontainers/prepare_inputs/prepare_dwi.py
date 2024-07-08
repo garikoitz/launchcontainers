@@ -26,8 +26,13 @@ import subprocess as sp
 import zipfile
 import logging
 
-from . import utils as do
-from .utils import read_df
+# for package mode, the import needs to import launchcontainer module
+# from launchcontainers.prepare_inputs import utils as do
+# from launchcontainers.prepare_inputs.utils import read_df
+
+# for testing mode using repo
+from prepare_inputs import utils as do
+from prepare_inputs.utils import read_df
 
 
 logger = logging.getLogger("Launchcontainers")
