@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "launchcontainers"
-version = "0.3.15"
+version = "0.3.16"
 description = "Launch Containers Package"
 authors = [ "Garikoitz Lerma-Usabiaga",
             "Leandro Lecca",
