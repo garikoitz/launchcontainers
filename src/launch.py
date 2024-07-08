@@ -23,7 +23,10 @@ import utils as do
 import generate_command as gen_cmd
 from prepare_inputs import prepare
 import subprocess
-from pyfunc import l1_glm
+from py_pipeline import l1_glm
+
+
+
 logger = logging.getLogger("Launchcontainers")
 
 def prepare_dask_futures(
@@ -180,7 +183,8 @@ def prepare_dask_futures(
             )
         future_dict['commands']=commands
     return future_dict
-def run_command(cmd, cmd_id):
+
+def sp_run_cmd(cmd, cmd_id):
     """
     Run a Singularity (Apptainer) command using subprocess and log stdout and stderr.
     Args:
@@ -200,7 +204,8 @@ def run_command(cmd, cmd_id):
         logger.error(f"Command {cmd_id} stderr: {stderr.strip()}")
 
     return stdout.strip(), stderr.strip()
-def run_dask(
+
+def launch_dask_futures(
     jobqueue_config,  
     future_dict
     ):
@@ -211,7 +216,7 @@ def run_dask(
     logdir=future_dict['logdir']
     if "local" in jobqueue_config["manager"] and launch_mode=="serial" :
         dask.config.set(scheduler="single-threaded")
-        tasks=[dask.delayed(run_command)(cmd,i) for i, cmd in enumerate(commands)]
+        tasks=[dask.delayed(sp_run_cmd)(cmd,i) for i, cmd in enumerate(commands)]
         results=dask.compute(*tasks)
         # Print the results
         print("Results:", results)
@@ -229,7 +234,7 @@ def run_dask(
         )
 
         # Compose the command to run in the cluster
-        futures = client.map(run_command,commands, range(len(commands)))
+        futures = client.map(sp_run_cmd,commands, range(len(commands)))
         logger.info("Dask dashboard is available at:", cluster.dashboard_link)
 
         # Wait for all jobs to complete
@@ -250,117 +255,147 @@ def run_dask(
 
 # %% main()
 def main():
-    # read ymal and setup the launchcontainer program
-    parser_namespace,_ = do.get_parser()
-    lc_config_path = parser_namespace.lc_config
-    lc_config = do.read_yaml(lc_config_path)
-    run_lc = parser_namespace.run_lc
-    verbose = parser_namespace.verbose
-    debug = parser_namespace.debug
-    # Get general information from the config.yaml file
-    basedir=lc_config["general"]["basedir"]
-    bidsdir_name=lc_config["general"]["bidsdir_name"]
-    container=lc_config["general"]["container"]
-    analysis_name=lc_config["general"]["analysis_name"]
-    host=lc_config["general"]["host"]
-    print_command_only=lc_config["general"]["print_command_only"]
-    log_dir=lc_config["general"]["log_dir"]
-    log_filename=lc_config["general"]["log_filename"]
-    
-    version = lc_config["container_specific"][container]["version"] 
-    jobqueue_config = lc_config["host_options"][host]
-    # get stuff from subseslist for future jobs scheduling
-    sub_ses_list_path = parser_namespace.sub_ses_list
-    sub_ses_list,num_of_true_run = do.read_df(sub_ses_list_path)
-
-    if log_dir=="analysis_dir":
-        log_dir=op.join(basedir,bidsdir_name,'derivatives',f'{container}_{version}',f"analysis-{analysis_name}")
-
-    do.setup_logger(print_command_only,verbose, debug, log_dir, log_filename)
-    
-    # logger the settings
-    if host == "local":
-        launch_mode = lc_config["host_options"]["local"]["launch_mode"]
-        valid_options = ["serial", "parallel","dask_worker"]
-        if launch_mode in valid_options:
-            host_str = (
-                f"{host}, and commands will be launched in {launch_mode} mode "
-                f"Serial is safe but it will take longer. "
-                f"If you launch in parallel be aware that some of the "
-                f"processes might be killed if the limit (usually memory) "
-                f"of the machine is reached. "
-            )
+    parser_namespace,parse_dict = do.get_parser()
+    download_configs=parser_namespace.download_configs
+    gen_subseslist=parser_namespace.gen_subseslist
+    print(parse_dict)
+    print(gen_subseslist)
+    # generate template subseslist under the working directory
+    if gen_subseslist:
+        if parser_namespace.sub is None or parser_namespace.ses is None:
+            raise ValueError("gen_subseslist requires -sub and -ses to be provided")
         else:
-            do.die(
-                f"local:launch_mode {launch_mode} was passed, valid options are {valid_options}"
-            )
-
-    logger.critical(
-        "\n"
-        + "#####################################################\n"
-        + f"Successfully read the config file {lc_config_path} \n"
-        + f"SubsesList is read, there are {num_of_true_run} jobs needed to be launched"
-        + f'Basedir is: {lc_config["general"]["basedir"]} \n'
-        + f'Container is: {container}_{lc_config["container_specific"][container]["version"]} \n'
-        + f"Host is: {host_str} \n"
-        + f'analysis folder is: {lc_config["general"]["analysis_name"]} \n'
-        + f"##################################################### \n"
-    )
-
-    
-    
-    # Prepare file and launch containers
-    # First of all prepare the analysis folder: it create you the analysis folder automatically so that you are not messing up with different analysis
-    ananlysis_dir, dict_store_cs_configs = (
-        prepare.prepare_analysis_folder(parser_namespace, lc_config)
-    )
-    container_configs_under_analysis_folder=dict_store_cs_configs['config_path']
-    
-    logger.info("Reading the BIDS layout...")
-    layout = BIDSLayout(os.path.join(basedir, bidsdir_name))
-    logger.info("finished reading the BIDS layout.")
-    
-    # Prepare mode
-    # if DWI Pipeline (preproc, pipeline)
-    if container in [
-        "anatrois",
-        "rtppreproc",
-        "rtp-pipeline",
-        "freesurferator",
-        "rtp2-preproc",
-        "rtp2-pipeline"
-    ]:  
-        logger.debug(f"{container} is in the list")
-        sub_ses_list= sub_ses_list[(sub_ses_list['dwi'] == "True") & (sub_ses_list['RUN'] == "True")]
-        prepare.prepare_dwi_input(
-            parser_namespace, ananlysis_dir, lc_config, sub_ses_list, layout, dict_store_cs_configs
-        )
+            sub_list = parser_namespace.sub
+            ses_list = parser_namespace.ses
+            do.generate_subseslist(sub_list,ses_list)
+            print("\n######Your template sub_ses_list.txt has been created under the CWD!######")
+        return
+    # Check if download_configs argument is provided
+    if download_configs:
+        # Ensure the directory exists
+        if not os.path.exists(download_configs):
+            os.makedirs(download_configs)
         
-        future_dict= prepare_dask_futures(
-        ananlysis_dir,
-        lc_config,
-        sub_ses_list,
-        dict_store_cs_configs
-    )
-    elif container in ["l1_glm"]:   
-        sub_ses_list= sub_ses_list[(sub_ses_list['func'] == "True") & (sub_ses_list['RUN'] == "True")]
-        # do I need a function in prepare?
-        future_dict= prepare_dask_futures(
-        ananlysis_dir,
-        lc_config,
-        sub_ses_list,
-        dict_store_cs_configs
-    )
-    elif container in ["fmriprep"]:
-        sub_ses_list= sub_ses_list["only have the subs, because it will not get the sessions"]
-    else:
-        logger.error(f"{container} is not in the list")
-        raise KeyError("The container name you input is not supported, can't do prepare or launch jobs")
+        # Use the mocked version function for testing
+        launchcontainers_version = do.get_mocked_launchcontainers_version()
+        
+        if launchcontainers_version is None:
+            raise ValueError("Unable to determine launchcontainers version.")
+        do.download_configs(launchcontainers_version, download_configs)
+        print("\n######Your example configs has been copied to your indicated directory created under the CWD!######")
+        return
+    # main function with PREPARE and RUN mode
+    if (not gen_subseslist) or (not download_configs): 
+        print("**********Executing main functionality with arguments*********")
+        # read ymal and setup the launchcontainer program
+        lc_config_path = parser_namespace.lc_config
+        lc_config = do.read_yaml(lc_config_path)
+        run_lc = parser_namespace.run_lc
+        verbose = parser_namespace.verbose
+        debug = parser_namespace.debug
+        # Get general information from the config.yaml file
+        basedir=lc_config["general"]["basedir"]
+        bidsdir_name=lc_config["general"]["bidsdir_name"]
+        container=lc_config["general"]["container"]
+        analysis_name=lc_config["general"]["analysis_name"]
+        host=lc_config["general"]["host"]
+        print_command_only=lc_config["general"]["print_command_only"]
+        log_dir=lc_config["general"]["log_dir"]
+        log_filename=lc_config["general"]["log_filename"]
+        
+        version = lc_config["container_specific"][container]["version"] 
+        jobqueue_config = lc_config["host_options"][host]
+        # get stuff from subseslist for future jobs scheduling
+        sub_ses_list_path = parser_namespace.sub_ses_list
+        sub_ses_list,num_of_true_run = do.read_df(sub_ses_list_path)
+
+        if log_dir=="analysis_dir":
+            log_dir=op.join(basedir,bidsdir_name,'derivatives',f'{container}_{version}',f"analysis-{analysis_name}")
+
+        do.setup_logger(print_command_only,verbose, debug, log_dir, log_filename)
+        
+        # logger the settings
+        if host == "local":
+            launch_mode = lc_config["host_options"]["local"]["launch_mode"]
+            valid_options = ["serial", "parallel","dask_worker"]
+            if launch_mode in valid_options:
+                host_str = (
+                    f"{host}, and commands will be launched in {launch_mode} mode "
+                    f"Serial is safe but it will take longer. "
+                    f"If you launch in parallel be aware that some of the "
+                    f"processes might be killed if the limit (usually memory) "
+                    f"of the machine is reached. "
+                )
+            else:
+                do.die(
+                    f"local:launch_mode {launch_mode} was passed, valid options are {valid_options}"
+                )
+
+        logger.critical(
+            "\n"
+            + "#####################################################\n"
+            + f"Successfully read the config file {lc_config_path} \n"
+            + f"SubsesList is read, there are {num_of_true_run} jobs needed to be launched"
+            + f'Basedir is: {lc_config["general"]["basedir"]} \n'
+            + f'Container is: {container}_{lc_config["container_specific"][container]["version"]} \n'
+            + f"Host is: {host_str} \n"
+            + f'analysis folder is: {lc_config["general"]["analysis_name"]} \n'
+            + f"##################################################### \n"
+        )
+       
+        
+        # Prepare file and launch containers
+        # First of all prepare the analysis folder: it create you the analysis folder automatically so that you are not messing up with different analysis
+        ananlysis_dir, dict_store_cs_configs = (
+            prepare.prepare_analysis_folder(parser_namespace, lc_config)
+        )
+        container_configs_under_analysis_folder=dict_store_cs_configs['config_path']
+        
+        logger.info("Reading the BIDS layout...")
+        layout = BIDSLayout(os.path.join(basedir, bidsdir_name))
+        logger.info("finished reading the BIDS layout.")
+        
+        # Prepare mode
+        # if DWI Pipeline (preproc, pipeline)
+        if container in [
+            "anatrois",
+            "rtppreproc",
+            "rtp-pipeline",
+            "freesurferator",
+            "rtp2-preproc",
+            "rtp2-pipeline"
+        ]:  
+            logger.debug(f"{container} is in the list")
+            sub_ses_list= sub_ses_list[(sub_ses_list['dwi'] == "True") & (sub_ses_list['RUN'] == "True")]
+            prepare.prepare_dwi_input(
+                parser_namespace, ananlysis_dir, lc_config, sub_ses_list, layout, dict_store_cs_configs
+            )
+            
+            future_dict= prepare_dask_futures(
+            ananlysis_dir,
+            lc_config,
+            sub_ses_list,
+            dict_store_cs_configs
+        )
+        elif container in ["l1_glm"]:   
+            sub_ses_list= sub_ses_list[(sub_ses_list['func'] == "True") & (sub_ses_list['RUN'] == "True")]
+            prepare.prepare_fmri_input(
+                parser_namespace, ananlysis_dir, lc_config, sub_ses_list, dict_store_cs_configs
+            )
+            future_dict= prepare_dask_futures(
+            ananlysis_dir,
+            lc_config,
+            sub_ses_list,
+            dict_store_cs_configs
+        )
+        elif container in ["fmriprep"]:
+            sub_ses_list= sub_ses_list["only have the subs, because it will not get the sessions"]
+        else:
+            logger.error(f"{container} is not in the list")
+            raise KeyError("The container name you input is not supported, can't do prepare or launch jobs")
 
 
-    if run_lc:
-        run_dask(jobqueue_config,future_dict)
-
-
+        if run_lc:
+            launch_dask_futures(jobqueue_config,future_dict)
 if __name__ == "__main__":
     main()

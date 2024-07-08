@@ -59,32 +59,11 @@ sys.path.append(op.abspath(op.join(op.dirname(__file__), '../../')))
 # Now you can import utils
 import utils as do
 logger = logging.getLogger("Launchcontainers")
-def prepare_onset(subject, session, layout):
-
-    return
-
-def smooth_time_series(subject, session, l1_glm_yaml, lc_config):
-    # get the variables for input and output files
-    basedir=lc_config['general']['basedir']
-    bidsdir_name=lc_config['general']['bidsdir_name']
-    fmriprep_dir_name=lc_config['container_specific']['fmri_glm']['fmriprep_dir_name']
-    fmriprep_ana_name=lc_config['container_specific']['fmri_glm']['fmriprep_ana_name']    
-    fmriprep_dir=op.join(basedir,bidsdir_name,'derivatives',fmriprep_dir_name,fmriprep_ana_name)
-    
-    task=l1_glm_yaml["glm_"]
-    # set up freesurfer environment
-
-    # generate the cmd 
-    #gii_in=f"{fmriprep_dir}/sub-{subject}/ses-{session}/func/sub-{subject}_ses-{session}_task-{task}_run-{run}_hemi-{hemi}_space-{space}_bold.func.gii"
-    #gii_out=f"{fmriprep_dir}/sub-{subject}/ses-{session}/func/sub-{subject}_ses-{session}_task-{task}_run-{run}_hemi-{hemi}_space-{space}_desc-smoothed0${time_series_smooth_kernel}_bold.func.gii"
-		
-    #cmd=f"mris_fwhm --i {gii_in} --o {gii_out} --so --fwhm {time_series_smooth_kernel} --subject sub-{subject} --hemi {hemi} "
-    cmd=None
-    return cmd
 
 def mask_nii(mask_method, mask, source_nii):
     masked_nii=None
     return masked_nii
+
 def save_statmap_to_gifti(data, outname):
     """Save a statmap to a gifti file.
     data: nilearn contrast model output, e.g., contrast.effect_size()
@@ -95,6 +74,7 @@ def save_statmap_to_gifti(data, outname):
         nib.gifti.gifti.GiftiDataArray(data=data, datatype="NIFTI_TYPE_FLOAT32")
     )
     nib.save(gii_to_save, outname)
+
 def run_l1_glm(subject, session, lc_config, l1_glm_yaml):
     # (subject, session, fp_ana_name, output_name, slice_time_ref=0.5, use_smoothed=False, time_series_smooth_kernel=None)
     #subject= subject_sessions['BIDS_sub']
@@ -115,7 +95,8 @@ def run_l1_glm(subject, session, lc_config, l1_glm_yaml):
     bids = op.join(basedir,bidsdir_name)  # op to BIDS root
     container=lc_config['general']['container']
     version=lc_config['container_specific'][container]['version']
-    
+    analysis_name=lc_config['general']['analysis_name']
+
     fmriprep_dir_name=lc_config['container_specific'][container]['fmriprep_dir_name']
     fmriprep_ana_name=lc_config['container_specific'][container]['fmriprep_ana_name']
     fmriprep_dir = op.join(
@@ -141,6 +122,7 @@ def run_l1_glm(subject, session, lc_config, l1_glm_yaml):
     hemis = l1_glm_yaml['model']['hemis']     #, "R"]  # L for left, R for right
     logger.info(f"input hemis are {hemis}")
     mask_EPI =l1_glm_yaml['model']['mask_EPI']
+    
     if mask_EPI:
         mask_method =l1_glm_yaml['model']['mask_method']
         if mask_method=="fslabel":
@@ -585,11 +567,11 @@ def run_l1_glm(subject, session, lc_config, l1_glm_yaml):
     return f"run_glm ingg for {subject} {session}"
 
 def main():
-    parser = argparse.ArgumentParser(description='Run l1_glm with input arguments')
-    parser.add_argument('--subject', required=True, help='Subject for l1_glm')
-    parser.add_argument('--session', required=True, help='Session for l1_glm')
-    parser.add_argument('--lc_config', required=True, help='LC config yaml for l1_glm')
-    parser.add_argument('--l1_glm_yaml', required=True, help='L1 GLM YAML file for l1_glm')
+    parser = argparse.ArgumentParser(description='Run l1_glm with input arguments through the function l1_glm')
+    parser.add_argument('--subject', required=True, type=str, help='Subject for l1_glm')
+    parser.add_argument('--session', required=True, type=str, help='Session for l1_glm')
+    parser.add_argument('--lc_config', required=True, type=str, help='LC config yaml for l1_glm')
+    parser.add_argument('--l1_glm_yaml', required=True, type=str, help='L1 GLM YAML file for l1_glm')
     
     args = parser.parse_args()
     lc_config=do.read_yaml(args.lc_config)

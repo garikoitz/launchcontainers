@@ -17,11 +17,10 @@ import logging
 import os
 import os.path as op
 import json
-import zipfile
 
 import utils as do
 from prepare_inputs import prepare_dwi as dwipre
-
+from prepare_inputs import prepare_fmri as fmripre
 logger = logging.getLogger("Launchcontainers")
 
 def prepare_analysis_folder(parser_namespace, lc_config):
@@ -75,6 +74,7 @@ def prepare_analysis_folder(parser_namespace, lc_config):
     dict_store_cs_configs={}
     dict_store_cs_configs['config_path']=container_configs_under_analysis_folder
     dict_store_cs_configs['lc_yaml_path']=lc_config_under_analysis_folder
+    
     def process_optional_input(container,file_path, analysis_dir, option=None):
         if os.path.isfile(file_path):
             logger.info("\n"
@@ -378,6 +378,72 @@ def prepare_dwi_input(parser_namespace, analysis_dir, lc_config, df_subSes, layo
                             f"***An error occurred"
                             +f"{container} is not created, check for typos or contact admin for singularity images\n"
             )
+
+    logger.info("\n"+
+                "#####################################################\n")
+    return  
+
+
+def prepare_fmri_input(parser_namespace, analysis_dir, lc_config, df_subSes, dict_store_cs_configs):
+    """
+    This is the major function for doing the preparation, it is doing the work 
+    1. move and check the onset files is consistant with your yaml input
+    
+    Parameters
+    ----------
+    lc_config : TYPE
+        DESCRIPTION.
+    df_subSes : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    None.
+
+    """
+    logger.info("\n"+
+                "#####################################################\n"
+                +"Preparing for surface based fMRI \n")
+    
+    
+    container = lc_config["general"]["container"]
+    force = lc_config["general"]["force"]   
+    run_lc = parser_namespace.run_lc    
+    force= force or run_lc    
+    l1_glm_yaml_path= dict_store_cs_configs['config_path']
+    l1_glm_yaml=do.read_yaml(l1_glm_yaml_path)
+    
+    logger.info("\n"+
+                "#####################################################\n"
+                +f"Prepare for {container}\n")
+    for row in df_subSes.itertuples(index=True, name="Pandas"):
+        sub = row.sub
+        ses = row.ses
+        
+        tmpdir = op.join(
+            analysis_dir,
+            "sub-" + sub,
+            "ses-" + ses,
+            "output", "tmp"
+        )
+        logdir = op.join(
+            analysis_dir,
+            "sub-" + sub,
+            "ses-" + ses,
+            "output", "log"
+        )
+
+        if not op.isdir(tmpdir):
+            os.makedirs(tmpdir)
+        if not op.isdir(logdir):
+            os.makedirs(logdir)
+        
+        do.copy_file(parser_namespace.lc_config, op.join(logdir,'lc_config.yaml'), force) 
+        
+        config_file_path=dict_store_cs_configs['config_path']
+        do.copy_file(config_file_path, op.join(logdir,'config.json'), force)   
+        
+        fmripre.move_onset_files_to_bids(lc_config,l1_glm_yaml,sub,ses)
 
     logger.info("\n"+
                 "#####################################################\n")

@@ -319,7 +319,7 @@ def get_launchcontainers_version():
         return None
 def get_mocked_launchcontainers_version():
     # Specify the version you want to mock for testing purposes
-    return "0.3.0"
+    return "0.4.0"
 def download_configs(version, download_path):
     github_url = f"https://github.com/garikoitz/launchcontainers/raw/main/example_configs/{version}/example_config.yaml"  #https://github.com/garikoitz/launchcontainers/tree/master/example_configs/0.3.0
     response = requests.get(github_url)
