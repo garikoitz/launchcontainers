@@ -18,7 +18,7 @@ from dask import config
 from dask.distributed import Client, LocalCluster
 from dask_jobqueue import SGECluster, SLURMCluster
 
-logger = logging.getLogger("GENERAL")
+logger = logging.getLogger("Launchcontainers")
 
 def initiate_cluster(jobqueue_config, n_job, logdir):
     '''
