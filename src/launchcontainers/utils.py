@@ -24,6 +24,7 @@ import sys
 import pandas as pd
 import os.path as op
 from os import makedirs
+import requests
 logger = logging.getLogger("Launchcontainers")
 
 
@@ -42,6 +43,7 @@ def get_parser():
 
     """
     parser = argparse.ArgumentParser(
+        prog="Launchcontainers",
         description="""
         This python program helps you analysis MRI data through different containers,
         Before you make use of this program, please prepare the environment, edit the required config files, to match your analysis demand. \n
@@ -58,6 +60,7 @@ def get_parser():
         We add lots of check in the script to avoid program breakdowns. if you found new bugs while running, do not hesitate to contact us""",
         formatter_class=RawDescriptionHelpFormatter,
     )
+
 
     parser.add_argument(
         "-lcc",
@@ -107,6 +110,18 @@ def get_parser():
         action="store_true",
         help="if you want to find out what is happening of particular step, --type debug, this will print you more detailed information",
     )
+    parser.add_argument(
+        '--download_configs', 
+        action="store_true",
+        help='Path to download the configs')
+    
+    parser.add_argument(
+        '--gen_subseslist', 
+        action="store_true",
+        help='if you want to generate a template subseslist based on the sub and session you provide')
+    
+    parser.add_argument("-sub", nargs='+', help="List of subjects")
+    parser.add_argument("-ses", nargs='+', help="List of sessions")
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
         sys.exit(1)
@@ -258,3 +273,39 @@ def copy_file(src_file, dst_file, force):
     logger.info("\n" + "#####################################################\n")
 
     return dst_file
+def get_launchcontainers_version():
+    try:
+        from importlib.metadata import version
+    except ImportError:  # For Python < 3.8
+        from pkg_resources import get_distribution as version
+    
+    try:
+        return version('launchcontainers')
+    except Exception as e:
+        logger.error(f"Error getting launchcontainers version: {e}")
+        return None
+def get_mocked_launchcontainers_version():
+    # Specify the version you want to mock for testing purposes
+    return "0.3.0"
+def download_configs(version, download_path):
+    github_url = f"https://github.com/garikoitz/launchcontainers/raw/main/example_configs/{version}/example_config.yaml"  #https://github.com/garikoitz/launchcontainers/tree/master/example_configs/0.3.0
+    response = requests.get(github_url)
+    
+    if response.status_code == 200:
+        config_path = os.path.join(download_path, f"{version}_config.yaml")
+        with open(config_path, 'wb') as file:
+            file.write(response.content)
+        logger.info(f"Configs for version {version} downloaded successfully.")
+    else:
+        logger.error(f"Failed to download configs for version {version}. HTTP Status Code: {response.status_code}")
+
+def generate_subseslist(lst_sub,lst_ses):
+    data = []
+    for sub in lst_sub:
+        for ses in lst_ses:
+            data.append([sub, ses, True, True, True, True])
+
+    # Create the DataFrame
+    df = pd.DataFrame(data, columns=['sub', 'ses', 'RUN', 'anat', 'dwi', 'func'])
+    output_file = 'sub_ses_list.txt'
+    df.to_csv(output_file, sep=',', index=False)
