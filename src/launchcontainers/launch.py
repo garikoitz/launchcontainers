@@ -188,7 +188,7 @@ def prepare_dask_futures(
             sub = row.sub
             ses = row.ses
             
-            command= f"{env_cmd}&& python {py_pipeline_dir}/l1_glm.py --subject {sub} --session {ses} --lc_config {dict_store_cs_configs['lc_yaml_path']} --l1_glm_yaml {dict_store_cs_configs['config_path']} "
+            command= f"{env_cmd}python {py_pipeline_dir}/l1_glm.py --subject {sub} --session {ses} --lc_config {dict_store_cs_configs['lc_yaml_path']} --l1_glm_yaml {dict_store_cs_configs['config_path']} "
             commands.append(command)
             logger.critical(
                 f"\nCOMMAND for subject-{sub}, and session-{ses}:\n"

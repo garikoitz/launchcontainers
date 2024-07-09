@@ -459,8 +459,10 @@ def prepare_fmri_input(parser_namespace, analysis_dir, lc_config, df_subSes, dic
         config_file_path=dict_store_cs_configs['config_path']
         do.copy_file(config_file_path, op.join(logdir,'config.json'), force)   
         
-        fmripre.move_onset_files_to_bids(lc_config,l1_glm_yaml,sub,ses)
-
+        onset_correct=fmripre.move_onset_files_to_bids(lc_config,l1_glm_yaml,sub,ses)
+        if not onset_correct:
+            logger.error("Not all the onset files are with correct trial name")
+            raise ValueError("Please check your onset files")
     logger.info("\n"+
                 "#####################################################\n")
     return  

@@ -205,7 +205,7 @@ def py_command(host):
     
     # for packaging, I don't think we need this, but for testing from repo, we need BCBL python path
     if host == "BCBL":
-        env_cmd= 'export PYTHONPATH=/bcbl/home/home_n-z/tlei/soft/MRIworkflow/Package/src:$PYTHONPATH '
+        env_cmd= 'export PYTHONPATH=/bcbl/home/home_n-z/tlei/soft/MRIworkflow/Package/src:$PYTHONPATH && '
     if host == "DIPC":
         env_cmd=''
     if host == "local":

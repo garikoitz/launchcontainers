@@ -46,7 +46,8 @@ from nilearn.glm.first_level import (
     make_first_level_design_matrix,
     first_level_from_bids,
 )
-
+import yaml
+from yaml.loader import SafeLoader
 from nilearn.glm.first_level.first_level import run_glm
 from nilearn.glm.contrasts import compute_contrast
 import pandas as pd
@@ -57,12 +58,20 @@ from argparse import RawDescriptionHelpFormatter
 import sys
 sys.path.append(op.abspath(op.join(op.dirname(__file__), '../../')))
 
-# package import 
-# from launchcontainers import utils as do
+def read_yaml(path_to_config_file):
+    """
+    Input:
+    the path to the config file
 
-# git testing import
+    Returns
+    a dictionary that contains all the config info
 
-import utils as do
+    """
+    with open(path_to_config_file, "r") as v:
+        config = yaml.load(v, Loader=SafeLoader)
+
+    return config
+
 
 logger = logging.getLogger("Launchcontainers")
 
@@ -578,8 +587,8 @@ def main():
     parser.add_argument('--l1_glm_yaml', required=True, type=str, help='L1 GLM YAML file for l1_glm')
     
     args = parser.parse_args()
-    lc_config=do.read_yaml(args.lc_config)
-    l1_glm_yaml=do.read_yaml(args.l1_glm_yaml)
+    lc_config=read_yaml(args.lc_config)
+    l1_glm_yaml=read_yaml(args.l1_glm_yaml)
     # Call the function with the provided arguments
     run_l1_glm(args.subject, args.session, lc_config, l1_glm_yaml)
 
