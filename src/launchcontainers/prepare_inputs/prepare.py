@@ -47,7 +47,7 @@ def prepare_analysis_folder(parser_namespace, lc_config):
     force = lc_config["general"]["force"]
     analysis_name= lc_config['general']['analysis_name']
     run_lc = parser_namespace.run_lc
-    force= force or run_lc    
+    force= force and not run_lc    
     bidsdir_name = lc_config['general']['bidsdir_name']  
     if container in [
             "anatrois",
@@ -337,7 +337,7 @@ def prepare_dwi_input(parser_namespace, analysis_dir, lc_config, df_subSes, layo
     container = lc_config["general"]["container"]
     force = lc_config["general"]["force"]   
     run_lc = parser_namespace.run_lc    
-    force= force or run_lc    
+    force=  force and not run_lc   
     version = lc_config["container_specific"][container]["version"]
     
     logger.info("\n"+
@@ -435,7 +435,7 @@ def prepare_fmri_input(parser_namespace, analysis_dir, lc_config, df_subSes, dic
     container = lc_config["general"]["container"]
     force = lc_config["general"]["force"]   
     run_lc = parser_namespace.run_lc    
-    force= force or run_lc    
+    force=  force and not run_lc 
     l1_glm_yaml_path= dict_store_cs_configs['config_path']
     l1_glm_yaml=do.read_yaml(l1_glm_yaml_path)
     
@@ -468,11 +468,14 @@ def prepare_fmri_input(parser_namespace, analysis_dir, lc_config, df_subSes, dic
         
         config_file_path=dict_store_cs_configs['config_path']
         do.copy_file(config_file_path, op.join(logdir,'config.json'), force)   
-        
-        onset_correct=fmripre.move_onset_files_to_bids(lc_config,l1_glm_yaml,sub,ses)
-        if not onset_correct:
-            logger.error("Not all the onset files are with correct trial name")
-            raise ValueError("Please check your onset files")
+        if lc_config["container_specific"]["l1_glm"]["onsetdir"]:
+            
+            onset_correct=fmripre.move_onset_files_to_bids(lc_config,l1_glm_yaml,sub,ses)
+            if not onset_correct:
+                logger.error("Not all the onset files are with correct trial name")
+                raise ValueError("Please check your onset files")
+        else:
+            logger.info("There is no input onsetdir, not preparing the onset files")
     logger.info("\n"+
                 "#####################################################\n")
     return  
