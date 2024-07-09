@@ -1,0 +1,161 @@
+# Input guide:
+# replace the part of this template config.yaml with your own dataset
+# Input value type:
+#       str: string, python will read if as string, type a space after : and input the string directly
+#       bool: boolean value, True of False, needs to be capitalize first letter
+#       int: integer, similar to string, type a space after :
+#       None: python None type, Usually used for optional arguement, don't put anything after column, not even ""
+general:
+  # general setting of launchcontainer soft
+  basedir: /media/tlei/data/VOTCLOC # Base directory of project
+  bidsdir_name: vssbids # Name of bids directory, 1 level under basedir, must contain dataset_description
+  containerdir: /bcbl/home/public/Gari/singularity_images # Directory contains singularity images # if it is a python project, no need
+  container: l1_glm  # Name of the container
+                              # VALID OPTIONS: freesurferator, rtp2-preproc, rtp2-pipeline, anatrois, rtppreproc, rtp-pipeline, l1_glm, fmriprep 
+  analysis_name: test_dask_l1 # Name of analysis folder 
+  host: local # Place the computing will be held. 
+              # VALID OPTIONS: local, BCBL, DIPC.
+  force: True # Whether force to overwrite
+  print_command_only: False # Verbosity of command-line console. If true, only print information at level: CRITICAL (based on python logging package)
+  log_dir: analysis_dir # Log directory to store launchcontainers logging 
+                        # VALID OPTIONS: analysis_dir or full path you want
+  log_filename: lc_log # Name of launchcontainers log file
+ 
+container_specific:
+  anatrois:
+    version: 4.6.1-7.3.2 # Version identifier for container 
+    pre_fs: True # Pre-run freesurfer or not?
+    prefs_dir_name: anatrois_4.6.1-7.3.2 # Directory name of your pre-run freesurfer, this directory should be under /basedir/bidsdir/derivatives
+    prefs_analysis_name: "6prefs_from_fmriprep" # Analysis name of pre-run freesurfer
+    prefs_zipname: '^anatrois_S.*\.zip$' # A super identifier to find the pattern no need to change
+    # optional
+    annotfile:  # Freesurfer annotefiles
+    mniroizip:  # MNI roi zip file
+  
+  rtppreproc:
+    version: 1.2.0-3.0.3 # Version identifier for container
+    precontainer_anat: anatrois_4.6.1-7.3.2 # anatrois or freesurferator dir, used to find the brainmask
+    anat_analysis_name: fMRIprep_brainmask # Analysis name 
+    # optional
+    multishell: True # if your encoding direction DWI is multishell sequence
+    rpe: True # If reverse phase encoding is applied in the sequence
+              # It checks if there is a reverse phase encoding acquisition
+              # Old dcm2nixx will not create empty bvec and bval files if there was an acquisition with just b0-s
+
+  
+  rtp-pipeline:
+    version: 4.5.2-3.0.3 # Version identifier for container      
+    precontainer_anat: anatrois_4.6.1-7.3.2  # anatrois or freesurferator dir, used to find the brainmask and fs/ROIs
+    anat_analysis_name: fulltract_anatrerun # Analysis name 
+    precontainer_preproc: rtppreproc_1.2.0-3.0.3 # rtppreproc or rtp2-preproc dir, used to find the dwi.nii.gz, bvec and bval
+    preproc_analysis_name: 6sub_wrongbvec # Analysis name 
+
+  freesurferator:
+    version: 0.2.0-7.4.1rc19  # Version identifier for container 
+    pre_fs: True # Pre-run freesurfer or not?
+    prefs_dir_name: freesurferator_0.2.0-7.4.1rc19 # Directory name of your pre-run freesurfer, this directory should be under /basedir/bidsdir/derivatives
+    prefs_analysis_name: control_points_02 # Analysis name of pre-run freesurfer
+    prefs_zipname: '^freesurferator_S.*\.zip$' # A super identifier to find the pattern 
+    control_points: False # If you want to use the control points created in the previous analysis (control.dat), set this True:
+    prefs_unzipname: 'S.*$'    # If you created control points, you'll have an unzipped folder in the output analysis. Fill prefs_unzipname
+                               # with the name of the unzipped folder to let launchcontainers create a symbolic link to the control.dat  
+    # optional 
+    annotfile:  # Freesurfer annotefiles
+    mniroizip:  # MNI roi zip file
+  
+  rtp2-preproc:
+    version: 0.1.0_3.0.4rc31 # Version identifier for container      
+    precontainer_anat: freesurferator_0.2.0-7.4.1rc19 # anatrois or freesurferator dir, used to find the brainmask
+    anat_analysis_name: control_points_02 # Analysis name 
+    # optional
+    multishell: True # if your encoding direction DWI is multishell sequence
+    rpe: True # If reverse phase encoding is applied in the sequence
+              # It checks if there is a reverse phase encoding acquisition
+              # if not, launchcontainers will create mock files
+    qmap_nifti: /home/tlei/Desktop/FG.nii.gz # Full Path to qunatitative MRI maps, must be nifti format
+  rtp2-pipeline:
+    version: 0.1.0_3.0.4rc20 # Version identifier for container 
+    precontainer_anat: freesurferator_0.2.0-7.4.1rc19 # anatrois or freesurferator dir, used to find the brainmask and fs/ROIs
+    anat_analysis_name: control_points_02 # Analysis name 
+    precontainer_preproc: rtp2-preproc_0.1.0_3.0.4rc31 # rtppreproc or rtp2-preproc dir, used to find the dwi.nii.gz, bvec and bval
+    preproc_analysis_name: control_points_02 # Analysis name 
+    #optional
+    tractparams: /home/tlei/tlei/LMC_DWI_course/scripts/tractparams_short_course.csv # Path to tractparams files, needs to be a .csv
+    fsmask: /home/tlei/Desktop/FG.nii.gz # Path to brain.nii.gz of freesurfer If use fsmask or define manually, this option is set in case you need 
+    qmap_zip: /home/tlei/Desktop/annnnooott.zip # zip file for rtp2-pipeline
+  l1_glm: 
+    version: default # 
+    fmriprep_dir_name: fmriprep # fmriprep folder name under derivatives
+    fmriprep_ana_name: sub05all # fmriprep analysis name (The input), used to get the preprocessed fMRI time-series
+    # output name is in section general:analysis_name
+    pre_fs: True # you want to use another freesurfer or not, usesually we use the things under fmriprep sourcedata/freesurfer
+    pre_fs_full_path:  freesurfer # The dir name of freesurfer folder you want to use 
+    onset_format: fLoc # The folder structure of onset times, Kepa SPM or fLoc or BIDS, if BIDS, do nothing. Else, needs to do something in the prepare mode
+    smooth_time_series: False # this one will work in prepare mode, if false, prepare mode will do nothing but keeping the data provenance
+    # if True, it will do the time-series smoothing using freesurfer/ or nilear?
+    smooth_kernel: [2,4] # a list of FWHM kernal for doing the smoothing， this will only used for the prepare mode
+    # ususally I will do 2 and 4
+    use_smoothed: False # if use the smoothed time-series. If True, will call the time_series_smooth_kernel 
+    time_series_smooth_kernel: 2 # str, specify which time series you will use 
+
+host_options:
+    # Default BCBL
+    BCBL:
+      use_module: False # for SGE, it is always false
+      apptainer: apptainer/latest
+      maxwall: 10
+      manager: sge
+      name: "anatrois"
+      # Dask worker options
+      cores: 6                    # Total number of cores per job (it was core for BCBL)
+      memory: 32G                # Total amount of memory per job (it was mem for BCBL)
+      processes: 1                # Number of Python processes per job
+
+      interface: lo             # Network interface to use like eth0 or ib0
+      death-timeout: 100           # Number of seconds to wait if a worker can not find a scheduler
+      local-directory: null       # Location of fast local storage like /scratch or $TMPDIR
+
+      # SGE resource manager options
+      #shebang: "#!/usr/bin/env bash"
+      queue: long.q              # It was que in BCBL
+      project: null
+      walltime: 25:30:00'
+      extra: []
+      env-extra: []
+      job-extra: []
+      resource-spec: null
+      bind_options: ['/bcbl', '/tmp','/scratch']
+
+    # Defaul DIPC
+    DIPC:
+      memory: 32G
+      queue: regular
+      cores: 24
+      walltime: '22:00:00'
+      use_module: False # for SLURM, it is always false
+      apptainer: Singularity/3.5.3-GCC-8.3.0
+      manager: slurm
+      system: scratch
+      name: "anatrois"
+    # maxwall: 5
+      tmpdir: /scratch/llecca/tmp
+    # Other
+      bind_options: ['/scratch']
+    # local host options
+    local:
+      manager: local 
+      use_module: True # if the local machine use module load this option will give you different version of job-queue cmd
+      n_cores: 7 # total cores you ask from your PC
+      apptainer: apptainer/latest
+      bind_options: ['/bcbl', '/tmp', '/export'] # Copy the example list: for BCBL we need ['/bcbl', '/tmp', '/export']; for okazaki we need ['/fileserver', '/tmp']
+      launch_mode: parallel  # This can only be serial or parallel, any other options will make it fail.
+      processes: False # default True
+          #Use Processes (processes=True):
+          #If your tasks are CPU-bound and you need to avoid the GIL.
+          #If tasks are memory-intensive and you want memory isolation to prevent memory leaks from affecting other tasks.
+          
+          #Use Threads (processes=False):
+          #If your tasks are I/O-bound and can benefit from sharing memory between threads.
+          #If you have tasks that involve a lot of shared state or require low overhead in terms of process management.
+      memory_limit: 8GiB  # Memory limit per worker
+      threads_per_worker: 2  # If you used dask to launch pipelines, set it to 2, if you used dask to launch l1_glm, set it to an appropiate number, 4 or 6

@@ -200,8 +200,14 @@ def dwi_command(
 
     
     return cmd
-def py_command():
+def py_command(host):
     #env_cmd = "conda init && conda activate votcloc &&"
-    env_cmd= 'export PYTHONPATH=/bcbl/home/home_n-z/tlei/soft/MRIworkflow/Package/src:$PYTHONPATH '
-  
+    
+    # for packaging, I don't think we need this, but for testing from repo, we need BCBL python path
+    if host == "BCBL":
+        env_cmd= 'export PYTHONPATH=/bcbl/home/home_n-z/tlei/soft/MRIworkflow/Package/src:$PYTHONPATH '
+    if host == "DIPC":
+        env_cmd=''
+    if host == "local":
+        env_cmd=''
     return env_cmd

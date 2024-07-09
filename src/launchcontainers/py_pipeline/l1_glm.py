@@ -56,8 +56,13 @@ import argparse
 from argparse import RawDescriptionHelpFormatter
 import sys
 sys.path.append(op.abspath(op.join(op.dirname(__file__), '../../')))
-# Now you can import utils
+
+# package import 
+# from launchcontainers import utils as do
+
+# git testing import
 import utils as do
+
 logger = logging.getLogger("Launchcontainers")
 
 def mask_nii(mask_method, mask, source_nii):

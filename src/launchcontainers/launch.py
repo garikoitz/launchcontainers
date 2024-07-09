@@ -18,12 +18,24 @@ import os.path as op
 import logging
 import dask
 from bids import BIDSLayout
-import dask_scheduler_config as config_dask
+import subprocess
+
+#package import
+from launchcontainers import utils as do
+from launchcontainers import generate_command as gen_cmd
+from launchcontainers import dask_scheduler_config as config_dask
+from launchcontainers.prepare_inputs import prepare
+from launchcontainers.py_pipeline import l1_glm
+
+
+# repo testing import
 import utils as do
 import generate_command as gen_cmd
 from prepare_inputs import prepare
-import subprocess
-from pyfunc import l1_glm
+from py_pipeline import l1_glm
+import dask_scheduler_config as config_dask
+
+
 logger = logging.getLogger("Launchcontainers")
 
 def prepare_dask_futures(
@@ -167,7 +179,7 @@ def prepare_dask_futures(
         future_dict['optimal_n_workers']=optimal_n_workers
         future_dict['container']=container
         future_dict['logdir']=logdir
-        env_cmd=gen_cmd.py_command()
+        env_cmd=gen_cmd.py_command(host)
         for row in sub_ses_list.itertuples(index=True, name="Pandas"):
             sub = row.sub
             ses = row.ses
