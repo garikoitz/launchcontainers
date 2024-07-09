@@ -154,13 +154,11 @@ def run_l1_glm(subject, session, lc_config, l1_glm_yaml):
 
     ### Define output directory
     analysis_name=lc_config['general']['analysis_name']
-    outdir = op.join(bids, "derivatives",f'{container}_{version}',f'analysis-{analysis_name}', f'sub-{subject}',f'ses-{session}')
+    outdir = op.join(bids, "derivatives",f'{container}',f'analysis-{analysis_name}', f'sub-{subject}',f'ses-{session}')
 
     if not op.exists(outdir):
-        makedirs(outdir)
+        raise FileNotFoundError("There is no analysis folder")
 
-
-    
     ### Loop across hemispheres
     for hemi in hemis:
         print("Processing hemi", hemi)

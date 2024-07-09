@@ -48,9 +48,19 @@ def prepare_analysis_folder(parser_namespace, lc_config):
     analysis_name= lc_config['general']['analysis_name']
     run_lc = parser_namespace.run_lc
     force= force or run_lc    
-    version = lc_config["container_specific"][container]["version"]    
     bidsdir_name = lc_config['general']['bidsdir_name']  
-    container_folder = op.join(basedir, bidsdir_name,'derivatives',f'{container}_{version}')
+    if container in [
+            "anatrois",
+            "rtppreproc",
+            "rtp-pipeline",
+            "freesurferator",
+            "rtp2-preproc",
+            "rtp2-pipeline"
+        ]:
+        version = lc_config["container_specific"][container]["version"]      
+        container_folder = op.join(basedir, bidsdir_name,'derivatives',f'{container}_{version}')
+    else:
+        container_folder= op.join(basedir, bidsdir_name,'derivatives',f'{container}')
     if not op.isdir(container_folder):
         os.makedirs(container_folder)
     
