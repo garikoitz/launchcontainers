@@ -4,10 +4,9 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "launchcontainers"
-version = "0.2.105"
+version = "0.3.16"
 description = "Launch Containers Package"
-authors = [ "BCBL", 
-            "Garikoitz Lerma-Usabiaga",
+authors = [ "Garikoitz Lerma-Usabiaga",
             "Leandro Lecca",
             "Mengxing Liu",
             "Yongning Lei"
@@ -21,17 +20,13 @@ repository = "https://github.com/garikoitz/launchcontainers"
 license = "MIT"
 keywords = ["HPC", "MRI", "RTP2","DWI","dMRI"]
 classifiers = ["Topic :: Software Development :: Libraries :: Python Modules"]
-packages = [{include = "prepare_inputs", from = "src"},
-            {include = "src"}
-		
-]
-
+packages = [{include = "launchcontainers", from = "src"}]
 [tool.poetry.scripts]
-launchcontainers = "src.launch:main"
+launchcontainers = "launchcontainers.launch:main"
 
 
 [tool.poetry.dependencies]
-python = "~3.10"
+python = "^3.10"
 bids = "*"
 pybids = "0.16.1"
 distributed = "2022.7.0"

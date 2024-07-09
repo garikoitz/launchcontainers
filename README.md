@@ -7,8 +7,12 @@
 
 Currently, **launchcontainers** works along with [anatROIs](https://github.com/garikoitz/anatROIs), [RTP-preproc](https://github.com/garikoitz/rtp-preproc), and [RTP2-pipeline](https://github.com/garikoitz/rtp-pipeline).
 
-## NEW FEATURES
-Now you can `pip install launchcontainers==0.2.105 ` and use it in the command line! check the [How to use]() for more information
+## NEW FEATURES 0.3.x
+Now you can `pip install launchcontainers==0.3.16 ` and use it in the command line! 
+* launchcontainers --copy_configs "~/path/to/working_directory" will copy the corresponding config files to your specified directory!
+* We updated the lc_config.yaml for RTP2-pipelines, please have a look!
+
+check the [How to use]() for more information
 
 # Check also:
 * [Home](https://github.com/garikoitz/launchcontainers/wiki/Home)
