@@ -180,11 +180,15 @@ def prepare_dask_futures(
         future_dict['container']=container
         future_dict['logdir']=logdir
         env_cmd=gen_cmd.py_command(host)
+        import pkg_resources
+
+        py_pipeline_dir = pkg_resources.resource_filename('launchcontainers', 'py_pipeline')
+
         for row in sub_ses_list.itertuples(index=True, name="Pandas"):
             sub = row.sub
             ses = row.ses
             
-            command= f"{env_cmd}&& python {containerdir}/l1_glm.py --subject {sub} --session {ses} --lc_config {dict_store_cs_configs['lc_yaml_path']} --l1_glm_yaml {dict_store_cs_configs['config_path']} "
+            command= f"{env_cmd}&& python {py_pipeline_dir}/l1_glm.py --subject {sub} --session {ses} --lc_config {dict_store_cs_configs['lc_yaml_path']} --l1_glm_yaml {dict_store_cs_configs['config_path']} "
             commands.append(command)
             logger.critical(
                 f"\nCOMMAND for subject-{sub}, and session-{ses}:\n"
@@ -277,7 +281,7 @@ def main():
             sub_list = parser_namespace.sub
             ses_list = parser_namespace.ses
             do.generate_subseslist(sub_list,ses_list)
-            print("\n######Your template sub_ses_list.txt has been created under the CWD!######")
+            print("######Your template sub_ses_list.txt has been created under the CWD!######")
         return
     # Check if download_configs argument is provided
     if download_configs:

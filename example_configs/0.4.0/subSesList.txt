@@ -1,4 +1,0 @@
-sub,ses,RUN,anat,dwi,func
-BC03,001,True,True,True,False
-BC05,001,False,True,True,False
-BC06,001,False,True,True,False

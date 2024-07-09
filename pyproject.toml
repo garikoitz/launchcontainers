@@ -6,12 +6,12 @@ build-backend = "poetry.core.masonry.api"
 name = "launchcontainers"
 version = "0.4.10"
 description = "Launch Containers Package"
-authors = [ "BCBL", 
-            "Garikoitz Lerma-Usabiaga",
-            "Leandro Lecca",
-            "Mengxing Liu",
-            "Yongning Lei"
-            ]
+authors = [
+    "Garikoitz Lerma-Usabiaga",
+    "Leandro Lecca",
+    "Mengxing Liu",
+    "Yongning Lei"
+]
 # Acknowledgments
 # I would like to thank Iñigo Tellaetxe from CompNeuroLabBilbao for his help on packaging this repository
 
@@ -19,30 +19,40 @@ maintainers = ["Garikoitz Lerma-Usabiaga", "Yongning Lei"]
 readme = "README.md"
 repository = "https://github.com/garikoitz/launchcontainers"
 license = "MIT"
-keywords = ["HPC", "MRI", "RTP2","DWI","dMRI"]
-classifiers = ["Topic :: Software Development :: Libraries :: Python Modules"]
-packages = [{include = "prepare_inputs", from = "src"},
-            {include = "src"}
-		
+keywords = ["HPC", "MRI", "RTP2", "DWI", "dMRI"]
+classifiers = [
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules"
 ]
+packages = [{ include = "launchcontainers", from = "src" }]
 
 [tool.poetry.scripts]
-launchcontainers = "src.launch:main"
+launchcontainers = "launchcontainers.launch:main"
 
-[project.dependencies]
-python = "^3.10"
+[tool.poetry.dependencies]
+python = ">=3.10, <4.0"
 bids = "*"
-pybids = "0.16.1"
-distributed = "2022.7.0"
-dask = "2022.7.0"
-dask_jobqueue = "0.8.1"
-nibabel = "5.1.0"
-numpy = "1.23.5"
-pandas = "1.5.3"
-scipy = "1.11.4"
-PyYAML = "6.0.1"
+pybids = "^0.16.1"
+nibabel = "^5.1.0"
+numpy = "^1.23.5"
+pandas = "^1.5.3"
+scipy = "^1.11.4"
+PyYAML = "^6.0.1"
 coverage-conditional-plugin = "^0.7.0"
-
+Cython = "==3.0.10"
+dask = "==2024.5.2"
+dask-jobqueue = "==0.8.5"
+gdist = "==2.1.0"
+matplotlib = "==3.9.0"
+nilearn = "==0.10.4"
+packaging = "==24.0"
+plotly = "==5.22.0"
+requests = "==2.32.3"
+scikit-learn = "==1.5.0"
 
 [tool.poetry.dev-dependencies]
 nox-poetry = "*"
@@ -56,4 +66,4 @@ flake8-bugbear = "*"
 flake8-broken-line = "*"
 flake8-comprehensions = "*"
 # Formatting
-black = {version = "^23.1a1", allow-prereleases = true}
+black = { version = "^23.1a1", allow-prereleases = true}
