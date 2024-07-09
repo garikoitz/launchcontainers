@@ -1,0 +1,166 @@
+
+experiment:
+    task: fLoc
+    # Runs to process
+    run_nums: ["01", "02", "03", "04", "05", "06"] 
+    # dummy scan of your experiment 
+    dummy_scans: 6 
+model:
+    # fMRI time-series space: volumetric or surface based
+    # valid options: EPI, MNI, fsnative, fsaverage. Currently only valid for fsnative and fsaverage
+    space: fsnative
+
+    # if is surface based, choose which hemisphere, input is a list, by default it would be both hemisphere because it is fast
+    hemis: ['lh','rh']
+
+    # TODO: whether mask the image to conduct the GLM only on some part to increase power
+    mask_EPI: False
+
+    # Valid option: fslabel, bimap.nii
+    # if mask EPI is true, then you need to choose mask method: either binary mask xx.nii or freesurfer label
+    mask_method: fslabel
+
+    # The things between ?h.xx.label
+    # if space is freesurfer space, give the label name, TODO: if space is individual T1,
+    fslabel_name: votc
+
+    # full path or simply the name of this file,
+    # if it is not full path, then you need to put it under the default place /basedir/bidsdir/derivatives/l1_glm/analysis-xxx/
+    # if mask_methods is bimap.nii this option will be used
+    # please, put this nii file under the analysis folder of the l1_glm,
+    maskfile_nii_path: /path/to/nii
+
+    # From the fMRIPrep command, align slice time correction to start of TR
+    slice_time_ref: 0.5  #0.5 or 0 
+
+    # HRF model to use
+    hrf_model: spm
+
+    # Do not high_pass since we use fMRIPrep's cosine regressors
+    drift_model: None  # Do not high_pass since we use fMRIPrep's cosine regressors
+
+    # Do not high_pass since we use fMRIPrep's cosine regressors
+    drift_order: 0  # Do not high_pass since we use fMRIPrep's cosine regressors
+
+    # Do not high_pass since we use fMRIPrep's cosine regressors
+    high_pass: None  # Do not high_pass since we use fMRIPrep's cosine regressors
+
+    # Motion regressors to use
+    motion_regressors: [
+                "framewise_displacement",
+                "rot_x",
+                "rot_y",
+                "rot_z",
+                "trans_x",
+                "trans_y",
+                "trans_z",
+            ]
+
+    # currently don't know how to use the following three            
+    use_acompcor: True
+    use_non_steady_state: True
+    use_consine_regressors: True
+
+contrast_groups:
+    All:
+        - adult
+        - child
+        - body
+        - limb
+        - ES_word
+        - ES_FF
+        - ES_CB
+        - ES_CS
+        - ES_SC
+    AllnoLimbs:
+        - adult
+        - child
+        - ES_word
+        - ES_FF
+        - ES_CB
+        - ES_CS
+        - ES_SC
+    AllnoWord:
+        - adult
+        - child
+        - body
+        - limb
+        - ES_FF
+        - ES_CB
+        - ES_CS
+        - ES_SC    
+    AllnoWordnoLEX:
+        - adult
+        - child
+        - body
+        - limb
+        - ES_CB
+        - ES_SC        
+    AllnoFace:
+        - body
+        - limb
+        - ES_word
+        - ES_FF
+        - ES_CB
+        - ES_CS
+        - ES_SC        
+    LEXPER:
+        - ES_FF
+        - ES_CB
+        - ES_CS
+        - ES_SC 
+    PER:
+        - ES_CB
+        - ES_SC
+    LEX:
+        - ES_CS
+        - ES_FF
+    Faces:
+        - adult
+        - child
+    Word:
+        - ES_word
+    Limbs:
+        - body
+        - limb
+    CB:
+        - ES_CB
+    SC:
+        - ES_SC
+    CS:
+        - ES_CS
+    FF:
+        - ES_FF
+    Adult:
+        - adult
+    Child:
+        - child
+    Limb:
+        - limb
+    Body:
+        - body    
+contrasts:
+  - AllvsNull
+  - PERvsNull
+  - LEXvsNull
+  - PERvsLEX
+  - WordvsLEX
+  - WordvsPER
+  - WordvsLEXPER
+  - WordvsAllnoWordnoLEX
+  - WordvsAllnoWord
+  - LEXvsAllnoWordnoLEX
+  - SCvsCB
+  - CSvsFF
+  - FacesvsNull
+  - FacesvsLEX
+  - FacesvsPER
+  - FacesvsLEXPER
+  - FacesvsAllnoFace
+  - AdultvsChild
+  - LimbsvsNull
+  - LimbsvsLEX
+  - LimbsvsPER
+  - LimbsvsLEXPER
+  - LimbsvsAllnoLimbs
+  - BodyvsLimb

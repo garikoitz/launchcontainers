@@ -73,4 +73,4 @@ flake8-bugbear = "*"
 flake8-broken-line = "*"
 flake8-comprehensions = "*"
 # Formatting
-black = {version = "^23.1a1", allow-prereleases = true}
+black = { version = "^23.1a1", allow-prereleases = true}

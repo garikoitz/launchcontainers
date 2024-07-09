@@ -61,6 +61,7 @@ sys.path.append(op.abspath(op.join(op.dirname(__file__), '../../')))
 # from launchcontainers import utils as do
 
 # git testing import
+
 import utils as do
 
 logger = logging.getLogger("Launchcontainers")
@@ -134,10 +135,10 @@ def run_l1_glm(subject, session, lc_config, l1_glm_yaml):
             fslabel_name =l1_glm_yaml['model']['fslabel_name']
             label_dir=op.join(fs_dir, f'sub-{subject}','label') 
         elif mask_method=='bimap.nii':
-            bimap_nii_path =l1_glm_yaml['model']['bimap_nii_path']
+            maskfile_nii_path =l1_glm_yaml['model']['maskfile_nii_path']
             # the default location is the folder
-            if len(bimap_nii_path.split('/'))==1:
-                bimap_nii_path=op.join(bids, "derivatives",container,analysis_name,bimap_nii_path)
+            if len(maskfile_nii_path.split('/'))==1:
+                maskfile_nii_path=op.join(bids, "derivatives",container,analysis_name,maskfile_nii_path)
             
 
     fslabel_name=l1_glm_yaml['model']['fslabel_name']  

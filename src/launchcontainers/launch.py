@@ -180,11 +180,15 @@ def prepare_dask_futures(
         future_dict['container']=container
         future_dict['logdir']=logdir
         env_cmd=gen_cmd.py_command(host)
+        import pkg_resources
+
+        py_pipeline_dir = pkg_resources.resource_filename('launchcontainers', 'py_pipeline')
+
         for row in sub_ses_list.itertuples(index=True, name="Pandas"):
             sub = row.sub
             ses = row.ses
             
-            command= f"{env_cmd}&& python {containerdir}/l1_glm.py --subject {sub} --session {ses} --lc_config {dict_store_cs_configs['lc_yaml_path']} --l1_glm_yaml {dict_store_cs_configs['config_path']} "
+            command= f"{env_cmd}&& python {py_pipeline_dir}/l1_glm.py --subject {sub} --session {ses} --lc_config {dict_store_cs_configs['lc_yaml_path']} --l1_glm_yaml {dict_store_cs_configs['config_path']} "
             commands.append(command)
             logger.critical(
                 f"\nCOMMAND for subject-{sub}, and session-{ses}:\n"
