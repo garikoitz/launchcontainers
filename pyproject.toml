@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "launchcontainers"
-version = "0.3.17"
+version = "0.3.18"
 description = "Launch Containers Package"
 authors = [ "Garikoitz Lerma-Usabiaga",
             "Leandro Lecca",
@@ -26,20 +26,20 @@ launchcontainers = "launchcontainers.launch:main"
 
 
 [tool.poetry.dependencies]
-python = ">=3.10"
+python = "^3.10"
 bids = "*"
-bokeh = ">=2.4.2"
-ipython = ">7.16.1"
-pybids = ">=0.16.1"
-distributed = ">=2024.1.0"
-dask = ">=2024.1.0"
-dask_jobqueue = ">=0.8.5"
-nibabel = ">=5.1.0"
-numpy = ">=1.26.3"
-pandas = ">=1.5.3"
-scipy = ">=1.11.4"
-PyYAML = ">=6.0.1"
-coverage-conditional-plugin = ">=0.7.0"
+bokeh = "^2.4.2"
+ipython = "^7.16.1"
+pybids = "^0.16.1"
+distributed = "^2024.1.0"
+dask = "^2024.1.0"
+dask_jobqueue = "^0.8.5"
+nibabel = "^5.1.0"
+numpy = "^1.26.3"
+pandas = "^1.5.3"
+scipy = "^1.11.4"
+PyYAML = "^6.0.1"
+coverage-conditional-plugin = "^0.7.0"
 
 [tool.poetry.dev-dependencies]
 nox-poetry = "*"

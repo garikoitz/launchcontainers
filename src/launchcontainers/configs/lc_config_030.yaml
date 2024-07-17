@@ -27,6 +27,7 @@ general:
   print_command_only: False
   # Log directory to store launchcontainers logging 
   # VALID OPTIONS: analysis_dir or full path you want
+  # This log dir will be used for dask_log and launchcontainer log
   log_dir: analysis_dir
   # Name of launchcontainers log file
   log_filename: lc_log
@@ -188,7 +189,7 @@ host_options:
       # Copy the example list: for BCBL we need ['/bcbl', '/tmp', '/export']; for okazaki we need ['/fileserver', '/tmp']
       bind_options: ['/bcbl', '/tmp', '/scratch', '/export']
       manager: 'local'
-      # This can only be serial or parallel, any other options will make it fail.
+      # This can only be serial, parallel, or dask_worker any other options will make it fail.
       launch_mode: 'serial'
       # Arguments below only affect to parallel launch mode
       njobs: 5
