@@ -547,7 +547,7 @@ def run_dask(
         run_lcs
     )
     # Record the progress
-    progress(futures)
+    # progress(futures)
     # Get the info and report it in the logger
     results = client.gather(futures)
     logger.info(results)
@@ -625,7 +625,7 @@ def main():
             valid_options = ["serial", "parallel","dask_worker"]
             if launch_mode in valid_options:
                 host_str = (
-                    f"{host}, and commands will be launched in {launch_mode} mode "
+                    f"{host}, \n and commands will be launched in {launch_mode} mode \n"
                     f"every {njobs} jobs. "
                     f"Serial is safe but it will take longer. "
                     f"If you launch in parallel be aware that some of the "
@@ -636,7 +636,8 @@ def main():
                 do.die(
                     f"local:launch_mode {launch_mode} was passed, valid options are {valid_options}"
                 )
-
+        else:
+            host_str=f" host is {host}"
         logger.critical(
             "\n"
             + "#####################################################\n"
