@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "launchcontainers"
-version = "0.3.19"
+version = "0.3.20"
 description = "A Python based soft to launch neuroimaging containers on clusters"
 authors = [ "Garikoitz Lerma-Usabiaga",
             "Leandro Lecca",
@@ -38,24 +38,24 @@ python = "^3.10"
 # bids no limit
 bids = "*"
 # ipython after Oct 30, 2021
-ipython = "^7.29.0"
+ipython = ">=7.29.0"
 # pybids after May 1, 2023
 pybids = "^0.16.1"
 # distributed belongs to dask, it is after Jan, 2024
-distributed = "^2024.1.0"
-dask = "^2024.1.0"
+distributed = ">=2024.1.0"
+dask = ">=2024.1.0"
 # dask-jobqueue after Feb 22, 2024
-dask-jobqueue = "^0.8.5"
+dask-jobqueue = ">=0.8.5"
 # After April 3, 2023
 nibabel = "^5.1.0"
 # After Jan 2, 2024
-numpy = "^1.26.3"
+numpy = ">=1.26.3"
 # After Jan 19, 2023
-pandas = "^1.5.3"
+pandas = ">=1.5.3"
 # After Nov 18, 2023
 scipy = "^1.11.4"
 # After July 18, 2023
-PyYAML = "^6.0.1"
+PyYAML = "6.0.1"
 coverage-conditional-plugin = "^0.7.0"
 
 [tool.poetry.dev-dependencies]
