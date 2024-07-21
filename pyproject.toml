@@ -5,7 +5,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 name = "launchcontainers"
 version = "0.3.18"
-description = "Launch Containers Package"
+description = "A Python based soft to launch neuroimaging containers on clusters"
 authors = [ "Garikoitz Lerma-Usabiaga",
             "Leandro Lecca",
             "Mengxing Liu",
@@ -18,8 +18,13 @@ maintainers = ["Garikoitz Lerma-Usabiaga", "Yongning Lei"]
 readme = "README.md"
 repository = "https://github.com/garikoitz/launchcontainers"
 license = "MIT"
-keywords = ["HPC", "MRI", "RTP2","DWI","dMRI"]
-classifiers = ["Topic :: Software Development :: Libraries :: Python Modules"]
+keywords = ["HPC", "MRI","nilearn", "RTP2","DWI","dMRI"]
+classifiers = [
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    ]
 packages = [{include = "launchcontainers", from = "src"}]
 [tool.poetry.scripts]
 launchcontainers = "launchcontainers.launch:main"
