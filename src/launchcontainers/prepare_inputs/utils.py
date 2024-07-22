@@ -54,6 +54,7 @@ def get_parser():
     """
     parser = argparse.ArgumentParser(
         description="""
+        #########This is a test message to make sure *daskworker_log* version is being installed#############
         This python program helps you analysis MRI data through different containers,
         Before you make use of this program, please prepare the environment, edit the required config files, to match your analysis demand. \n
         SAMPLE CMD LINE COMMAND \n\n
