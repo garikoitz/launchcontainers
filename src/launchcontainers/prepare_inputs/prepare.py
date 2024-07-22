@@ -59,7 +59,16 @@ def prepare_analysis_folder(parser_namespace, lc_config):
                 )
     if not op.isdir(analysis_dir):
         os.makedirs(analysis_dir)
-
+    
+    # create log dir for dask
+    host = lc_config["general"]["host"]
+    jobqueue_config = lc_config["host_options"][host]
+    daskworer_logdir = os.path.join(analysis_dir, "daskworker_log")
+    if jobqueue_config["manager"] in ["sge","slurm"] and  not os.path.exists(daskworer_logdir):
+        os.makedirs(daskworer_logdir)
+    if jobqueue_config["manager"] in ["local"]: 
+        if (jobqueue_config["launch_mode"]=='dask_worker'):
+             os.makedirs(daskworer_logdir)
     ############################################################################################
     ############################Copy the configs################################################
     ############################################################################################
@@ -360,7 +369,7 @@ def prepare_dwi_input(parser_namespace, analysis_dir, lc_config, df_subSes, layo
                 "ses-" + ses,
                 "output", "tmp"
             )
-            logdir = op.join(
+            container_logdir = op.join(
                 analysis_dir,
                 "sub-" + sub,
                 "ses-" + ses,
@@ -369,12 +378,12 @@ def prepare_dwi_input(parser_namespace, analysis_dir, lc_config, df_subSes, layo
 
             if not op.isdir(tmpdir):
                 os.makedirs(tmpdir)
-            if not op.isdir(logdir):
-                os.makedirs(logdir)
+            if not op.isdir(container_logdir):
+                os.makedirs(container_logdir)
             
-            do.copy_file(parser_namespace.lc_config, op.join(logdir,'lc_config.yaml'), force) 
+            do.copy_file(parser_namespace.lc_config, op.join(container_logdir,'lc_config.yaml'), force) 
             config_file_path=dict_store_cs_configs['config_path']
-            do.copy_file(config_file_path, op.join(logdir,'config.json'), force)   
+            do.copy_file(config_file_path, op.join(container_logdir,'config.json'), force)   
 
 
             if container in ["rtppreproc" ,"rtp2-preproc"]:

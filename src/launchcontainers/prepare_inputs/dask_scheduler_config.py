@@ -42,11 +42,7 @@ def initiate_cluster(jobqueue_config, n_job, logdir):
     config.set(admin__tick__limit="3h")
     #config.set({"distributed.worker.use-file-locking": False})
 
-    if jobqueue_config["manager"] in ["sge","slurm"] and  not os.path.exists(logdir):
-        os.makedirs(logdir)
-    if jobqueue_config["manager"] in ["local"]: 
-        if (jobqueue_config["launch_mode"]=='dask_worker'):
-             os.makedirs(logdir)
+
     if "sge" in jobqueue_config["manager"]:
         envextra = [f"module load {jobqueue_config['apptainer']} " 
                    #f"conda activate /export/home/tlei/tlei/conda_env/launchcontainers"
