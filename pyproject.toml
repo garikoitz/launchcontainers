@@ -27,7 +27,7 @@ classifiers = [
     ]
 packages = [{include = "launchcontainers", from = "src"}]
 [tool.poetry.scripts]
-launchcontainers = "launchcontainers.launch:main"
+launchcontainers = "launchcontainers.test_dask:main"
 
 
 [tool.poetry.dependencies]

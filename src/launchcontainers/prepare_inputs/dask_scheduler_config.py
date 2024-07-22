@@ -13,7 +13,6 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 """
 import logging
-import os
 from dask import config
 from dask.distributed import Client, LocalCluster
 from dask_jobqueue import SGECluster, SLURMCluster
@@ -51,6 +50,7 @@ def initiate_cluster(jobqueue_config, n_job, logdir):
                                        memory = jobqueue_config["memory"],
                                        queue = jobqueue_config["queue"],
                                        name = jobqueue_config["name"],
+                                        
                                        # project = jobqueue_config["project"],
                                        # processes = jobqueue_config["processes"],
                                        # interface = jobqueue_config["interface"],
