@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "launchcontainers"
-version = "0.3.20"
+version = "0.3.17"
 description = "A Python based soft to launch neuroimaging containers on clusters"
 authors = [ "Garikoitz Lerma-Usabiaga",
             "Leandro Lecca",
@@ -27,7 +27,7 @@ classifiers = [
     ]
 packages = [{include = "launchcontainers", from = "src"}]
 [tool.poetry.scripts]
-launchcontainers = "launchcontainers.test_dask:main"
+launchcontainers = "launchcontainers.launch:main"
 
 
 [tool.poetry.dependencies]
