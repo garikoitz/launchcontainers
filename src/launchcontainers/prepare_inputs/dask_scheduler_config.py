@@ -13,7 +13,6 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 """
 import logging
-import os
 from dask import config
 from dask.distributed import Client, LocalCluster
 from dask_jobqueue import SGECluster, SLURMCluster
@@ -42,9 +41,7 @@ def initiate_cluster(jobqueue_config, n_job, logdir):
     config.set(admin__tick__limit="3h")
     #config.set({"distributed.worker.use-file-locking": False})
 
-    if jobqueue_config["manager"] in ["sge","slurm"] and  not os.path.exists(logdir):
-        os.makedirs(logdir)
-    
+
     if "sge" in jobqueue_config["manager"]:
         envextra = [f"module load {jobqueue_config['apptainer']} " 
                    #f"conda activate /export/home/tlei/tlei/conda_env/launchcontainers"
@@ -53,6 +50,7 @@ def initiate_cluster(jobqueue_config, n_job, logdir):
                                        memory = jobqueue_config["memory"],
                                        queue = jobqueue_config["queue"],
                                        name = jobqueue_config["name"],
+                                        
                                        # project = jobqueue_config["project"],
                                        # processes = jobqueue_config["processes"],
                                        # interface = jobqueue_config["interface"],

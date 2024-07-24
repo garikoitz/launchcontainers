@@ -1,4 +1,4 @@
-test.ipynb
+test*.ipynb
 *dask-worker*
 *.idea
 *DS_Store

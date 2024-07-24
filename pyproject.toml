@@ -4,8 +4,8 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "launchcontainers"
-version = "0.3.16"
-description = "Launch Containers Package"
+version = "0.3.18"
+description = "A Python based soft to launch neuroimaging containers on clusters"
 authors = [ "Garikoitz Lerma-Usabiaga",
             "Leandro Lecca",
             "Mengxing Liu",
@@ -18,24 +18,43 @@ maintainers = ["Garikoitz Lerma-Usabiaga", "Yongning Lei"]
 readme = "README.md"
 repository = "https://github.com/garikoitz/launchcontainers"
 license = "MIT"
-keywords = ["HPC", "MRI", "RTP2","DWI","dMRI"]
-classifiers = ["Topic :: Software Development :: Libraries :: Python Modules"]
+keywords = ["HPC", "MRI","nilearn", "RTP2","DWI","dMRI"]
+classifiers = [
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    ]
 packages = [{include = "launchcontainers", from = "src"}]
 [tool.poetry.scripts]
 launchcontainers = "launchcontainers.launch:main"
 
 
 [tool.poetry.dependencies]
-python = "^3.10"
+# bokeh
+bokeh = ">=2.4.2"
+# python after Oct 4, 2021
+python = "^3.10" 
+# bids no limit
 bids = "*"
-pybids = "0.16.1"
-distributed = "2022.7.0"
-dask = "2022.7.0"
-dask_jobqueue = "0.8.1"
-nibabel = "5.1.0"
-numpy = "1.23.5"
-pandas = "1.5.3"
-scipy = "1.11.4"
+# ipython after Oct 30, 2021
+ipython = ">=7.29.0"
+# pybids after May 1, 2023
+pybids = "^0.16.1"
+# distributed belongs to dask, it is after Jan, 2024
+distributed = ">=2024.1.0"
+dask = ">=2024.1.0"
+# dask-jobqueue after Feb 22, 2024
+dask-jobqueue = ">=0.8.5"
+# After April 3, 2023
+nibabel = "^5.1.0"
+# After Jan 2, 2024
+numpy = ">=1.26.3"
+# After Jan 19, 2023
+pandas = ">=1.5.3"
+# After Nov 18, 2023
+scipy = "^1.11.4"
+# After July 18, 2023
 PyYAML = "6.0.1"
 coverage-conditional-plugin = "^0.7.0"
 

@@ -42,7 +42,7 @@ logger = logging.getLogger("Launchcontainers")
 
 # %% launchcontainers
 def generate_cmd(
-    lc_config, sub, ses, ananlysis_dir, lst_container_specific_configs, run_lc
+    lc_config, sub, ses, analysis_dir, lst_container_specific_configs, run_lc
 ):
     """Puts together the command to send to the container.
 
@@ -50,7 +50,7 @@ def generate_cmd(
         lc_config (str): _description_
         sub (str): _description_
         ses (str): _description_
-        ananlysis_dir (str): _description_
+        analysis_dir (str): _description_
         lst_container_specific_configs (list): _description_
         run_lc (str): _description_
 
@@ -79,10 +79,10 @@ def generate_cmd(
     # Location of the Singularity Image File (.sif)
     container_name = os.path.join(containerdir, f"{container}_{version}.sif")
     # Define the directory and the file name to output the log of each subject
-    logdir = os.path.join(ananlysis_dir, "sub-" + sub, "ses-" + ses, "output", "log")
-    logfilename = f"{logdir}/t-{container}-sub-{sub}_ses-{ses}"
+    container_logdir = os.path.join(analysis_dir, "sub-" + sub, "ses-" + ses, "output", "log")
+    logfilename = f"{container_logdir}/t-{container}-sub-{sub}_ses-{ses}"
 
-    path_to_sub_derivatives = os.path.join(ananlysis_dir, f"sub-{sub}", f"ses-{ses}")
+    path_to_sub_derivatives = os.path.join(analysis_dir, f"sub-{sub}", f"ses-{ses}")
 
     bind_cmd = ""
     for bind in bind_options:
@@ -96,7 +96,7 @@ def generate_cmd(
     if container in ["anatrois", "rtppreproc", "rtp-pipeline"]:
         logger.info("\n" + "start to generate the DWI PIPELINE command")
         logger.debug(
-            f"\n the sub is {sub} \n the ses is {ses} \n the analysis dir is {ananlysis_dir}"
+            f"\n the sub is {sub} \n the ses is {ses} \n the analysis dir is {analysis_dir}"
         )
 
         cmd = (
@@ -110,7 +110,7 @@ def generate_cmd(
     if container == "freesurferator":
         logger.info("\n" + "FREESURFERATOR command")
         logger.debug(
-            f"\n the sub is {sub} \n the ses is {ses} \n the analysis dir is {ananlysis_dir}"
+            f"\n the sub is {sub} \n the ses is {ses} \n the analysis dir is {analysis_dir}"
         )
 
         cmd = (
@@ -159,7 +159,7 @@ def generate_cmd(
     if container == "rtp2-preproc":
         logger.info("\n" + "rtp2-preprc command")
         logger.debug(
-            f"\n the sub is {sub} \n the ses is {ses} \n the analysis dir is {ananlysis_dir}"
+            f"\n the sub is {sub} \n the ses is {ses} \n the analysis dir is {analysis_dir}"
         )
 
         cmd = (
@@ -197,7 +197,7 @@ def generate_cmd(
     if container == "rtp2-pipeline":
         logger.info("\n" + "rtp2-pipeline command")
         logger.debug(
-            f"\n the sub is {sub} \n the ses is {ses} \n the analysis dir is {ananlysis_dir}"
+            f"\n the sub is {sub} \n the ses is {ses} \n the analysis dir is {analysis_dir}"
         )
 
         cmd = (
@@ -253,8 +253,8 @@ def generate_cmd(
                 f"-H {homedir} "
                 f"-B {basedir}:/base -B {fs_license}:/license "
                 f"--cleanenv {container_path} "
-                f"-w {ananlysis_dir} "
-                f"/base/BIDS {ananlysis_dir} participant "
+                f"-w {analysis_dir} "
+                f"/base/BIDS {analysis_dir} participant "
                 f"--participant-label sub-{sub} "
                 f"--skip-bids-validation "
                 f"--output-spaces func fsnative fsaverage T1w MNI152NLin2009cAsym "
@@ -272,8 +272,8 @@ def generate_cmd(
                 f"-H {homedir} "
                 f"-B {basedir}:/base -B {fs_license}:/license "
                 f"--cleanenv {container_path} "
-                f"-w {ananlysis_dir} "
-                f"/base/BIDS {ananlysis_dir} participant "
+                f"-w {analysis_dir} "
+                f"/base/BIDS {analysis_dir} participant "
                 f"--participant-label sub-{sub} "
                 f"--skip-bids-validation "
                 f"--output-spaces func fsnative fsaverage T1w MNI152NLin2009cAsym "
@@ -299,9 +299,9 @@ def generate_cmd(
                 f"singularity run "
                 f"-H {homedir} "
                 f"-B {basedir}/derivatives/fmriprep:/flywheel/v0/input "
-                f"-B {ananlysis_dir}:/flywheel/v0/output "
+                f"-B {analysis_dir}:/flywheel/v0/output "
                 f"-B {basedir}/BIDS:/flywheel/v0/BIDS "
-                f"-B {ananlysis_dir}/{config_name}.json:/flywheel/v0/config.json "
+                f"-B {analysis_dir}/{config_name}.json:/flywheel/v0/config.json "
                 f"-B {basedir}/license/license.txt:/opt/freesurfer/.license "
                 f"--cleanenv {container_path} "
             )
@@ -311,9 +311,9 @@ def generate_cmd(
                 f"singularity run "
                 f"-H {homedir} "
                 f"-B {basedir}/derivatives/fmriprep:/flywheel/v0/input "
-                f"-B {ananlysis_dir}:/flywheel/v0/output "
+                f"-B {analysis_dir}:/flywheel/v0/output "
                 f"-B {basedir}/BIDS:/flywheel/v0/BIDS "
-                f"-B {ananlysis_dir}/{config_name}.json:/flywheel/v0/config.json "
+                f"-B {analysis_dir}/{config_name}.json:/flywheel/v0/config.json "
                 f"-B {basedir}/license/license.txt:/opt/freesurfer/.license "
                 f"--cleanenv {container_path} "
             )
@@ -337,7 +337,7 @@ def generate_cmd(
 
 # %% the launchcontainer
 def launchcontainer(
-    ananlysis_dir,
+    analysis_dir,
     lc_config,
     sub_ses_list,
     parser_namespace,
@@ -348,7 +348,7 @@ def launchcontainer(
     This function is going to assume that all files are where they need to be.
 
     Args:
-        ananlysis_dir (str): _description_
+        analysis_dir (str): _description_
         lc_config (str): path to launchcontainer config.yaml file
         sub_ses_list (_type_): parsed CSV containing the subject list to be analyzed, and the analysis options
         parser_namespace (argparse.Namespace): command line arguments
@@ -363,7 +363,7 @@ def launchcontainer(
     logger.debug(f"\n,, this is the job_queue config {jobqueue_config}")
 
     force = lc_config["general"]["force"]
-    logdir = os.path.join(ananlysis_dir, "daskworker_log")
+    daskworker_logdir = os.path.join(analysis_dir, "daskworker_log")
 
     # Count how many jobs we need to launch from  sub_ses_list
     n_jobs = np.sum(sub_ses_list.RUN == "True")
@@ -389,7 +389,7 @@ def launchcontainer(
         )
         # If the host is not local, print the job script to be launched in the cluster.
         if host != "local" or (host == "local" and launch_mode == "dask_worker"):
-            client, cluster = create_cluster_client(jobqueue_config, n_jobs, logdir)
+            client, cluster = create_cluster_client(jobqueue_config, n_jobs, daskworker_logdir)
             if host != "local":
                 logger.critical(
                     f"The cluster job script for this command is:\n"
@@ -413,7 +413,7 @@ def launchcontainer(
             lc_configs.append(lc_config)
             subs.append(sub)
             sess.append(ses)
-            dir_analysiss.append(ananlysis_dir)
+            dir_analysiss.append(analysis_dir)
             paths_to_analysis_config_json.append(
                 path_to_analysis_container_specific_config[0]
             )
@@ -424,7 +424,7 @@ def launchcontainer(
                 lc_config,
                 sub,
                 ses,
-                ananlysis_dir,
+                analysis_dir,
                 path_to_analysis_container_specific_config,
                 False # set to False to print the command
             )
@@ -448,7 +448,7 @@ def launchcontainer(
         run_dask(
             jobqueue_config, 
             n_jobs, 
-            logdir, 
+            daskworker_logdir, 
             lc_configs, 
             subs, 
             sess, 
@@ -489,7 +489,7 @@ def launchcontainer(
             run_dask(
                 jobqueue_config, 
                 n_jobs, 
-                logdir, 
+                daskworker_logdir, 
                 lc_configs, 
                 subs, 
                 sess, 
@@ -514,14 +514,14 @@ def launchcontainer(
 
     return
 
-def create_cluster_client(jobqueue_config, n_jobs, logdir):
-    client, cluster = dsq.dask_scheduler(jobqueue_config, n_jobs, logdir)
+def create_cluster_client(jobqueue_config, n_jobs, daskworker_logdir):
+    client, cluster = dsq.dask_scheduler(jobqueue_config, n_jobs, daskworker_logdir)
     return client, cluster
 
 def run_dask(
     jobqueue_config, 
     n_jobs, 
-    logdir, 
+    daskworker_logdir, 
     lc_configs, 
     subs, 
     sess, 
@@ -530,7 +530,7 @@ def run_dask(
     run_lcs
     ):
     
-    client, cluster = create_cluster_client(jobqueue_config, n_jobs, logdir)
+    client, cluster = create_cluster_client(jobqueue_config, n_jobs, daskworker_logdir)
     logger.info(
         "---this is the cluster and client\n" + f"{client} \n cluster: {cluster} \n"
     )
@@ -547,7 +547,7 @@ def run_dask(
         run_lcs
     )
     # Record the progress
-    progress(futures)
+    # progress(futures)
     # Get the info and report it in the logger
     results = client.gather(futures)
     logger.info(results)
@@ -625,7 +625,7 @@ def main():
             valid_options = ["serial", "parallel","dask_worker"]
             if launch_mode in valid_options:
                 host_str = (
-                    f"{host}, and commands will be launched in {launch_mode} mode "
+                    f"{host}, \n and commands will be launched in {launch_mode} mode \n"
                     f"every {njobs} jobs. "
                     f"Serial is safe but it will take longer. "
                     f"If you launch in parallel be aware that some of the "
@@ -636,7 +636,8 @@ def main():
                 do.die(
                     f"local:launch_mode {launch_mode} was passed, valid options are {valid_options}"
                 )
-
+        else:
+            host_str=f" host is {host}"
         logger.critical(
             "\n"
             + "#####################################################\n"
@@ -653,7 +654,7 @@ def main():
         
         # Prepare file and launch containers
         # First of all prepare the analysis folder: it create you the analysis folder automatically so that you are not messing up with different analysis
-        ananlysis_dir, dict_store_cs_configs = (
+        analysis_dir, dict_store_cs_configs = (
             prepare.prepare_analysis_folder(parser_namespace, lc_config)
         )
 
@@ -671,7 +672,7 @@ def main():
         ]:  # TODO: define list in another module for reusability accross modules and functions
             logger.debug(f"{container} is in the list")
             prepare.prepare_dwi_input(
-                parser_namespace, ananlysis_dir, lc_config, sub_ses_list, layout, dict_store_cs_configs
+                parser_namespace, analysis_dir, lc_config, sub_ses_list, layout, dict_store_cs_configs
             )
         else:
             logger.error(f"{container} is not in the list")
@@ -679,7 +680,7 @@ def main():
 
         # Run mode
         launchcontainer(
-            ananlysis_dir,
+            analysis_dir,
             lc_config,
             sub_ses_list,
             parser_namespace,

@@ -8,7 +8,10 @@
 Currently, **launchcontainers** works along with [anatROIs](https://github.com/garikoitz/anatROIs), [RTP-preproc](https://github.com/garikoitz/rtp-preproc), and [RTP2-pipeline](https://github.com/garikoitz/rtp-pipeline).
 
 ## NEW FEATURES 0.3.x
-Now you can `pip install launchcontainers==0.3.16 ` and use it in the command line! 
+Now you can `pip install launchcontainers==0.3.18 ` and use it in the command line! 
+* Changed rtp/rtp2-preproc multishell option to separateed_shell_files
+* Edited lc_config.yaml comment about dask_worker options
+* Fixed error message by dask progress (0.3.18)
 * launchcontainers --copy_configs "~/path/to/working_directory" will copy the corresponding config files to your specified directory!
 * We updated the lc_config.yaml for RTP2-pipelines, please have a look!
 

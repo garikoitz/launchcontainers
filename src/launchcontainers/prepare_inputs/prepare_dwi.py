@@ -401,7 +401,7 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout,
     anat_analysis_name = lc_config["container_specific"][container]["anat_analysis_name"]
     
     rpe = lc_config["container_specific"][container]["rpe"]
-    multishell=lc_config["container_specific"][container]["multishell"]
+    separated_shell_files=lc_config["container_specific"][container]["separated_shell_files"]
 
     # define input output folder for this container
     dstDir_input = op.join(
@@ -461,7 +461,7 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout,
     if int(precontainer_anat.split('.')[1])>5: 
         src_path_FSMASK = op.join(precontainer_anat_dir, "brain.nii.gz")
     # 3 dwi file that needs to be preprocessed, under BIDS/sub/ses/dwi
-    if not multishell:
+    if not separated_shell_files:
         # the bval
         src_path_BVAL = layout.get(subject= sub, session=ses, extension='bval',suffix= 'dwi', direction=PE_direction, return_type='filename')[0]
         # the bve
