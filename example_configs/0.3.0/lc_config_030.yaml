@@ -58,8 +58,8 @@ container_specific:
     # Analysis name 
     anat_analysis_name: fMRIprep_brainmask
     # optional
-    # if your encoding direction DWI is multishell sequence
-    multishell: True
+    # if your encoding direction DWI is multishell sequence and they are in seperate files
+    separated_shell_files: False
     # If reverse phase encoding is applied in the sequence
     # It checks if there is a reverse phase encoding acquisition
     # Old dcm2nixx will not create empty bvec and bval files if there was an acquisition with just b0-s
@@ -107,8 +107,8 @@ container_specific:
     # Analysis name 
     anat_analysis_name: control_points_02
     # optional
-    # if your encoding direction DWI is multishell sequence
-    multishell: True
+    # if your encoding direction DWI is multishell sequence and they are in seperate files
+    separated_shell_files: False
     # If reverse phase encoding is applied in the sequence
     # It checks if there is a reverse phase encoding acquisition
     # if not, launchcontainers will create mock files
