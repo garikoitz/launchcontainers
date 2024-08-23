@@ -456,9 +456,11 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout,
     src_path_ANAT = op.join(precontainer_anat_dir, "T1.nii.gz") 
     # FSMASK
     # brain mask file in anatrois output
-    if int(precontainer_anat.split('.')[1])<6: 
+    # if the container is rtppreproc, and if the version of the precontainer_anat is anatrois 4.5.x,
+    # we will use brainmask, otherwise, we will use brain.nii.gz
+    if (container != "rtp2-preproc") and (precontainer_anat.split('_')[0]=="anatrois" and int(precontainer_anat.split('.')[1])<6): 
         src_path_FSMASK = op.join(precontainer_anat_dir, "brainmask.nii.gz")
-    if int(precontainer_anat.split('.')[1])>5: 
+    else: 
         src_path_FSMASK = op.join(precontainer_anat_dir, "brain.nii.gz")
     # 3 dwi file that needs to be preprocessed, under BIDS/sub/ses/dwi
     if not separated_shell_files:
