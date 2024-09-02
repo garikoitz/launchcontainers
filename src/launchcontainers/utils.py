@@ -12,7 +12,7 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 """
-import requests
+
 import argparse
 from argparse import RawDescriptionHelpFormatter
 import yaml
@@ -24,17 +24,7 @@ import sys
 import pandas as pd
 import os.path as op
 from os import makedirs
-try:
-    from importlib.metadata import version, PackageNotFoundError
-except ImportError:  # For Python < 3.8
-    from pkg_resources import get_distribution, DistributionNotFound
-
-    def version(package_name):
-        try:
-            return get_distribution(package_name).version
-        except DistributionNotFound:
-            return None
-        
+import requests
 logger = logging.getLogger("Launchcontainers")
 
 
@@ -53,8 +43,8 @@ def get_parser():
 
     """
     parser = argparse.ArgumentParser(
+        prog="Launchcontainers",
         description="""
-        #########This is a test message to make sure *test_dask* version is being installed#############
         This python program helps you analysis MRI data through different containers,
         Before you make use of this program, please prepare the environment, edit the required config files, to match your analysis demand. \n
         SAMPLE CMD LINE COMMAND \n\n
@@ -70,6 +60,7 @@ def get_parser():
         We add lots of check in the script to avoid program breakdowns. if you found new bugs while running, do not hesitate to contact us""",
         formatter_class=RawDescriptionHelpFormatter,
     )
+
 
     parser.add_argument(
         "-lcc",
@@ -92,10 +83,7 @@ def get_parser():
         # default=["/export/home/tlei/tlei/PROJDATA/TESTDATA_LC/Testing_02/BIDS/config.json"],
         help="path to the container specific config file, it stores the parameters for the container."
     )
-    parser.add_argument(
-        '--copy_configs', 
-        type=str, 
-        help='Path to copy the configs, usually your working directory')
+
     parser.add_argument(
         "--run_lc",
         action="store_true",
@@ -122,10 +110,22 @@ def get_parser():
         action="store_true",
         help="if you want to find out what is happening of particular step, --type debug, this will print you more detailed information",
     )
+    parser.add_argument(
+        '--download_configs', 
+        action="store_true",
+        help='Path to download the configs')
+    
+    parser.add_argument(
+        '--gen_subseslist', 
+        action="store_true",
+        help='if you want to generate a template subseslist based on the sub and session you provide')
+    
+    parser.add_argument("-sub", nargs='+', help="List of subjects")
+    parser.add_argument("-ses", nargs='+', help="List of sessions")
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
         sys.exit(1)
-    
+
     parse_dict = vars(parser.parse_args())
     parse_namespace = parser.parse_args()
 
@@ -144,40 +144,6 @@ def read_yaml(path_to_config_file):
     with open(path_to_config_file, "r") as v:
         config = yaml.load(v, Loader=SafeLoader)
 
-    """     container = config["general"]["container"]
-        host = config["general"]["host"]
-        njobs = config["host_options"][host]["njobs"]
-        if njobs == "" or njobs is None:
-            njobs = 2
-        host_str = f"{host}"
-        if host == "local":
-            launch_mode = config["host_options"]["local"]["launch_mode"]
-            valid_options = ["serial", "parallel","dask_worker"]
-            if launch_mode in valid_options:
-                host_str = (
-                    f"{host_str}, and commands will be launched in {launch_mode} mode "
-                    f"every {njobs} jobs. "
-                    f"Serial is safe but it will take longer. "
-                    f"If you launch in parallel be aware that some of the "
-                    f"processes might be killed if the limit (usually memory) "
-                    f"of the machine is reached. "
-                )
-            else:
-                die(
-                    f"local:launch_mode {launch_mode} was passed, valid options are {valid_options}"
-                )
-
-        logger.warning(
-            "\n"
-            + "#####################################################\n"
-            + f"Successfully read the config file {path_to_config_file} \n"
-            + f'Basedir is: {config["general"]["basedir"]} \n'
-            + f'Container is: {container}_{config["container_specific"][container]["version"]} \n'
-            + f"Host is: {host_str} \n"
-            + f'analysis folder is: {config["general"]["analysis_name"]} \n'
-            + f"##################################################### \n"
-        )
-    """
     return config
 
 
@@ -320,10 +286,9 @@ def get_launchcontainers_version():
         return None
 def get_mocked_launchcontainers_version():
     # Specify the version you want to mock for testing purposes
-    return "0.4.0"
+    return "0.3.0"
 def download_configs(version, download_path):
-    #https://github.com/garikoitz/launchcontainers/tree/master/example_configs/0.3.0
-    github_url = f"https://github.com/garikoitz/launchcontainers/raw/main/example_configs/{version}/example_config.yaml" 
+    github_url = f"https://github.com/garikoitz/launchcontainers/raw/main/example_configs/{version}/example_config.yaml"  #https://github.com/garikoitz/launchcontainers/tree/master/example_configs/0.3.0
     response = requests.get(github_url)
     
     if response.status_code == 200:
@@ -333,17 +298,14 @@ def download_configs(version, download_path):
         logger.info(f"Configs for version {version} downloaded successfully.")
     else:
         logger.error(f"Failed to download configs for version {version}. HTTP Status Code: {response.status_code}")
-def copy_configs(output_path, force=True):
-    # first, know where the tar file is stored
-    import pkg_resources
 
-    config_path = pkg_resources.resource_filename('launchcontainers', f'configs')
+def generate_subseslist(lst_sub,lst_ses):
+    data = []
+    for sub in lst_sub:
+        for ses in lst_ses:
+            data.append([sub, ses, True, True, True, True])
 
-    # second, copy all the files from the source folder to the output_path
-    all_cofig_files=os.listdir(config_path)
-    for src_fname in all_cofig_files:
-        src_file_fullpath=op.join(config_path,src_fname)
-        targ_file_fullpath=op.join(output_path,src_fname)
-        copy_file(src_file_fullpath,targ_file_fullpath,force)
-
-    return
+    # Create the DataFrame
+    df = pd.DataFrame(data, columns=['sub', 'ses', 'RUN', 'anat', 'dwi', 'func'])
+    output_file = 'sub_ses_list.txt'
+    df.to_csv(output_file, sep=',', index=False)

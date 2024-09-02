@@ -1,0 +1,8 @@
+sub,ses,RUN,anat,dwi,func
+05,day1VA,False,True,True,True
+05,day1VB,False,True,True,True
+05,day2VA,False,True,True,True
+05,day2VB,False,True,True,True
+05,day3PF,True,True,True,True
+05,day5BCBL,True,True,True,True
+05,day6BCBL,True,True,True,True
