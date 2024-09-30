@@ -8,7 +8,7 @@
 Currently, **launchcontainers** works along with [anatROIs](https://github.com/garikoitz/anatROIs), [RTP-preproc](https://github.com/garikoitz/rtp-preproc), and [RTP2-pipeline](https://github.com/garikoitz/rtp-pipeline).
 
 ## NEW FEATURES 0.3.x
-Now you can `pip install launchcontainers==0.3.21 ` and use it in the command line! 
+Now you can `pip install launchcontainers==0.3.22 ` and use it in the command line! 
 * Add requests into pyproject.toml, remove version limit to common package such as nibabel and numpy 
 * Changed rtp/rtp2-preproc multishell option to separateed_shell_files
 * Edited lc_config.yaml comment about dask_worker options
