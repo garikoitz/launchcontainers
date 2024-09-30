@@ -544,7 +544,10 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout,
         os.makedirs(op.join(dstDir_input, "BVEC"))
     # Create the destination paths
     dst_path_ANAT = op.join(dstDir_input, "ANAT", "T1.nii.gz")
-    dst_path_FSMASK = op.join(dstDir_input, "FSMASK", "brainmask.nii.gz")
+    if (container != "rtp2-preproc") and (precontainer_anat.split('_')[0]=="anatrois" and int(precontainer_anat.split('.')[1])<6): 
+        dst_path_FSMASK = op.join(dstDir_input, "FSMASK", "brainmask.nii.gz")
+    else: 
+        dst_path_FSMASK = op.join(dstDir_input, "FSMASK", "brain.nii.gz")    
     dst_path_DIFF = op.join(dstDir_input, "DIFF", "dwiF.nii.gz")
     dst_path_BVAL = op.join(dstDir_input, "BVAL", "dwiF.bval")
     dst_path_BVEC = op.join(dstDir_input, "BVEC", "dwiF.bvec")
