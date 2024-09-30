@@ -1,7 +1,7 @@
 {
     "config": {
 	    "subject_id": "Sxxx",
-        "reconall_options": "-autorecon2-cp -autorecon3",
+        "reconall_options": "-qcache -all",
         "hippocampal_subfields": true,
         "brainstem_structures": true,
         "thalamic_nuclei": true,

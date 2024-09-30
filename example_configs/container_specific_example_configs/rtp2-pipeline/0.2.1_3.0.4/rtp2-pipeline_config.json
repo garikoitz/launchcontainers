@@ -1,0 +1,28 @@
+{
+    "config": {
+        "fiberWeighting": 1,
+        "numberOfNodes": 100,
+        "bval_for_fa": 1000,
+        "ET_angleValues": " 45, 45, 45, 25, 25, 25, 10, 10",
+        "ET_maxlength":   "100,150,200,100,150,200,150,200",
+        "ET_minlength": 20,
+        "ET_numberFibers": 2000000,
+        "ET_track_stepSizeMm": 999,
+        "track_faMaskThresh": 0.2,
+        "track_faFodThresh": 0.05,
+        "get_vofparc": true,
+        "sift_runSift": true,
+        "sift_nFibers": 500000,
+        "life_runLife": false,
+        "life_discretization": 360,
+        "life_num_iterations": 10,
+        "life_saveOutput": false,
+        "life_test": false,
+        "life_writePDB": false,
+        "mrtrix_mrTrixAlgo": "iFOD2",
+        "mrtrix_autolmax": true,
+        "mrtrix_lmax": 6,
+        "mrtrix_useACT": false,
+		"save_output":true
+    }
+}
