@@ -57,6 +57,7 @@ def get_parser():
         #########This is a test message to make sure *test_dask* version is being installed#############
         This python program helps you analysis MRI data through different containers,
         Before you make use of this program, please prepare the environment, edit the required config files, to match your analysis demand. \n
+
         SAMPLE CMD LINE COMMAND \n\n
         ###########STEP1############# \n
         To begin the analysis, you need to first prepare and check the input files by typing this command in your bash prompt:
@@ -67,7 +68,10 @@ def get_parser():
         After you have done step 1, all the config files are copied to BIDS/sub/ses/analysis/ directory 
         When you are confident everything is there, press up arrow to recall the command in STEP 1, and just add --run_lc after it. \n\n  
         
-        We add lots of check in the script to avoid program breakdowns. if you found new bugs while running, do not hesitate to contact us""",
+        We add lots of check in the script to avoid program breakdowns. if you found new bugs while running, do not hesitate to contact us \n
+        For developer To zip all the configs into package simply type zip_configs\n
+        For tester/developer: if you want to fake a container and it's analysis folder type do \n
+        createbids -cbc fake_bids_dir.yaml -ssl subSesList.txt \n""",
         formatter_class=RawDescriptionHelpFormatter,
     )
 
@@ -130,7 +134,43 @@ def get_parser():
     parse_namespace = parser.parse_args()
 
     return parse_namespace, parse_dict
+def get_create_bids_parser():
+    """
+    Input:
+    Parse command line inputs
 
+    Returns:
+    a dict stores information about the cmd input
+
+    """
+    parser = argparse.ArgumentParser(
+        description="""
+        #########This function is for create a fake bids format container analysis dir""",
+        formatter_class=RawDescriptionHelpFormatter,
+    )
+
+    parser.add_argument(
+        "-cbc",
+        "--creat_bids_config",
+        type=str,
+        # default="",
+        help="path to the create bids config file",
+    )
+    parser.add_argument(
+        "-ssl",
+        "--sub_ses_list",
+        type=str,
+        # default="",
+        help="path to the subSesList",
+    )
+    if len(sys.argv) == 1:
+        parser.print_help(sys.stderr)
+        sys.exit(1)
+    
+    parse_dict = vars(parser.parse_args())
+    parse_namespace = parser.parse_args()
+
+    return parse_namespace, parse_dict
 
 def read_yaml(path_to_config_file):
     """
