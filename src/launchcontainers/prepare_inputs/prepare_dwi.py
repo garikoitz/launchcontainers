@@ -422,7 +422,7 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout,
     if not op.exists(dstDir_output):
         os.makedirs(dstDir_output)
    
-    # read json, this json is already written from previous preparasion step
+    # read json, this json is already written from previous preparation step
     json_under_analysis_dir=dict_store_cs_configs['config_path']
     config_json_instance = json.load(open(json_under_analysis_dir))
     required_inputfiles=config_json_instance['inputs'].keys()
@@ -625,16 +625,56 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout,
         force_symlink(src_path_RBVC, dst_path_RBVC, force)
         logger.info("\n"
                    +"---------------The rtppreproc rpe=True symlinks created")
-    
+ 
     if "qmap" in required_inputfiles:
+        qmap_fname=lc_config["container_specific"][container]["qmap_fname"] 
+        qmap_dir_name= lc_config["container_specific"][container]["qmap_dir_name"] 
+        qmap_analysis_name= lc_config["container_specific"][container]["qmap_analysis_name"] 
+        qmap_path = op.join(
+            basedir,
+            bidsdir_name,
+            "derivatives",
+            f'{qmap_dir_name}',
+            "analysis-" + qmap_analysis_name,
+            "sub-" + sub,
+            "ses-" + ses,
+            "output",
+        )
+        logger.info("\n"
+                   +f"---the patter of fs.zip filename we are searching is {qmap_fname}\n"
+                   +f"---the directory we are searching for is {qmap_path}")
+        logger.debug("\n"
+                     +f'the tpye of patter is {type(qmap_fname)}')
+        zips=[]
+        for filename in os.listdir(qmap_path):
+            if filename.endswith(".zip") and re.match(qmap_fname, filename):
+                zips.append(filename)
+        if len(zips) == 0:
+            logger.error("\n"+
+                f"There are no files with pattern: {qmap_fname} in {qmap_path}, we will listed potential zip file for you"
+            )
+            raise FileNotFoundError("qmap_path is empty, no previous analysis was found")
+        elif len(zips) == 1:
+            src_path_qmap = op.join(qmap_path,zips[0])            
+        else:    
+            zips_by_time = sorted(zips, key=op.getmtime)
+            answer = input(
+                f"Do you want to use the newset fs.zip: \n{zips_by_time[-1]} \n we get for you? \n input y for yes, n for no"
+            )
+            if answer in "y":
+                src_path_qmap = zips_by_time[-1]
+            else:
+                logger.error("\n"+"An error occurred"
+                            +zips_by_time +"\n" # type: ignore
+                            +"no target preanalysis.zip file exist, please check the config_lc.yaml file")
+                sys.exit(1)
         
-        fname_qmap=config_json_instance['inputs']['qmap']['location']['name']
-        src_path_qmap = op.join(analysis_dir, fname_qmap)
-        dst_path_qmap=op.join(dstDir_input, "qmap", fname_qmap)  
-        
+        dst_fname_qmap=config_json_instance['inputs']['qmap']['location']['name']
+        dst_path_qmap=op.join(dstDir_input, "qmap", dst_fname_qmap)        
         if not op.exists(op.join(dstDir_input, "qmap")):
             os.makedirs(op.join(dstDir_input, "qmap"))
-        force_symlink(src_path_qmap, dst_path_qmap, force)    
+        force_symlink(src_path_qmap, dst_path_qmap, force)
+  
     return 
 
 
@@ -785,15 +825,56 @@ def rtppipeline(dict_store_cs_configs, analysis_dir,lc_config, sub, ses, layout,
         if not op.exists(op.join(dstDir_input, "fsmask")):
             os.makedirs(op.join(dstDir_input, "fsmask"))
         force_symlink(src_path_fsmask, dst_path_fsmask, force)        
-    if "qmap_zip" in required_inputfiles:
         
-        fname_qmap_zip=config_json_instance['inputs']['qmap_zip']['location']['name']
-        src_path_qmap_zip = op.join(analysis_dir, fname_qmap_zip)
-        dst_path_qmap_zip=op.join(dstDir_input, "qmap_zip", fname_qmap_zip)  
+    if "qmap" in required_inputfiles:
+        qmap_fname=lc_config["container_specific"][container]["qmap_fname"] 
+        qmap_dir_name= lc_config["container_specific"][container]["qmap_dir_name"] 
+        qmap_analysis_name= lc_config["container_specific"][container]["qmap_analysis_name"] 
+        qmap_path = op.join(
+            basedir,
+            bidsdir_name,
+            "derivatives",
+            f'{qmap_dir_name}',
+            "analysis-" + qmap_analysis_name,
+            "sub-" + sub,
+            "ses-" + ses,
+            "output",
+        )
+        logger.info("\n"
+                   +f"---the patter of fs.zip filename we are searching is {qmap_fname}\n"
+                   +f"---the directory we are searching for is {qmap_path}")
+        logger.debug("\n"
+                     +f'the tpye of patter is {type(qmap_fname)}')
+        zips=[]
+        for filename in os.listdir(qmap_path):
+            if filename.endswith(".zip") and re.match(qmap_fname, filename):
+                zips.append(filename)
+        if len(zips) == 0:
+            logger.error("\n"+
+                f"There are no files with pattern: {qmap_fname} in {qmap_path}, we will listed potential zip file for you"
+            )
+            raise FileNotFoundError("qmap_path is empty, no previous analysis was found")
+        elif len(zips) == 1:
+            src_path_qmap = op.join(qmap_path,zips[0])            
+        else:    
+            zips_by_time = sorted(zips, key=op.getmtime)
+            answer = input(
+                f"Do you want to use the newset fs.zip: \n{zips_by_time[-1]} \n we get for you? \n input y for yes, n for no"
+            )
+            if answer in "y":
+                src_path_qmap = zips_by_time[-1]
+            else:
+                logger.error("\n"+"An error occurred"
+                            +zips_by_time +"\n" # type: ignore
+                            +"no target preanalysis.zip file exist, please check the config_lc.yaml file")
+                sys.exit(1)
         
-        if not op.exists(op.join(dstDir_input, "qmap_zip")):
-            os.makedirs(op.join(dstDir_input, "qmap_zip"))
-        force_symlink(src_path_qmap_zip, dst_path_qmap_zip, force)    
+        dst_fname_qmap=config_json_instance['inputs']['qmap']['location']['name']
+        dst_path_qmap=op.join(dstDir_input, "qmap", dst_fname_qmap)        
+        if not op.exists(op.join(dstDir_input, "qmap")):
+            os.makedirs(op.join(dstDir_input, "qmap"))
+        force_symlink(src_path_qmap, dst_path_qmap, force)
+    
     
     return 
     

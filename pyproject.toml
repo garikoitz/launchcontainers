@@ -1,10 +1,10 @@
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core","build"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "launchcontainers"
-version = "0.3.23"
+version = "0.3.24"
 description = "A Python based soft to launch neuroimaging containers on clusters"
 authors = [ "Garikoitz Lerma-Usabiaga",
             "Leandro Lecca",
@@ -25,10 +25,11 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     ]
-packages = [{include = "launchcontainers", from = "src"}]
+packages = [{include = "launchcontainers", from = "src"}, {include = "build_scripts"}]
 [tool.poetry.scripts]
 launchcontainers = "launchcontainers.launch:main"
-
+createbids = "launchcontainers.create_bids:main"
+zip_configs = "build_scripts.zip_example_config:zip_example_config"
 
 [tool.poetry.dependencies]
 # bokeh

@@ -89,10 +89,10 @@ def prepare_analysis_folder(parser_namespace, lc_config):
     dict_store_cs_configs={}
     dict_store_cs_configs['config_path']=container_configs_under_analysis_folder
     
-    def process_optional_input(container,file_path, analysis_dir, option=None):
+    def process_nonbids_input(container,file_path, analysis_dir, option=None):
         if os.path.isfile(file_path):
             logger.info("\n"
-                +f" You have choossen to pass  {file_path} to {container}, it will be first copy to {analysis_dir}")
+                +f" You have chosen to pass  {file_path} to {container}, it will be first copy to {analysis_dir}")
         else:
             logger.error("\n"
                         f"{file_path} does not exist")        
@@ -106,10 +106,8 @@ def prepare_analysis_folder(parser_namespace, lc_config):
             else:
                 raise ValueError("Unsupported file type.")
         if container in ['rtp2-preproc','rtppreproc']:
-            if file_ext in ['.nii', '.gz']:
-                do.copy_file(file_path, os.path.join(analysis_dir, file_name), force)                          
-            else:
-                raise ValueError("Unsupported file type.")
+            # there are no Non-bids input for rtp-preproc or rtp2-preproc
+            pass
                     
         if container in ['rtp2-pipeline','rtp-pipeline']:
             if option == "tractparams":
@@ -122,11 +120,6 @@ def prepare_analysis_folder(parser_namespace, lc_config):
                     do.copy_file(file_path, os.path.join(analysis_dir, file_name), force)            
                 else:
                     raise ValueError("Unsupported file type.")                
-            if option == "qmap_zip":
-                if file_ext == '.zip':
-                    do.copy_file(file_path, os.path.join(analysis_dir, file_name), force)          
-                else:
-                    raise ValueError("Unsupported file type.")
         return file_name
     
     # copy annotfile or mnizip file to analysis folder
@@ -139,10 +132,10 @@ def prepare_analysis_folder(parser_namespace, lc_config):
             file_name="existingFS.zip"
             dict_store_cs_configs[container]['pre_fs']=f"pre_fs/{file_name}"         
         if annotfile:
-            file_name=process_optional_input(container,annotfile,analysis_dir)
+            file_name=process_nonbids_input(container,annotfile,analysis_dir)
             dict_store_cs_configs[container]['annotfile']=f"annotfile/{file_name}"
         if mniroizip:
-            file_name=process_optional_input(container,mniroizip,analysis_dir)
+            file_name=process_nonbids_input(container,mniroizip,analysis_dir)
             dict_store_cs_configs[container]['mniroizip']=f"mniroizip/{file_name}"
         # copy annotfile or mnizip file to analysis folder
     if container in ['freesurferator']:
@@ -158,10 +151,10 @@ def prepare_analysis_folder(parser_namespace, lc_config):
             file_name="control.dat"
             dict_store_cs_configs[container]['control_points']=f"control_points/{file_name}"            
         if annotfile:
-            file_name=process_optional_input(container,annotfile,analysis_dir)
+            file_name=process_nonbids_input(container,annotfile,analysis_dir)
             dict_store_cs_configs[container]['annotfile']=f"annotfile/{file_name}"
         if mniroizip:
-            file_name=process_optional_input(container,mniroizip,analysis_dir)
+            file_name=process_nonbids_input(container,mniroizip,analysis_dir)
             dict_store_cs_configs[container]['mniroizip']=f"mniroizip/{file_name}"
     # copy qmap.nii of qmap.nii.gz to analysis folder
     if container in ['rtppreproc']:
@@ -179,13 +172,13 @@ def prepare_analysis_folder(parser_namespace, lc_config):
         dict_store_cs_configs[container]= {key: value for key, value in zip(preproc_json_keys, preproc_json_val)}
         
         rpe=lc_config["container_specific"][container]["rpe"]
-        qmap=lc_config["container_specific"][container]["qmap_nifti"]
+        use_qmap= lc_config["container_specific"][container]["use_qmap"]
         if rpe:
             dict_store_cs_configs[container]['RBVC']= 'RBVC/dwiR.bvec'
             dict_store_cs_configs[container]['RBVL']= 'RBVL/dwiR.bval'
             dict_store_cs_configs[container]['RDIF']= 'RDIF/dwiR.nii.gz'            
-        if qmap:
-            file_name=process_optional_input(container,qmap,analysis_dir)
+        if use_qmap:
+            file_name="qmap.zip"
             dict_store_cs_configs[container]['qmap']=f"qmap/{file_name}"
         
     if container in ['rtp-pipeline']:
@@ -195,7 +188,7 @@ def prepare_analysis_folder(parser_namespace, lc_config):
         
         tractparams=lc_config["container_specific"][container]["tractparams"]
         if tractparams:
-            file_name=process_optional_input(container,tractparams,analysis_dir,"tractparams")    
+            file_name=process_nonbids_input(container,tractparams,analysis_dir,"tractparams")    
             dict_store_cs_configs[container]['tractparams']=f"tractparams/{file_name}"
     if container in ['rtp2-pipeline']:
         pipeline_json_keys=['anatomical','bval','bvec', 'dwi','fs']
@@ -203,16 +196,16 @@ def prepare_analysis_folder(parser_namespace, lc_config):
         dict_store_cs_configs[container]= {key: value for key, value in zip(pipeline_json_keys, pipeline_json_val)}        
         tractparams=lc_config["container_specific"][container]["tractparams"]
         fsmask=lc_config["container_specific"][container]["fsmask"]
-        qmap_zip=lc_config["container_specific"][container]["qmap_zip"]
+        use_qmap= lc_config["container_specific"][container]["use_qmap"]
         if tractparams:
-            file_name=process_optional_input(container,tractparams,analysis_dir,"tractparams")
+            file_name=process_nonbids_input(container,tractparams,analysis_dir,"tractparams")
             dict_store_cs_configs[container]['tractparams']=f"tractparams/{file_name}"
         if fsmask:
-            file_name=process_optional_input(container,fsmask,analysis_dir,"fsmask")
+            file_name=process_nonbids_input(container,fsmask,analysis_dir,"fsmask")
             dict_store_cs_configs[container]['fsmask']=f"fsmask/{file_name}"
-        if qmap_zip:
-            file_name=process_optional_input(container,qmap_zip,analysis_dir,"qmap_zip")           
-            dict_store_cs_configs[container]['qmap_zip']=f"qmap_zip/{file_name}"       
+        if use_qmap:
+            file_name="qmap.zip"
+            dict_store_cs_configs[container]['qmap']=f"qmap/{file_name}"       
 
 
     ############################################################################################
