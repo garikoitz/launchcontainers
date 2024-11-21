@@ -3,12 +3,13 @@ general:
   basedir: /home/tlei/tlei/LMC_DWI_course
   # Name of bids directory, 1 level under basedir, must contain dataset_description
   bidsdir_name: BIDS
+  bids_component_dir: /home/tlei/tlei/LMC_DWI_course
   # Name of the container
-  # VALID OPTIONS: freesurferator, rtp2-preproc, rtp2-pipeline, anatrois, rtppreproc, rtp-pipeline, l1_glm, fmriprep 
-  container: mrVista
-  version: 0.1.0
+  # VALID OPTIONS: Processed_nifti, freesurferator, rtp2-preproc, rtp2-pipeline, anatrois, rtppreproc, rtp-pipeline, l1_glm, fmriprep 
+  container: Processed_nifti
+  version:
   # Name of analysis folder 
-  analysis_name: test_qmap
+  analysis_name: dwi_mag
   file_name: qmap.zip
   log_dir: analysis_dir
   # Name of launchcontainers log file

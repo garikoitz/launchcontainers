@@ -3,12 +3,16 @@
 **Launchcontainers** is a Python-based tool for automatically launching computing works on HPC or local nodes. It helps you: 
 1. Prepare folder structures and input files automatically
 2. Backup the input configs for data provenance
-3. Launching containers in BCBL or DIPC
+3. Launching containers in local HPC, SGE or SLURM in serial and in parallel
 
 Currently, **launchcontainers** works along with [anatROIs](https://github.com/garikoitz/anatROIs), [RTP-preproc](https://github.com/garikoitz/rtp-preproc), and [RTP2-pipeline](https://github.com/garikoitz/rtp-pipeline).
 
-## NEW FEATURES 0.3.x
-Now you can `pip install launchcontainers==0.3.22 ` and use it in the command line! 
+To use the newest version, please `pip install launchcontainers==0.3.50 `
+
+
+## NEW FEATURES
+* The update `0.3.5` will be capable work with heudiconv, Presurfer and NORDIC_raw, there will be a new derivatives folder called Processed_nifti, it will stored the processed .nii.gz by NORDIC_raw and Presurfer
+* `0.3.5`: The add_intended_for function from heudiconv will be used here to edit the fmap _epi.json
 * Add requests into pyproject.toml, remove version limit to common package such as nibabel and numpy 
 * Changed rtp/rtp2-preproc multishell option to separateed_shell_files
 * Edited lc_config.yaml comment about dask_worker options

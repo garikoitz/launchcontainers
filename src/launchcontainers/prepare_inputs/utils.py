@@ -54,14 +54,13 @@ def get_parser():
     """
     parser = argparse.ArgumentParser(
         description="""
-        #########This is a test message to make sure *test_dask* version is being installed#############
         This python program helps you analysis MRI data through different containers,
         Before you make use of this program, please prepare the environment, edit the required config files, to match your analysis demand. \n
 
         SAMPLE CMD LINE COMMAND \n\n
         ###########STEP1############# \n
         To begin the analysis, you need to first prepare and check the input files by typing this command in your bash prompt:
-        python path/to/the/launchcontianer.py -lcc path/to/launchcontainer_config.yaml -ssl path/to/subject_session_info.txt 
+        mrilc -lcc path/to/launchcontainer_config.yaml -ssl path/to/subject_session_info.txt 
         -cc path/to/container_specific_config.json \n
         ##--cc note, for the case of rtp-pipeline, you need to input two paths, one for config.json and one for tractparm.csv \n\n
         ###########STEP2############# \n

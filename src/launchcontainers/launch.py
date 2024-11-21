@@ -657,10 +657,16 @@ def main():
         analysis_dir, dict_store_cs_configs = (
             prepare.prepare_analysis_folder(parser_namespace, lc_config)
         )
-
-        layout = BIDSLayout(os.path.join(basedir, bidsdir_name))
-        logger.info("finished reading the BIDS layout.")
         path_to_analysis_container_specific_config=dict_store_cs_configs['config_path']
+        ### add the layout control
+        src_nifti=lc_config["container_specific"][container]["src_nifti"]
+        if src_nifti=='BIDS': 
+            layout = BIDSLayout(os.path.join(basedir, bidsdir_name))
+            logger.info("finished reading the BIDS layout.")
+        elif src_nifti=='processed': 
+            nifti_processed_method=lc_config["container_specific"][container]["nifti_processed_method"]
+            layout = BIDSLayout(os.path.join(basedir, bidsdir_name, 'derivatives','Processed_nifti', f'analysis-{nifti_processed_method}'))
+            logger.info("finished reading the BIDS layout.")
         # Prepare mode
         if container in [
             "anatrois",
@@ -671,6 +677,7 @@ def main():
             "rtp2-pipeline"
         ]:  # TODO: define list in another module for reusability accross modules and functions
             logger.debug(f"{container} is in the list")
+            
             prepare.prepare_dwi_input(
                 parser_namespace, analysis_dir, lc_config, sub_ses_list, layout, dict_store_cs_configs
             )
