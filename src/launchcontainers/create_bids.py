@@ -33,7 +33,7 @@ from launchcontainers.prepare_inputs import utils as do
 
 logger = logging.getLogger("Create-bids")
 # this will automatically create fake bids folder
-def setup_logger(verbose=True, log_dir=None, log_filename=None):
+def setup_logger_cb(verbose=True, log_dir=None, log_filename=None):
     '''
     stream_handler_level: str,  optional
         if no input, it will be default at INFO level, this will be the setting for the command line logging
@@ -130,7 +130,7 @@ def main():
         else:
             log_dir=op.join(basedir,bidsdir_name,'derivatives',f'{container}',f"analysis-{analysis_name}")
 
-    setup_logger(True, log_dir, log_filename)
+    setup_logger_cb(True, log_dir, log_filename)
     bids_dir=op.join(
             basedir,
             bidsdir_name)
