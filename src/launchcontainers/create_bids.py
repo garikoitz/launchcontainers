@@ -139,7 +139,7 @@ def main():
     for bids_file in bids_id_files:
         shutil.copy(bids_file, bids_dir)
         logging.info(f"Copied {bids_file} to {bids_dir}")
-    if container == "Processed_nifti":
+    if container == "processed_nifti":
         analysis_dir= op.join(
                 basedir,
                 bidsdir_name,

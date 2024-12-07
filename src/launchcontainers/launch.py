@@ -665,7 +665,7 @@ def main():
             logger.info("finished reading the BIDS layout.")
         elif src_nifti=='processed': 
             nifti_processed_method=lc_config["container_specific"][container]["nifti_processed_method"]
-            layout = BIDSLayout(os.path.join(basedir, bidsdir_name, 'derivatives','Processed_nifti', f'analysis-{nifti_processed_method}'))
+            layout = BIDSLayout(os.path.join(basedir, bidsdir_name, 'derivatives','processed_nifti', f'analysis-{nifti_processed_method}'))
             logger.info("finished reading the BIDS layout.")
         # Prepare mode
         if container in [
