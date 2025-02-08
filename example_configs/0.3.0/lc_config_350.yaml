@@ -8,16 +8,16 @@
 #       None: python None type, Usually used for optional arguement, don't put anything after column, not even ""
 general:
   # Base directory of project
-  basedir: /home/tlei/tlei/LMC_DWI_course
+  basedir: /bcbl/home/public/Gari/VOTCLOC/main_exp
   # Name of bids directory, 1 level under basedir, must contain dataset_description
-  bidsdir_name: BIDS
+  bidsdir_name: raw_nifti
   # Directory contains singularity images
-  containerdir: /home/tlei/tlei/LMC_DWI_course/containers
+  containerdir: /bcbl/home/public/Gari/containers
   # Name of the container
   # VALID OPTIONS: freesurferator, rtp2-preproc, rtp2-pipeline, anatrois, rtppreproc, rtp-pipeline, l1_glm, fmriprep 
-  container: rtp2-pipeline
+  container: freesurferator
   # Name of analysis folder 
-  analysis_name: test_qmap
+  analysis_name: kepa_recon_all
   # Place the computing will be held. 
   # VALID OPTIONS: local, BCBL, DIPC.
   host: local
@@ -36,10 +36,6 @@ container_specific:
   anatrois:
     # Version identifier for container 
     version: 4.6.1-7.3.2
-    # source nifti dir: it can be BIDS or processed
-    src_nifti: processed
-    # if it is processed, launchcontainer will look for the BIDS/derivatives/Processed_nifti/ folder, and get the analysis name
-    nifti_processed_method: # the analysis name of the nifti
     # Pre-run freesurfer or not?
     pre_fs: True
     # Directory name of your pre-run freesurfer, this directory should be under /basedir/bidsdir/derivatives
@@ -56,11 +52,7 @@ container_specific:
 
   rtppreproc:
     # Version identifier for container
-    version: 1.2.0-3.0.3
-    # source nifti dir: it can be BIDS or processed
-    src_nifti: processed
-    # if it is processed, launchcontainer will look for the BIDS/derivatives/Processed_nifti/ folder, and get the analysis name
-    nifti_processed_method: # the analysis name of the nifti    
+    version: 1.2.0-3.0.3   
     # anatrois or freesurferator dir, used to find the brainmask
     precontainer_anat: anatrois_4.5.3-7.3.2
     # Analysis name 
@@ -75,11 +67,7 @@ container_specific:
   
   rtp-pipeline:
     # Version identifier for container      
-    version: 4.5.2-3.0.3
-    # source nifti dir: it can be BIDS or processed
-    src_nifti: processed
-    # if it is processed, launchcontainer will look for the BIDS/derivatives/Processed_nifti/ folder, and get the analysis name
-    nifti_processed_method: # the analysis name of the nifti    
+    version: 4.5.2-3.0.3 
     # anatrois or freesurferator dir, used to find the brainmask and fs/ROIs
     precontainer_anat: anatrois_4.6.1-7.3.2
     # Analysis name 
@@ -91,13 +79,9 @@ container_specific:
 
   freesurferator:
     # Version identifier for container 
-    version: 0.2.0-7.4.1rc19
-    # source nifti dir: it can be BIDS or processed
-    src_nifti: processed
-    # if it is processed, launchcontainer will look for the BIDS/derivatives/Processed_nifti/ folder, and get the analysis name
-    nifti_processed_method: # the analysis name of the nifti    
+    version: 0.2.1_7.4.1
     # Pre-run freesurfer or not?
-    pre_fs: True
+    pre_fs: False
     # Directory name of your pre-run freesurfer, this directory should be under /basedir/bidsdir/derivatives
     prefs_dir_name: freesurferator_0.2.0-7.4.1rc19
     # Analysis name of pre-run freesurfer
@@ -111,30 +95,26 @@ container_specific:
     prefs_unzipname: 'S.*$'
     # optional 
     # Freesurfer annotefiles
-    annotfile:  /home/tlei/Desktop/annnnooott.zip
+    annotfile:
     # MNI roi zip file
-    mniroizip: /home/tlei/Desktop/FG.nii.gz
+    mniroizip:
 
   rtp2-preproc:
     # Version identifier for container      
-    version: 0.1.0_3.0.4rc31
-    # source nifti dir: it can be BIDS or processed
-    src_nifti: processed
-    # if it is processed, launchcontainer will look for the BIDS/derivatives/Processed_nifti/ folder, and get the analysis name
-    nifti_processed_method: # the analysis name of the nifti    
+    version: 0.2.2_3.0.4  
     # anatrois or freesurferator dir, used to find the brainmask
-    precontainer_anat: freesurferator_0.2.0-7.4.1rc19
+    precontainer_anat: freesurferator_0.2.1_7.4.1
     # Analysis name 
-    anat_analysis_name: control_points_02
+    anat_analysis_name: week1
     # optional
     # if your encoding direction DWI is multishell sequence and they are in seperate files
     separated_shell_files: False
     # If reverse phase encoding is applied in the sequence
     # It checks if there is a reverse phase encoding acquisition
     # if not, launchcontainers will create mock files
-    rpe: False
+    rpe: True
     # Use qmap file or not?
-    use_qmap: True
+    use_qmap: False
     # Directory name of your pre-run freesurfer, this directory should be under /basedir/bidsdir/derivatives
     qmap_dir_name: mrVista_0.1.0
     # Analysis name of pre-run freesurfer
@@ -146,26 +126,22 @@ container_specific:
 
   rtp2-pipeline:
     # Version identifier for container 
-    version: 0.1.0_3.0.4rc20
-    # source nifti dir: it can be BIDS or processed, default is processed 
-    src_nifti: processed
-    # if it is processed, launchcontainer will look for the BIDS/derivatives/Processed_nifti/ folder, and get the analysis name
-    nifti_processed_method: # the analysis name of the nifti    
+    version: 0.2.2_3.0.4   
     # anatrois or freesurferator dir, used to find the brainmask and fs/ROIs
-    precontainer_anat: freesurferator_0.2.0-7.4.1rc19
+    precontainer_anat: freesurferator_0.2.1_7.4.1
     # Analysis name 
-    anat_analysis_name: control_points_02
+    anat_analysis_name: week1
     # rtppreproc or rtp2-preproc dir, used to find the dwi.nii.gz, bvec and bval
-    precontainer_preproc: rtp2-preproc_0.1.0_3.0.4rc31
+    precontainer_preproc: rtp2-preproc_0.2.2_3.0.4
     # Analysis name 
-    preproc_analysis_name: control_points_02
+    preproc_analysis_name: week1
     # Path to tractparams files, needs to be a .csv
-    tractparams: /home/tlei/tlei/LMC_DWI_course/scripts/tractparams_short_course.csv
+    tractparams: /bcbl/home/public/Gari/VOTCLOC/main_exp/code/lc_dwi/rtp-pipeline_4.5.2-3.0.3_tractparams_20240703.csv
     # optional
     # Path to brain.nii.gz of freesurfer If use fsmask or define manually, this option is set in case you need 
     fsmask: 
     # Use qmap file or not?
-    use_qmap: True
+    use_qmap: False
     # Directory name of your pre-run freesurfer, this directory should be under /basedir/bidsdir/derivatives
     qmap_dir_name: mrVista_0.1.0
     # Analysis name of pre-run freesurfer
@@ -229,8 +205,8 @@ host_options:
       bind_options: ['/bcbl', '/tmp', '/scratch', '/export']
       manager: 'local'
       # This can only be serial, parallel, or dask_worker any other options will make it fail.
-      launch_mode: 'serial'
+      launch_mode: 'parallel'
       # Arguments below only affect to parallel launch mode
-      njobs: 5
+      njobs: 3
       memory_limit: '32GiB'
       threads_per_worker: 6

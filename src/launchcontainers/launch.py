@@ -20,7 +20,7 @@ from subprocess import Popen
 import numpy as np
 import logging
 import math
-
+import re
 # modules in lc
 
 from bids import BIDSLayout
@@ -658,15 +658,15 @@ def main():
             prepare.prepare_analysis_folder(parser_namespace, lc_config)
         )
         path_to_analysis_container_specific_config=dict_store_cs_configs['config_path']
-        ### add the layout control
-        src_nifti=lc_config["container_specific"][container]["src_nifti"]
-        if src_nifti=='BIDS': 
-            layout = BIDSLayout(os.path.join(basedir, bidsdir_name))
-            logger.info("finished reading the BIDS layout.")
-        elif src_nifti=='processed': 
-            nifti_processed_method=lc_config["container_specific"][container]["nifti_processed_method"]
-            layout = BIDSLayout(os.path.join(basedir, bidsdir_name, 'derivatives','processed_nifti', f'analysis-{nifti_processed_method}'))
-            logger.info("finished reading the BIDS layout.")
+ 
+        layout = BIDSLayout(os.path.join(basedir, bidsdir_name))
+        logger.info("finished reading the BIDS layout.")
+        if re.search(r"raw", bidsdir_name):
+            logger.critical("####***Source nifti file are not processed")
+        else: 
+            logger.critical("####***Source nifti file are processed")
+
+
         # Prepare mode
         if container in [
             "anatrois",

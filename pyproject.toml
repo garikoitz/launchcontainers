@@ -27,8 +27,8 @@ classifiers = [
     ]
 packages = [{include = "launchcontainers", from = "src"}, {include = "build_scripts"}]
 [tool.poetry.scripts]
-mrhelp = "launchcontainers.mrhelp:main"
-mrlc = "launchcontainers.launch:main"
+help_mri = "launchcontainers.mrhelp:main"
+lc = "launchcontainers.launch:main"
 launchcontainers = "launchcontainers.launch:main"
 createbids = "launchcontainers.create_bids:main"
 zip_configs = "build_scripts.zip_example_config:zip_example_config"
