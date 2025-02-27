@@ -1,0 +1,104 @@
+# -----------------------------------------------------------------------------
+# Copyright (c) Yongning Lei 2024
+# All rights reserved.
+#
+# This script is distributed under the Apache-2.0 license.
+# You may use, distribute, and modify this code under the terms of the Apache-2.0 license.
+# See the LICENSE file for details.
+#
+# THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+#
+# Author: Yongning Lei
+# Email: yl4874@nyu.edu
+# GitHub: https://github.com/yongninglei
+# -----------------------------------------------------------------------------
+basedir="/bcbl/home/public/Gari/VOTCLOC/main_exp"
+analysis_name="new_sing_and_fmriprep_options"
+BIDS_DIR="${basedir}/BIDS"
+DERIVS_DIR="${basedir}/BIDS/derivatives/fmriprep/analysis-${analysis_name}"
+
+# if BIDS is BIDS. then HOMES=$basedir
+# otherwise, it is HOMES=$BIDS_DIR
+export HOMES=$basedir
+LOG_DIR=$DERIVS_DIR/logs
+
+
+#LOCAL_FREESURFER_DIR="/dipc/tlei/.license"
+
+# Prepare some writeable bind-mount points.
+TEMPLATEFLOW_HOST_HOME=$HOMES/.cache/templateflow
+FMRIPREP_HOST_CACHE=$HOMES/.cache/fmriprep
+FMRIPREP_WORK_DIR=$HOMES/.work/fmriprep
+mkdir -p ${TEMPLATEFLOW_HOST_HOME}
+mkdir -p ${FMRIPREP_HOST_CACHE}
+mkdir -p ${FMRIPREP_WORK_DIR}
+mkdir -p ${LOG_DIR}
+# Prepare derivatives folder
+mkdir -p ${DERIVS_DIR}
+
+# This trick will help you reuse freesurfer results across pipelines and fMRIPrep versions
+# mkdir -p ${BIDS_DIR}/derivatives/freesurfer-6.0.1
+# if [ ! -d ${BIDS_DIR}/${DERIVS_DIR}/freesurfer ]; then
+#         ln -s ${BIDS_DIR}/derivatives/freesurfer-6.0.1
+#         ${BIDS_DIR}/${DERIVS_DIR}/freesurfer
+#         fi
+
+# Make sure FS_LICENSE is defined in the container.
+export SINGULARITYENV_FS_LICENSE=/export/home/tlei/tlei/linux_settings/license.txt
+
+# Designate a templateflow bind-mount point
+export SINGULARITYENV_TEMPLATEFLOW_HOME="/templateflow"
+# SINGULARITY_CMD="unset PYTHONPATH && singularity run --cleanenv --home /scratch/glerma \
+#                  -B /scratch/glerma:/scratch/glerma \
+SINGULARITY_CMD="unset PYTHONPATH && singularity run --cleanenv --no-home \
+                     --containall --writable-tmpfs \
+                 -B /bcbl:/bcbl \
+                 -B /export:/export \
+                 -B $basedir:/base \
+                 -B ${TEMPLATEFLOW_HOST_HOME}:${SINGULARITYENV_TEMPLATEFLOW_HOME}\
+                 -B ${FMRIPREP_HOST_CACHE}:/work \
+                 /bcbl/home/public/Gari/containers/fmriprep_24.1.1.sif"
+
+                 # If you already have FS run, add this line to find it
+                 # -B ${LOCAL_FREESURFER_DIR}:/fsdir \
+# Remove IsRunning files from FreeSurfer
+# find ${LOCAL_FREESURFER_DIR}/sub-$subject/ -name "*IsRunning*" -type f -delete
+
+subject=$1
+# Compose the command line
+now=$(date +"%Y-%m-%dT%H:%M")  
+cmd="module load apptainer/latest &&  \
+     ${SINGULARITY_CMD} \
+     ${BIDS_DIR} \
+     ${DERIVS_DIR} \
+     participant --participant-label $subject \
+     -w /work/ -vv \
+     --fs-license-file ${SINGULARITYENV_FS_LICENSE} \
+     --omp-nthreads 10 --nthreads 20 --mem_mb 60000 \
+     --skip-bids-validation \
+     --output-spaces T1w func MNI152NLin2009cAsym fsnative fsaverage \
+     --notrack \
+     --bids-filter-file /base/code/bids_filter.json \
+     --force-no-bbr \
+     --level minimal \
+     --fs-subjects-dir /base/BIDS/derivatives/fmriprep/analysis-beforeFebST05/sourcedata/freesurfer \
+     > ${LOG_DIR}/${analysis_name}_sub-${subject}_${now}.o 2> ${LOG_DIR}/${analysis_name}_sub-${subject}_${now}.e "
+
+     #--fs-subjects-dir /base/BIDS/derivatives/freesurfer/analysis-${analysis_name} "
+# Add these two lines if you had freesurfer run already
+#  --bids-filter-file /base/code/bids_filter_okazaki.json \
+#  --use-syn-sdc \
+# --project-goodvoxels --notrack --mem_mb 60000 --nprocs 16 --omp-nthreads 8 --slice-time-ref 0 
+#      --fs-subjects-dir /fsdir"
+#     --slice-time-ref 0 \
+#     --project-goodvoxels \
+#     --notrack \
+#     --dummy-scans 6 \
+# --fs-subjects-dir /base/derivatives/fmriprep/analysis-okazaki_correctfmap/sourcedata/freesurfer
+# Setup done, run the command
+echo Running subject ${subject}
+echo Commandline: $cmd
+#eval $cmd
+
