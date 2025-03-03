@@ -2,7 +2,7 @@
 #
 #SBATCH -J fmriprep
 #SBATCH --time=8:00:00
-#SBATCH -n 1
+#SBATCH -n 1  # this stands for number of task
 #SBATCH --cpus-per-task=20    #6
 #SBATCH --mem=82000
 #SBATCH --partition=general  # Queue names you can submit to
@@ -14,10 +14,10 @@
 
 sublist="subseslist_Jan31.txt"
 BIDS_DIR="/scratch/tlei/VOTCLOC/BIDS"
-analysis_name='runall'
+analysis_name='runall_US'
 OUTPUT_DIR="derivatives/fmriprep-${analysis_name}"
 
-export HOMES=/scratch/tlei/$analysis_name
+export HOMES=/scratch/tlei/fmriprep_tmps_$analysis_name
 LOG_DIR=$OUTPUT_DIR/logs
 
 #LOCAL_FREESURFER_DIR="/dipc/tlei/.license"
@@ -51,7 +51,7 @@ SINGULARITY_CMD="unset PYTHONPATH && singularity run --cleanenv --no-home --writ
                  -B $BIDS_DIR:/base \
                  -B ${TEMPLATEFLOW_HOST_HOME}:${SINGULARITYENV_TEMPLATEFLOW_HOME}\
                  -B ${FMRIPREP_HOST_CACHE}:/work \
-                 /scratch/tlei/containers/fmriprep_24.1.1.sif "
+                 /scratch/tlei/containers/fmriprep_unstable.sif "
 
                  # If you already have FS run, add this line to find it
                  # -B ${LOCAL_FREESURFER_DIR}:/fsdir \
@@ -76,7 +76,6 @@ cmd="module load Singularity/3.5.3-GCC-8.3.0 &&  \
       --fs-license-file /base/.license \
       --omp-nthreads 20 --nthreads 20 --mem_mb 80000 \
       --skip-bids-validation \
-      --bids-filter-file /base/code/bids_filter.json \
       --fs-subjects-dir /base/derivatives/freesurfer \
       --output-spaces T1w func MNI152NLin2009cAsym fsnative fsaverage "
 

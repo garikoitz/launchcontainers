@@ -2,7 +2,7 @@ STUDY="/scratch/tlei/VOTCLOC"
 code_dir="/scratch/tlei/soft/MRIworkflow/03_fmriprep"
 # /scratch/tlei/soft/MRIworkflow/03_fmriprep/fmriprep.slurm
 
-TOTAL_LINES=$(wc -l < "${STUDY}/code/subseslist_Jan31.txt")
+TOTAL_LINES=$(wc -l < "${STUDY}/BIDS/code/subseslist_Jan31.txt")
 
 echo "Total lines is $TOTAL_LINES"
 
