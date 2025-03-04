@@ -1,24 +1,24 @@
 #!/bin/bash
 #
-#SBATCH -J fmriprep
+#SBATCH -J Mar04runall
 #SBATCH --time=8:00:00
 #SBATCH -n 1  # this stands for number of task
 #SBATCH --cpus-per-task=20    #6
 #SBATCH --mem=82000
 #SBATCH --partition=general  # Queue names you can submit to
 #SBATCH --qos=regular       #<regular,serial,test,long or xlong>
-# Outputs ----------------------------------
-#SBATCH -o /scratch/tlei/VOTCLOC/log_slurm_fmriprep/%J_%x-%A-%a.out 
-#SBATCH -e /scratch/tlei/VOTCLOC/log_slurm_fmriprep/%J_%x-%A-%a.err 
-# ------------------------------------------
 
-sublist="subseslist_Jan31.txt"
+# if you want to syn the logs to the analysis folder, need to create the log folder first
+# the sublist is shared across launch.sh and the slurm 
+
+sublist="subseslist.txt"
 BIDS_DIR="/scratch/tlei/VOTCLOC/BIDS"
-analysis_name='runall_US'
-OUTPUT_DIR="derivatives/fmriprep-${analysis_name}"
+
+OUTPUT_DIR="$BIDS_DIR/derivatives/fmriprep-${analysis_name}"
+LOG_DIR=$OUTPUT_DIR/logs
 
 export HOMES=/scratch/tlei/fmriprep_tmps_$analysis_name
-LOG_DIR=$OUTPUT_DIR/logs
+mkdir -p ${LOG_DIR}
 
 #LOCAL_FREESURFER_DIR="/dipc/tlei/.license"
 
@@ -29,7 +29,7 @@ FMRIPREP_WORK_DIR=$HOMES/.work/fmriprep
 mkdir -p ${TEMPLATEFLOW_HOST_HOME}
 mkdir -p ${FMRIPREP_HOST_CACHE}
 mkdir -p ${FMRIPREP_WORK_DIR}
-mkdir -p ${LOG_DIR}
+
 # Prepare derivatives folder
 mkdir -p ${BIDS_DIR}/${OUTPUT_DIR}
 
@@ -77,6 +77,7 @@ cmd="module load Singularity/3.5.3-GCC-8.3.0 &&  \
       --omp-nthreads 20 --nthreads 20 --mem_mb 80000 \
       --skip-bids-validation \
       --fs-subjects-dir /base/derivatives/freesurfer \
+      --stop-on-first-crash \
       --output-spaces T1w func MNI152NLin2009cAsym fsnative fsaverage "
 
 # Add these two lines if you had freesurfer run already
@@ -92,19 +93,12 @@ cmd="module load Singularity/3.5.3-GCC-8.3.0 &&  \
 echo Running task ${SLURM_ARRAY_TASK_ID}, for subject ${subject}
 echo Commandline: $cmd
 eval $cmd
+
+echo "Coping the log files to the $LOG_DIR"
+rsync -av $slurm_log_dir $LOG_DIR
 exitcode=$?
 
 # Output results to a table
 echo "sub-$subject   ${SLURM_ARRAY_TASK_ID} $exitcode" >> ${LOG_DIR}/${SLURM_JOB_NAME}_${SLURM_ARRAY_JOB_ID}.tsv
 echo Finished tasks ${SLURM_ARRAY_TASK_ID} with exit code $exitcode
-echo "Coping the log files to the $LOG_DIR"
-cp /scratch/tlei/VOTCLOC/log_slurm_fmriprep/%J_%x-%A-%a.out $LOG_DIR
-cp /scratch/tlei/VOTCLOC/log_slurm_fmriprep/%J_%x-%A-%a.err $LOG_DIR
 exit $exitcode
-
-
-
-# TO LAUNCH IT
-#export STUDY=/scratch/tlei/DATA/VOTCLOC/
-#cd $STUDY
-# sbatch --array=0-$(( $( wc -l $STUDY/participants_fmriprep.tsv | cut -f1 -d' ') )) code/fmriprep.slurm

@@ -64,6 +64,7 @@ cmd="module load Singularity/3.5.3-GCC-8.3.0 &&  \
       --bids-filter-file /base/code/bids_filter.json \
       --fs-subjects-dir /base/derivatives/freesurfer \
       --output-spaces T1w func MNI152NLin2009cAsym fsnative fsaverage \
+      --stop-on-first-crash \
     > ${LOG_DIR}/${analysis_name}_final_sub-${subject}_${now}.o \
     2> ${LOG_DIR}/${analysis_name}_final_sub-${subject}_${now}.e "
 

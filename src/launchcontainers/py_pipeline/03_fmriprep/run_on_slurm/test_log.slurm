@@ -1,10 +1,21 @@
-subject=$1
+#!/bin/bash
+#
+#SBATCH -J passAN
+#SBATCH --time=00:02:00
+#SBATCH -n 1  # this stands for number of task
+#SBATCH --cpus-per-task=1    #6
+#SBATCH --mem=2000
+#SBATCH --partition=general  # Queue names you can submit to
+#SBATCH --qos=test       #<regular,serial,test,long or xlong>
+
+sublist="subseslist.txt"
 BIDS_DIR="/scratch/tlei/VOTCLOC/BIDS"
-analysis_name='runall_US'
+
 OUTPUT_DIR="$BIDS_DIR/derivatives/fmriprep-${analysis_name}"
+LOG_DIR=$OUTPUT_DIR/logs
 
 export HOMES=/scratch/tlei/fmriprep_tmps_$analysis_name
-LOG_DIR=$OUTPUT_DIR/logs
+mkdir -p ${LOG_DIR}
 
 #LOCAL_FREESURFER_DIR="/dipc/tlei/.license"
 
@@ -15,9 +26,9 @@ FMRIPREP_WORK_DIR=$HOMES/.work/fmriprep
 mkdir -p ${TEMPLATEFLOW_HOST_HOME}
 mkdir -p ${FMRIPREP_HOST_CACHE}
 mkdir -p ${FMRIPREP_WORK_DIR}
-mkdir -p ${LOG_DIR}
+
 # Prepare derivatives folder
-mkdir -p ${OUTPUT_DIR}
+mkdir -p ${BIDS_DIR}/${OUTPUT_DIR}
 
 # This trick will help you reuse freesurfer results across pipelines and fMRIPrep versions
 # mkdir -p ${BIDS_DIR}/derivatives/freesurfer-6.0.1
@@ -34,7 +45,6 @@ export SINGULARITYENV_TEMPLATEFLOW_HOME="/templateflow"
 # SINGULARITY_CMD="unset PYTHONPATH && singularity run --cleanenv --home /scratch/glerma \
 #                  -B /scratch/glerma:/scratch/glerma \
 SINGULARITY_CMD="unset PYTHONPATH && singularity run --cleanenv --no-home --writable-tmpfs\
-                 -B /scratch:/scratch \
                  -B $BIDS_DIR:/base \
                  -B ${TEMPLATEFLOW_HOST_HOME}:${SINGULARITYENV_TEMPLATEFLOW_HOME}\
                  -B ${FMRIPREP_HOST_CACHE}:/work \
@@ -45,24 +55,26 @@ SINGULARITY_CMD="unset PYTHONPATH && singularity run --cleanenv --no-home --writ
 # Remove IsRunning files from FreeSurfer
 # find ${LOCAL_FREESURFER_DIR}/sub-$subject/ -name "*IsRunning*" -type f -delete
 
+# Parse the participants.tsv file and extract one subject ID from the
+# line corresponding to this SLURM task.
+subject=$(
+  sed -n -E "$((${SLURM_ARRAY_TASK_ID} + 1))s/^([0-9]+)[[:space:]]+([0-9]+)$/\1/p" \
+  ${BIDS_DIR}/code/${sublist}
+)
+
 # Compose the command line
-now=$(date +"%Y-%m-%dT%H:%M") 
 cmd="module load Singularity/3.5.3-GCC-8.3.0 &&  \
      ${SINGULARITY_CMD} \
      /base \
-     ${OUTPUT_DIR} \
+     /base/${OUTPUT_DIR} \
      participant \
       --participant-label $subject \
       -w /work/ -vv \
       --fs-license-file /base/.license \
       --omp-nthreads 20 --nthreads 20 --mem_mb 80000 \
       --skip-bids-validation \
-      --bids-filter-file /base/code/bids_filter.json \
       --fs-subjects-dir /base/derivatives/freesurfer \
-      --output-spaces T1w func MNI152NLin2009cAsym fsnative fsaverage \
-      --stop-on-first-crash \
-    > ${LOG_DIR}/${analysis_name}_final_sub-${subject}_${now}.o \
-    2> ${LOG_DIR}/${analysis_name}_final_sub-${subject}_${now}.e "
+      --output-spaces T1w func MNI152NLin2009cAsym fsnative fsaverage "
 
 # Add these two lines if you had freesurfer run already
 #  --bids-filter-file /base/code/bids_filter_okazaki.json \
@@ -77,3 +89,14 @@ cmd="module load Singularity/3.5.3-GCC-8.3.0 &&  \
 echo Running task ${SLURM_ARRAY_TASK_ID}, for subject ${subject}
 echo Commandline: $cmd
 eval $cmd
+
+echo "Coping the log files to the $LOG_DIR"
+rsync -av $slurm_log_dir $LOG_DIR
+exitcode=$?
+
+# Output results to a table
+echo "sub-$subject   ${SLURM_ARRAY_TASK_ID} $exitcode" >> ${LOG_DIR}/${SLURM_JOB_NAME}_${SLURM_ARRAY_JOB_ID}.tsv
+echo Finished tasks ${SLURM_ARRAY_TASK_ID} with exit code $exitcode
+exit $exitcode
+
+
