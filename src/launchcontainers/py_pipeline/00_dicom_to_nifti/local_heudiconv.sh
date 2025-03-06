@@ -23,13 +23,13 @@ basedir=/bcbl/home/public/Gari/VOTCLOC/main_exp
 dicom_dirname=dicom
 outputdir=$basedir/raw_nifti
 
-codedir=$basedir/code/00_dicom_to_nifti
+codedir=/export/home/tlei/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/00_dicom_to_nifti
 subseslist_path=$codedir/subseslist_${project}.txt
 heuristicfile=$codedir/heuristic/heuristic_${project}.py
 sing_path=/bcbl/home/public/Gari/singularity_images
 
-analysis_name=analysis-afterDec09
-logdir=${outputdir}/heudiconv_ips_log/$analysis_name/${step}_${project}
+analysis_name=wordcenter_ret
+logdir=${outputdir}/log_heudiconv/$analysis_name/${step}_${project}
 echo "The logdir is $logdir"
 echo "The outputdir is $outputdir"
 mkdir -p $logdir
@@ -39,12 +39,6 @@ echo "reading the subses"
 # Initialize a line counter
 line_number=0
 # Read the file line by line
-#!/bin/bash
-
-# Initialize line number counter
-line_number=0
-max_jobs=10  # Set the maximum number of parallel jobs
-
 # Loop through the subseslist
 while IFS=$'\t' read -r sub ses; do
     echo "line number is $line_number sub is $sub ses is $ses"
@@ -71,19 +65,13 @@ while IFS=$'\t' read -r sub ses; do
     # Command to execute locally
     cmd="bash $codedir/src_heudiconv_${step}_${project}.sh"
 
-    log_file="${logdir}/heudiconv_${sub}_${ses}_${step}.log"
-    error_file="${logdir}/heudiconv_${sub}_${ses}_${step}.err"
+    now=$(date +"%Y-%m-%dT%H:%M")    
+    log_file="${logdir}/heudiconv_${sub}_${ses}_${step}_${now}.log"
+    error_file="${logdir}/heudiconv_${sub}_${ses}_${step}_${now}.err"
     # Run the command in the background
     echo $cmd
-    eval $cmd > ${log_file} 2> ${error_file} &
-
-    # Control the number of parallel jobs
-    if (( $(jobs -r | wc -l) >= max_jobs )); then
-        wait -n  # Wait for the next background job to finish
-    fi
+    eval $cmd > ${log_file} 2> ${error_file}
 
 done < "$subseslist_path"
 
-# Wait for any remaining jobs to complete
-wait
 
