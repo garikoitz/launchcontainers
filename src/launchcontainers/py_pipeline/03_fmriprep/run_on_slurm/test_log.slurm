@@ -1,21 +1,18 @@
 #!/bin/bash
 #
-#SBATCH -J Mar04runall
-#SBATCH --time=8:00:00
+#SBATCH -J passAN
+#SBATCH --time=00:02:00
 #SBATCH -n 1  # this stands for number of task
-#SBATCH --cpus-per-task=20    #6
-#SBATCH --mem=82000
+#SBATCH --cpus-per-task=1    #6
+#SBATCH --mem=2000
 #SBATCH --partition=general  # Queue names you can submit to
-#SBATCH --qos=regular       #<regular,serial,test,long or xlong>
+#SBATCH --qos=test       #<regular,serial,test,long or xlong>
 
-# if you want to syn the logs to the analysis folder, need to create the log folder first
-# the sublist is shared across launch.sh and the slurm 
-
-
+sublist="subseslist.txt"
 BIDS_DIR="/scratch/tlei/VOTCLOC/BIDS"
 
-OUTPUT_DIR=/derivatives/fmriprep-${analysis_name}
-LOG_DIR=$BIDS_DIR/$OUTPUT_DIR/logs
+OUTPUT_DIR="$BIDS_DIR/derivatives/fmriprep-${analysis_name}"
+LOG_DIR=$OUTPUT_DIR/logs
 
 export HOMES=/scratch/tlei/fmriprep_tmps_$analysis_name
 mkdir -p ${LOG_DIR}
@@ -77,7 +74,6 @@ cmd="module load Singularity/3.5.3-GCC-8.3.0 &&  \
       --omp-nthreads 20 --nthreads 20 --mem_mb 80000 \
       --skip-bids-validation \
       --fs-subjects-dir /base/derivatives/freesurfer \
-      --stop-on-first-crash \
       --output-spaces T1w func MNI152NLin2009cAsym fsnative fsaverage "
 
 # Add these two lines if you had freesurfer run already
@@ -102,3 +98,5 @@ exitcode=$?
 echo "sub-$subject   ${SLURM_ARRAY_TASK_ID} $exitcode" >> ${LOG_DIR}/${SLURM_JOB_NAME}_${SLURM_ARRAY_JOB_ID}.tsv
 echo Finished tasks ${SLURM_ARRAY_TASK_ID} with exit code $exitcode
 exit $exitcode
+
+

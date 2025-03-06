@@ -5,7 +5,7 @@ MIT License
 Copyright (c) 2020-2024 Garikoitz Lerma-Usabiaga
 Copyright (c) 2020-2022 Mengxing Liu
 Copyright (c) 2022-2024 Leandro Lecca
-Copyright (c) 2022-2024 Yongning Lei
+Copyright (c) 2022-2025 Yongning Lei
 Copyright (c) 2023 David Linhardt
 Copyright (c) 2023 Iñigo Tellaetxe
 
