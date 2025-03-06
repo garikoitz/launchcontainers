@@ -11,11 +11,11 @@
 # if you want to syn the logs to the analysis folder, need to create the log folder first
 # the sublist is shared across launch.sh and the slurm 
 
-sublist="subseslist.txt"
+
 BIDS_DIR="/scratch/tlei/VOTCLOC/BIDS"
 
-OUTPUT_DIR="$BIDS_DIR/derivatives/fmriprep-${analysis_name}"
-LOG_DIR=$OUTPUT_DIR/logs
+OUTPUT_DIR=/derivatives/fmriprep-${analysis_name}
+LOG_DIR=$BIDS_DIR/$OUTPUT_DIR/logs
 
 export HOMES=/scratch/tlei/fmriprep_tmps_$analysis_name
 mkdir -p ${LOG_DIR}

@@ -1,22 +1,27 @@
 unset analysis_name
+unset sublist
+unset slurm_log_dir
 
 STUDY="/scratch/tlei/VOTCLOC"
 code_dir="/scratch/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/03_fmriprep"
-
+sublist="subseslist.txt"
 analysis_name='runall_US'
-export analysis_name
 
-slurm_log_dir=/scratch/tlei/VOTCLOC/logs_slurm/log_slurm-$analysis_name
+slurm_log_dir=/scratch/tlei/VOTCLOC/logs_slurm/log_fmriprep-$analysis_name
 mkdir -p ${slurm_log_dir}
 
-TOTAL_LINES=$(wc -l < "${STUDY}/BIDS/code/subseslist.txt")
+export analysis_name
+export sublist
+export slurm_log_dir
+
+TOTAL_LINES=$(wc -l < "${STUDY}/BIDS/code/$sublist")
 
 echo "Total lines is $TOTAL_LINES"
 
 DATA_LINES=$((TOTAL_LINES - 1))
 
 cmd="sbatch 
-    --export=ALL,analysis_name="${analysis_name}",slurm_log_dir="${slurm_log_dir}" \
+    --export=ALL,analysis_name="${analysis_name}",slurm_log_dir="${slurm_log_dir}",sublist="${sublist}"\
     --array=1-${DATA_LINES} \
     -o "$slurm_log_dir/%J_%x-%A-%a.out" \
     -e "$slurm_log_dir/%J_%x-%A-%a.err" \
