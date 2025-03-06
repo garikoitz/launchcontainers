@@ -83,6 +83,7 @@ cmd="module load apptainer/latest &&  \
      --bids-filter-file /base/code/bids_filter.json \
      --force-no-bbr \
      --level minimal \
+     --stop-on-first-crash \
      --fs-subjects-dir /base/BIDS/derivatives/fmriprep/analysis-beforeFebST05/sourcedata/freesurfer \
      > ${LOG_DIR}/${analysis_name}_sub-${subject}_${now}.o 2> ${LOG_DIR}/${analysis_name}_sub-${subject}_${now}.e "
 
