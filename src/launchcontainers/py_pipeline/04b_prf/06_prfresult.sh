@@ -16,10 +16,10 @@
 # GitHub: https://github.com/yongninglei
 # -----------------------------------------------------------------------------
 baseP=/bcbl/home/public/Gari/VOTCLOC/main_exp
-code_dir=/bcbl/home/home_n-z/tlei/soft/MRIworkflow/04b_prf
+code_dir=/export/home/tlei/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/04b_prf
 LOG_DIR=$baseP/BIDS/derivatives/prfresult/prfresult_logs
 HOME_DIR=$baseP/singularity_home
-
+version='0.1.1'
 if [ ! -d $LOG_DIR ]; then
 	mkdir -p $LOG_DIR
 fi
@@ -49,10 +49,8 @@ cmd="unset PYTHONPATH; singularity run \
         -B $baseP/BIDS/derivatives:/flywheel/v0/data/derivatives \
         -B $baseP/BIDS:/flywheel/v0/BIDS  \
 	-B $code_dir/prfreport.json:/flywheel/v0/config.json \
-	--cleanenv /bcbl/home/public/Gari/singularity_images/prfresult_0.1.1.sif \
+	--cleanenv /bcbl/home/public/Gari/singularity_images/prfresult_${version}.sif \
 	--verbose \
-	> ${LOG_DIR}/prfresult_${current_time}.o 2> ${LOG_DIR}/prfresult_${current_time}.e & "
+	> ${LOG_DIR}/prfresult_${version}_${current_time}.o 2> ${LOG_DIR}/prfresult_${version}_${current_time}.e & "
 echo $cmd
 eval $cmd
-
-

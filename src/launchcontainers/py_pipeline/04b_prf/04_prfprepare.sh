@@ -16,10 +16,11 @@
 # GitHub: https://github.com/yongninglei
 # -----------------------------------------------------------------------------
 baseP=/bcbl/home/public/Gari/VOTCLOC/main_exp
-code_dir=/export/home/tlei/tlei/soft/MRIworkflow/04b_prf
+code_dir=/export/home/tlei/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/04b_prf
 license_dir=/export/home/tlei/tlei/linux_settings
 LOG_DIR=$baseP/BIDS/derivatives/prfprepare/prfprepare_logs
 HOME_DIR=$baseP/singularity_home
+version='1.5.0'
 if [ ! -d $LOG_DIR ]; then
 	mkdir -p $LOG_DIR
 fi
@@ -37,8 +38,8 @@ cmd="unset PYTHONPATH; singularity run \
 	-B $baseP/BIDS:/flywheel/v0/BIDS  \
 	-B $code_dir/prfprepare.json:/flywheel/v0/config.json \
 	-B $license_dir/license.txt:/opt/freesurfer/.license \
-	--cleanenv /bcbl/home/public/Gari/singularity_images/prfprepare_1.4.0.sif \
-	> ${LOG_DIR}/prfprepare_${current_time}.o 2> ${LOG_DIR}/prfprepare_${current_time}.e "
+	--cleanenv /bcbl/home/public/Gari/singularity_images/prfprepare_${version}.sif \
+	> ${LOG_DIR}/prfprepare_${version}_${current_time}.o 2> ${LOG_DIR}/prfprepare_${version}_${current_time}.e "
 echo $cmd
 echo "backup the prfprepare json to log dir"
 cp $code_dir/prfprepare.json $LOG_DIR

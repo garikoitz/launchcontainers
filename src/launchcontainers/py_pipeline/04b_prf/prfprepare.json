@@ -2,7 +2,7 @@
   "subjects": "04",
   "sessions": ["02","03","04"],
   "etcorrection": false,
-  "tasks": "[prf]",
+  "tasks": ["retRW","retFF","retCB"],
   "force": false,
   "custom_output_name": "",
   "fmriprep_legacy_layout": false,
@@ -14,6 +14,7 @@
     "output_only_average": false,
     "rois": "all",
     "atlases": "all",
+    "fmriprep_bids_layout": false,
     "fmriprep_analysis": "beforeFebST05"
   }
 }

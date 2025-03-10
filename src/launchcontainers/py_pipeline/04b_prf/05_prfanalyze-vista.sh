@@ -16,10 +16,10 @@
 # GitHub: https://github.com/yongninglei
 # -----------------------------------------------------------------------------
 baseP=/bcbl/home/public/Gari/VOTCLOC/main_exp
-code_dir=/bcbl/home/home_n-z/tlei/soft/MRIworkflow/04b_prf
+code_dir=/export/home/tlei/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/04b_prf
 LOG_DIR=$baseP/BIDS/derivatives/prfanalyze-vista/prfanalyze-vista_logs
 HOME_DIR=$baseP/singularity_home
-
+version='2.2.1'
 if [ ! -d $LOG_DIR ]; then
 	mkdir -p $LOG_DIR
 fi
@@ -43,11 +43,10 @@ cmd="unset PYTHONPATH; singularity run \
 	-B $baseP:/flywheel/v0/input \
 	-B $baseP:/flywheel/v0/output  \
 	-B $code_dir/prfanalyze-vista.json:/flywheel/v0/input/config.json \
-	--cleanenv /bcbl/home/public/Gari/singularity_images/prfanalyze-vista_2.2.1.sif \
+	--cleanenv /bcbl/home/public/Gari/singularity_images/prfanalyze-vista_${version}.sif \
 	--verbose \
-	> ${LOG_DIR}/prfanalyze_${current_time}.o 2> ${LOG_DIR}/prfanalyze_${current_time}.e "
+	> ${LOG_DIR}/prfanalyze_${version}_${current_time}.o 2> ${LOG_DIR}/prfanalyze_${version}_${current_time}.e "
 echo $cmd
 echo "backup the prfanalyze-vista json to log dir"
 cp $code_dir/prfanalyze-vista.json $LOG_DIR
 eval $cmd
-
