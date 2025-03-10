@@ -43,6 +43,8 @@ else
 fi
 
 cmd="unset PYTHONPATH; singularity run \
+	-B /bcbl:/bcbl
+	-B /export:/export
 	-H $baseP/singularity_home \
 	-B /bcbl:/bcbl \
 	-B /export:/export \

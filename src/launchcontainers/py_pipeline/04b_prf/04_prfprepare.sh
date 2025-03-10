@@ -32,6 +32,8 @@ current_time=$(date +"%Y-%m-%d_%H-%M-%S")
 module load apptainer
 
 cmd="unset PYTHONPATH; singularity run \
+	-B /bcbl:/bcbl
+	-B /export:/export
 	-H $baseP/singularity_home \
 	-B $baseP/BIDS/derivatives/fmriprep:/flywheel/v0/input \
 	-B $baseP/BIDS/derivatives:/flywheel/v0/output  \
@@ -41,8 +43,6 @@ cmd="unset PYTHONPATH; singularity run \
 	--cleanenv /bcbl/home/public/Gari/singularity_images/prfprepare_${version}.sif \
 	> ${LOG_DIR}/prfprepare_${version}_${current_time}.o 2> ${LOG_DIR}/prfprepare_${version}_${current_time}.e "
 echo $cmd
-echo "backup the prfprepare json to log dir"
-cp $code_dir/prfprepare.json $LOG_DIR
 eval $cmd
 
 module unload apptainer

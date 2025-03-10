@@ -37,6 +37,8 @@ else
 fi
 
 cmd="unset PYTHONPATH; singularity run \
+	-B /bcbl:/bcbl
+	-B /export:/export
 	-H $HOME_DIR \
 	-B /bcbl:/bcbl \
 	-B /export:/export \
@@ -47,6 +49,4 @@ cmd="unset PYTHONPATH; singularity run \
 	--verbose \
 	> ${LOG_DIR}/prfanalyze_${version}_${current_time}.o 2> ${LOG_DIR}/prfanalyze_${version}_${current_time}.e "
 echo $cmd
-echo "backup the prfanalyze-vista json to log dir"
-cp $code_dir/prfanalyze-vista.json $LOG_DIR
 eval $cmd

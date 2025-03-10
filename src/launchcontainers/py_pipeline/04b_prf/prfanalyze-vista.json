@@ -1,6 +1,6 @@
 {
     "subjectName": "04",
-    "sessionName": "02",
+    "sessionName": "[03,04]",
     "tasks"      : "[all]",
     "isPRFSynthData" : false,
     "options": {
