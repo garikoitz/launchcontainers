@@ -35,7 +35,7 @@ cmd="singularity run \
 	    	--bind /bcbl:/bcbl \
 			--bind /export:/export \
         	${sing_path}/heudiconv_1.3.2.sif \
-			-d /base/${dicom_dirname}/sub-{subject}/ses-{session}/*/*/*/* \
+			-d /base/${dicom_dirname}/sub-{subject}/ses-{session}/*/*.dcm \
 	    	--subjects ${sub} \
 			--ses ${ses} \
 			-o ${outputdir} \
@@ -44,9 +44,9 @@ cmd="singularity run \
 	    	-c dcm2niix \
 	    	-b \
         	--grouping all "
-			# try the no sesion 
+			# try the no sesion
 			#--ses ${ses} \
 echo $cmd
-eval $cmd	
+eval $cmd
 
 module unload apptainer

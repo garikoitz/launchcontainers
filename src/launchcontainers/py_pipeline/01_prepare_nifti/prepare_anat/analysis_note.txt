@@ -1,0 +1,5 @@
+At BCBL, it seems this step can't be launched throught IPS
+
+Can only run it on local
+
+Working on LMC02, can launch it using local_presurfer.sh

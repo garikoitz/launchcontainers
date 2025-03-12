@@ -1,6 +1,6 @@
 {
     "subjects": [
-        "06"
+        "04"
     ],
     "sessions": [
         "02"
@@ -11,7 +11,7 @@
     "runs": [
         "all"
     ],
-    "prfanalyzeAnalysis": "01",
+    "prfanalyzeAnalysis": "02",
     "masks": {
         "rois": [
             [

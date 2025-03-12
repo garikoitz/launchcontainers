@@ -53,6 +53,6 @@ cmd="unset PYTHONPATH; singularity run \
 	-B $code_dir/prfreport.json:/flywheel/v0/config.json \
 	--cleanenv /bcbl/home/public/Gari/singularity_images/prfresult_${version}.sif \
 	--verbose \
-	> ${LOG_DIR}/prfresult_${version}_${current_time}.o 2> ${LOG_DIR}/prfresult_${version}_${current_time}.e & "
+	> ${LOG_DIR}/prfresult_${version}_${current_time}.o 2> ${LOG_DIR}/prfresult_${version}_${current_time}.e "
 echo $cmd
 eval $cmd

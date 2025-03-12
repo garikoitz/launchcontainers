@@ -23,12 +23,12 @@ basedir=/bcbl/home/public/Gari/VOTCLOC/main_exp
 dicom_dirname=dicom
 outputdir=$basedir/raw_nifti
 
-codedir=$basedir/code/00_dicom_to_nifti
+codedir=/export/home/tlei/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/00_dicom_to_nifti
 subseslist_path=$codedir/subseslist_${project}.txt
 heuristicfile=$codedir/heuristic/heuristic_${project}.py
 sing_path=/bcbl/home/public/Gari/singularity_images
 
-analysis_name=analysis-afterDec09
+analysis_name=analysis-beforeMarch05
 logdir=${outputdir}/heudiconv_ips_log/$analysis_name/${step}_${project}
 echo "The logdir is $logdir"
 echo "The outputdir is $outputdir"
@@ -52,14 +52,14 @@ do
         continue
     fi
 
-	echo this is line number $line_number 
+	echo this is line number $line_number
 	echo "### CONVERTING TO NIFTI OF SUBJECT: $sub $ses SESSION ###"
+	now=$(date +"%Y-%m-%dT%H-%M")
 	cmd="qsub -q short.q \
-	    -S /bin/bash
-		-M t.lei@bcbl.eu
+	    -S /bin/bash \
 		-N heudiconv_s-${sub}_s-${ses} \
-		-o $logdir/heudiconv_sub-${sub}_ses-${ses}.o \
-    	-e $logdir/heudiconv_sub-${sub}_ses-${ses}.e \
+		-o $logdir/heudiconv_sub-${sub}_ses-${ses}_${now}.o \
+    	-e $logdir/heudiconv_sub-${sub}_ses-${ses}_${now}.e \
 		-l mem_free=16G \
 		-v basedir=${basedir} \
 		-v logdir=${logdir} \
@@ -71,9 +71,6 @@ do
 		-v sing_path=$sing_path \
 		$codedir/src_heudiconv_${step}_${project}.sh "
 
-    now=$(date +"%Y-%m-%dT%H:%M")    
-    log_file="${logdir}/heudiconv_${sub}_${ses}_${step}_${now}.log"
-    error_file="${logdir}/heudiconv_${sub}_${ses}_${step}_${now}.err"
 	echo $cmd
-	eval $cmd > ${log_file} 2> ${error_file}
+	eval $cmd
 done < "$subseslist_path"

@@ -7,19 +7,19 @@ function  presurferT1(src_dir, output_dir, sub, ses, force)
     else
         disp('FSL is loaded, continue');
     end
-    
+
     if system('3dTstat')==127
        error("didn't load afni");
     else
         disp('AFNI is loaded, continue');
     end
     %}
-    %% general loading process     
+    %% general loading process
     tbPath = fullfile(bvRP,'..');
     spm12Path = fullfile(tbPath, 'spm12');
     bidsmatlab_path=fullfile(tbPath,'bids-matlab');
     addpath(bidsmatlab_path);
-    addpath(spm12Path); 
+    addpath(spm12Path);
     fmamtPath = fullfile(tbPath, 'freesurfer_mrtrix_afni_matlab_tools'); % tbUse if not installed
     addpath(genpath(fmamtPath));
     presurferpath=fullfile(tbPath,'presurfer');
@@ -49,14 +49,17 @@ function  presurferT1(src_dir, output_dir, sub, ses, force)
     out_sesP = fullfile(output_dir, sub, ses);
     if ~exist(out_sesP, 'dir')
        mkdir(out_sesP)
+    end
+    if ~exist(fullfile(out_sesP,'anat'), 'dir')
        mkdir(fullfile(out_sesP,'anat'))
     end
+
     sprintf('The source dir is %s and the outputdir is %s', src_sesP, out_sesP)
 
     % get all the files
     % Path to the anat folder
     anat_dir = fullfile(src_dir, sub, ses, 'anat');
-    
+
     % Detect all T1w.nii.gz files
     UNI_pattern = fullfile(anat_dir, '*_T1_uni.nii.gz');
     UNI_files = dir(UNI_pattern);
@@ -65,7 +68,7 @@ function  presurferT1(src_dir, output_dir, sub, ses, force)
     disp(num_runs)
     runs = arrayfun(@(x) sprintf('%02d', x), 1:num_runs, 'UniformOutput', false);
     sprintf('Number of runs are %s', num_runs)
-    
+    sprintf('Forse is %s', force)
     for runI=1:length(runs)
         run = ['run-',runs{runI}];
         %% first run presurfer to denoise mp2rage images
@@ -80,7 +83,7 @@ function  presurferT1(src_dir, output_dir, sub, ses, force)
             system(['rm ', T1w_out]);
             system(['rm -r ', fullfile(src_sesP, 'anat', 'presurf_MPRAGEise')]);
         end
-        
+
         if ~exist([T1w_out,'.gz'], 'file') || force
             % define the files
             sprintf('Going to run presurfer to create %s', T1w_out)
@@ -90,10 +93,10 @@ function  presurferT1(src_dir, output_dir, sub, ses, force)
                 % unzip the data
                 gunzip([UNI,'.gz'])
                 gunzip([INV2,'.gz'])
-    
+
                 % STEP - 0 : (optional) MPRAGEise UNI
                 UNI_out = presurf_MPRAGEise(INV2,UNI);
-    
+
                 % move, rename, clean up
                 system(['cp ', UNI_out, ' ', T1w_out]);
                 pause(2);
@@ -117,6 +120,6 @@ function  presurferT1(src_dir, output_dir, sub, ses, force)
             catch
                 warning("T1w.json is NOT being copied correctly")
             end
-        end        
+        end
     end
 end
