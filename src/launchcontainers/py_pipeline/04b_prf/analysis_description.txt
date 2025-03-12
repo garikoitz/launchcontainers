@@ -4,3 +4,6 @@ To run PRF analysis,
 
 stimuli: the .mat file BcblViennaDisplay read
 vistadisplog: follow the sub-/ses- structure, are the params.mat files
+
+
+If prfprepare is point to some freesurfer dir, better to maintain it because the following prfresult will look for that
