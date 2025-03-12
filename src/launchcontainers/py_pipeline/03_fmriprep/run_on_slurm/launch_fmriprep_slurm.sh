@@ -5,7 +5,7 @@ unset slurm_log_dir
 STUDY="/scratch/tlei/VOTCLOC"
 code_dir="/scratch/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/03_fmriprep"
 sublist="subseslist.txt"
-analysis_name='runall_US'
+analysis_name='beforeMar05_US'
 
 slurm_log_dir=/scratch/tlei/VOTCLOC/logs_slurm/log_fmriprep-$analysis_name
 mkdir -p ${slurm_log_dir}

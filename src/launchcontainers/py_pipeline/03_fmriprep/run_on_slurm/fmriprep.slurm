@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-#SBATCH -J Mar04runall
+#SBATCH -J Mar05
 #SBATCH --time=8:00:00
 #SBATCH -n 1  # this stands for number of task
 #SBATCH --cpus-per-task=20    #6
@@ -78,6 +78,7 @@ cmd="module load Singularity/3.5.3-GCC-8.3.0 &&  \
       --skip-bids-validation \
       --fs-subjects-dir /base/derivatives/freesurfer \
       --stop-on-first-crash \
+      --bids-filter-file /base/code/bids_filter.json \
       --output-spaces T1w func MNI152NLin2009cAsym fsnative fsaverage "
 
 # Add these two lines if you had freesurfer run already
