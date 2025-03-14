@@ -1,10 +1,10 @@
 #!/bin/bash
 #
-#SBATCH -J Mar05
+#SBATCH -J edrs01t67
 #SBATCH --time=8:00:00
 #SBATCH -n 1  # this stands for number of task
 #SBATCH --cpus-per-task=20    #6
-#SBATCH --mem=82000
+#SBATCH --mem=62000
 #SBATCH --partition=general  # Queue names you can submit to
 #SBATCH --qos=regular       #<regular,serial,test,long or xlong>
 
@@ -74,7 +74,7 @@ cmd="module load Singularity/3.5.3-GCC-8.3.0 &&  \
       --participant-label $subject \
       -w /work/ -vv \
       --fs-license-file /base/.license \
-      --omp-nthreads 20 --nthreads 20 --mem_mb 80000 \
+      --omp-nthreads 20 --nthreads 20 --mem_mb 60000 \
       --skip-bids-validation \
       --fs-subjects-dir /base/derivatives/freesurfer \
       --stop-on-first-crash \
@@ -82,7 +82,7 @@ cmd="module load Singularity/3.5.3-GCC-8.3.0 &&  \
       --output-spaces T1w func MNI152NLin2009cAsym fsnative fsaverage "
 
 # Add these two lines if you had freesurfer run already
-#  --bids-filter-file /base/code/bids_filter_okazaki.json \
+#  --bids-filter-file /base/code/bids_filter.json \
 #  --use-syn-sdc \
 #  --fs-subjects-dir /base/derivatives/fmriprep/analysis-okazaki_correctfmap/sourcedata/freesurfer 
 # --project-goodvoxels --notrack --mem_mb 60000 --nprocs 16 --omp-nthreads 8 --slice-time-ref 0 
