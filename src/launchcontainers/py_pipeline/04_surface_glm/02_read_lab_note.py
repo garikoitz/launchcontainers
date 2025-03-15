@@ -6,7 +6,8 @@ import pandas as pd
 from bids import BIDSLayout
 
 # 🔹 Path to the downloaded Excel file
-xlsx_file = '/home/tlei/Desktop/VOTCLOC_subject_list.xlsx'  # Replace with your actual file path
+# Replace with your actual file path
+xlsx_file = '/bcbl/home/public/Gari/VOTCLOC/main_exp/BIDS/sourcedata/VOTCLOC_subject_list.xlsx'
 # 🔹 Load the Excel file
 xls = pd.ExcelFile(xlsx_file)
 
@@ -41,10 +42,10 @@ drop_conditions = (
 # Drop rows matching conditions
 df_filtered = final_df[~drop_conditions].reset_index(drop=True)
 
-bids_dir = ''
+bids_dir = '/bcbl/home/public/Gari/VOTCLOC/main_exp/BIDS'
 layout = BIDSLayout(bids_dir, validate=False)
 
-for _, row in final_df.iterrows():
+for _, row in df_filtered.iterrows():
     sub = str(row['sub'])  # Convert to string and zero-pad
     ses = str(row['ses'])  # Convert to string and zero-pad
     protocol_name = row['protocol_name']
@@ -60,16 +61,17 @@ for _, row in final_df.iterrows():
 
         # Source and target paths
         source_event = layout.get(
-            subject=sub, session=ses, run_number=run_number,
+            subject=sub, session=ses, run=rerun_number,
             task='fLoc', suffix='events', extension='tsv',
-        )[0]
+        )[0].path
         target_event = source_event.replace(f'run-{rerun_number}', f'run-{run_number}')
         # Ensure source file exists before linking
         if os.path.exists(source_event):
-            if not os.path.exists(target_event):  # Avoid overwriting existing files
+            # Avoid overwriting existing files
+            if not (os.path.exists(target_event) or os.path.islink(target_event)):
                 os.symlink(source_event, target_event)
-                print(f"Linked {source_event} -> {target_event}")
+                print(f'Linked {source_event} -> {target_event}')
             else:
-                print(f"Target exists, skipping: {target_event}")
+                print(f'Target exists, skipping: {target_event}')
         else:
-            print(f"Source missing, skipping: {source_event}")
+            print(f'Source missing, skipping: {source_event}')

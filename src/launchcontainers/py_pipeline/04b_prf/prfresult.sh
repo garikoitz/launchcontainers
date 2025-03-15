@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # -----------------------------------------------------------------------------
 # Copyright (c) Yongning Lei 2024
 # All rights reserved.
@@ -17,10 +17,9 @@
 # -----------------------------------------------------------------------------
 baseP=/bcbl/home/public/Gari/VOTCLOC/main_exp
 code_dir=/export/home/tlei/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/04b_prf
-license_dir=/export/home/tlei/tlei/linux_settings
-LOG_DIR=$baseP/BIDS/derivatives/prfprepare/prfprepare_logs
+LOG_DIR=$baseP/BIDS/derivatives/prfresult/prfresult_logs
 HOME_DIR=$baseP/singularity_home
-version='1.5.0'
+version='0.1.1'
 if [ ! -d $LOG_DIR ]; then
 	mkdir -p $LOG_DIR
 fi
@@ -35,14 +34,16 @@ cmd="unset PYTHONPATH; singularity run \
 	-B /bcbl:/bcbl
 	-B /export:/export
 	-H $baseP/singularity_home \
-	-B $baseP/BIDS/derivatives/fmriprep:/flywheel/v0/input \
-	-B $baseP/BIDS/derivatives:/flywheel/v0/output  \
-	-B $baseP/BIDS:/flywheel/v0/BIDS  \
-	-B $code_dir/prfprepare.json:/flywheel/v0/config.json \
-	-B $license_dir/license.txt:/opt/freesurfer/.license \
-	--cleanenv /bcbl/home/public/Gari/singularity_images/prfprepare_${version}.sif \
-	> ${LOG_DIR}/prfprepare_${version}_${current_time}.o 2> ${LOG_DIR}/prfprepare_${version}_${current_time}.e "
-echo $cmd
+	-B /bcbl:/bcbl \
+	-B /export:/export \
+        -B $baseP/BIDS/derivatives:/flywheel/v0/data/derivatives \
+        -B $baseP/BIDS:/flywheel/v0/BIDS  \
+	-B $code_dir/prfreport.json:/flywheel/v0/config.json \
+	--cleanenv /bcbl/home/public/Gari/singularity_images/prfresult_${version}.sif \
+	--verbose "
+
+echo "This is the command running :$cmd"
+echo "start running ####################"
 eval $cmd
 
 module unload apptainer
