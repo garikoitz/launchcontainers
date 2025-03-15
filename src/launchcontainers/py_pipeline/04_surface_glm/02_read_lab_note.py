@@ -1,0 +1,75 @@
+from __future__ import annotations
+
+import os
+
+import pandas as pd
+from bids import BIDSLayout
+
+# 🔹 Path to the downloaded Excel file
+xlsx_file = '/home/tlei/Desktop/VOTCLOC_subject_list.xlsx'  # Replace with your actual file path
+# 🔹 Load the Excel file
+xls = pd.ExcelFile(xlsx_file)
+
+
+# 🔹 Find all sheets that match "sub-xx"
+filtered_data = []
+for sheet_name in xls.sheet_names:
+    if sheet_name.startswith('sub-'):  # Process sheets named sub-xx
+        df = pd.read_excel(xls, sheet_name=sheet_name, header=0)
+        df = df.loc[:, ['sub', 'ses', 'protocol_name']]
+        df = df[df['ses'] > 0].reset_index(drop=True)
+        # Assuming df is already loaded
+        df['sub'] = df['sub'].astype(int).astype(str).str.zfill(2)  # Convert 'sub' to string
+        df['ses'] = df['ses'].astype(int).astype(str).str.zfill(2)   # Convert 'ses' to string
+
+        # Ensure necessary columns exist
+        if all(col in df.columns for col in ['sub', 'ses', 'protocol_name']):
+            # 🔹 Filter rows where "protocol_name" contains "rerun" or "skip"
+            filtered_rows = df[df['protocol_name'].str.contains('rerun', case=False, na=False)]
+            filtered_data.append(filtered_rows)
+
+# 🔹 Combine all filtered results into one DataFrame
+final_df = pd.concat(filtered_data, ignore_index=True) if filtered_data else pd.DataFrame(
+    columns=['sub', 'ses', 'protocol_name'],
+)
+# Define subject-session pairs to drop
+drop_conditions = (
+    ((final_df['sub'] == '01') & final_df['ses'].isin(['10', '11']))  # Drop sub-01 ses-10, ses-11
+    | ((final_df['sub'] == '05') & final_df['ses'].isin(['03']))          # Drop sub-05 ses-03
+)
+
+# Drop rows matching conditions
+df_filtered = final_df[~drop_conditions].reset_index(drop=True)
+
+bids_dir = ''
+layout = BIDSLayout(bids_dir, validate=False)
+
+for _, row in final_df.iterrows():
+    sub = str(row['sub'])  # Convert to string and zero-pad
+    ses = str(row['ses'])  # Convert to string and zero-pad
+    protocol_name = row['protocol_name']
+
+    # Extract run number and rerun number from protocol_name
+    parts = protocol_name.split('_')
+    run_part = [p for p in parts if 'run-' in p]
+    rerun_part = [p for p in parts if 'rerun-' in p or 'rerun' in p]
+
+    if run_part and rerun_part:
+        run_number = run_part[0].split('-')[-1]  # e.g., run-11
+        rerun_number = rerun_part[0].split('-')[-1]  # e.g., rerun-02
+
+        # Source and target paths
+        source_event = layout.get(
+            subject=sub, session=ses, run_number=run_number,
+            task='fLoc', suffix='events', extension='tsv',
+        )[0]
+        target_event = source_event.replace(f'run-{rerun_number}', f'run-{run_number}')
+        # Ensure source file exists before linking
+        if os.path.exists(source_event):
+            if not os.path.exists(target_event):  # Avoid overwriting existing files
+                os.symlink(source_event, target_event)
+                print(f"Linked {source_event} -> {target_event}")
+            else:
+                print(f"Target exists, skipping: {target_event}")
+        else:
+            print(f"Source missing, skipping: {source_event}")
