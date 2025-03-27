@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-#SBATCH -J Mar05
-#SBATCH --time=8:00:00
+#SBATCH -J s04t6789r3
+#SBATCH --time=10:00:00
 #SBATCH -n 1  # this stands for number of task
 #SBATCH --cpus-per-task=20    #6
 #SBATCH --mem=82000
@@ -66,7 +66,7 @@ subject=$(
 )
 
 # Compose the command line
-cmd="module load Singularity/3.5.3-GCC-8.3.0 &&  \
+cmd="module load Apptainer/1.2.4 &&  \
      ${SINGULARITY_CMD} \
      /base \
      /base/${OUTPUT_DIR} \
@@ -78,11 +78,10 @@ cmd="module load Singularity/3.5.3-GCC-8.3.0 &&  \
       --skip-bids-validation \
       --fs-subjects-dir /base/derivatives/freesurfer \
       --stop-on-first-crash \
-      --bids-filter-file /base/code/bids_filter.json \
       --output-spaces T1w func MNI152NLin2009cAsym fsnative fsaverage "
 
 # Add these two lines if you had freesurfer run already
-#  --bids-filter-file /base/code/bids_filter_okazaki.json \
+#  --bids-filter-file /base/code/bids_filter.json \
 #  --use-syn-sdc \
 #  --fs-subjects-dir /base/derivatives/fmriprep/analysis-okazaki_correctfmap/sourcedata/freesurfer 
 # --project-goodvoxels --notrack --mem_mb 60000 --nprocs 16 --omp-nthreads 8 --slice-time-ref 0 
