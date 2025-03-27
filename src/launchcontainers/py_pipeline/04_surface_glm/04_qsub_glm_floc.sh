@@ -14,22 +14,27 @@
 # Email: yl4874@nyu.edu
 # GitHub: https://github.com/yongninglei
 # -----------------------------------------------------------------------------
-basedir=/bcbl/home/public/Gari/MINI/BIDS_BLQfunc_T1
-logdir=$basedir/logdir/l1_surfaces_log/glm_merged
-codedir=/bcbl/home/public/Gari/VOTCLOC/VSS/code/05_surface_glm
+basedir=/bcbl/home/public/Gari/VOTCLOC/main_exp
+bids_dir_name=BIDS
+analysis='runall_US' #'beforeMar05_US' #runall_US
+
+codedir=/export/home/tlei/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/04_surface_glm
 
 #subseslist_path=$codedir/subseslist.tsv
-subseslist_path=/bcbl/home/public/Gari/MINI/BIDS_BLQfunc_T1/code/l1_glm/subseslist.tsv
+subseslist_path=$basedir/$bids_dir_name/code/subseslist_${analysis}.txt
 
-
-mkdir -p $logdir
+fp_name=${analysis}
+out_name="newfmriprep43subs"
+slice_timing=(0.5)
+LOG_DIR=$basedir/$bids_dir_name/derivatives/l1_surfaces_log/analysis-${out_name}
+mkdir -p "$LOG_DIR"
 # Initialize a line counter
 line_number=0
 
 use_smoothed=False
 #sms="01 02 03 04 05 010"
 
-#for sm in $sms ; do 
+#for sm in $sms ; do
 # Read the file line by line
 while IFS=$'\t' read -r sub ses
 do
@@ -40,23 +45,28 @@ do
     if [ $line_number -eq 1 ]; then
         continue
     fi
+	current_time=$(date +"%Y-%m-%d_%H-%M-%S")
 
-	
-	echo "### Runing SURFACE_glm on SUBJECT: $sub $ses SESSION ###"	
-	cmd="qsub -q long.q \
-		-N SURFACE_glm-${sub}_s-${ses} \
-		-o $logdir/SURFACE_glm-${sub}-${ses}.o \
-    	-e $logdir/SURFACE_glm-${sub}-${ses}.e \
-		-l mem_free=16G \
+    # Define log paths
+    qsub_log_out="${LOG_DIR}/qsub_sub-${sub}_ses-${ses}_${current_time}.o"
+    qsub_log_err="${LOG_DIR}/qsub_sub-${sub}_ses-${ses}_${current_time}.e"
+
+	echo "### Runing SURFACE_glm on SUBJECT: $sub $ses SESSION ###"
+	cmd="qsub -q short.q \
+		-N glm-${sub}_s-${ses} \
+		-o $qsub_log_out \
+    	-e $qsub_log_err \
+		-l mem_free=20G \
+		-v basedir=${basedir} \
+		-v bids_dir_name=${bids_dir_name}
 		-v sub=${sub} \
 		-v ses=${ses} \
-		-v use_smoothed=${use_smoothed} \
+		-v fp_name=${fp_name} \
+		-v out_name=${out_name} \
+		-v slice_timing=${slice_timing} \
 		-v codedir=$codedir \
 		$codedir/run_python_glm.sh "
 
 	echo $cmd
 	eval $cmd
 done < "$subseslist_path"
-
-#done
-#-v sm=${sm} \

@@ -21,133 +21,183 @@ code to prepare prf:
     1.b generate sub-xx/ses-xx flder under sourcedata/vistadisplog
 2. You need to manually copy things to the sub-ses folder we created
 '''
-import os 
-from os import path, symlink, unlink
-import shutil
+from __future__ import annotations
+
+import os
+from glob import glob
+from os import path
+from os import symlink
+from os import unlink
+
 import numpy as np
 from scipy.io import loadmat
-from glob import glob
+
 
 def prepare_prf(basedir, sub, ses, bids_folder_name, force):
     '''
     Description
 
-    This function will first prepare the general folder structure under either 
+    This function will first prepare the general folder structure under either
     BIDS dir you are specifying
 
     Then it will give instructions of where to get the source files, you need to find it and put them in place
-    
+
     if there are targ_nifti_ana, then it will create things in both BIDS and targ_nifti
 
     '''
     if bids_folder_name in ['BIDS', 'nifti']:
-        bids_dir= path.join(basedir,bids_folder_name)
+        bids_dir = path.join(basedir, bids_folder_name)
         print(f'We will do prepare_prf on {bids_dir} for sub-{sub} ses-{ses}')
-        sourcedata_dir=create_sourcedata_dir(bids_dir, sub, ses, force)
+        sourcedata_dir = create_sourcedata_dir(bids_dir, sub, ses, force)
         print(f'#### vistadisplog folder created at {bids_dir}, \n \
         you need to copy the corresponding files there, and then run link_vistadisplog ')
 
     return sourcedata_dir
 
+
 def create_sourcedata_dir(basedir, sub, ses, force):
-    sourcedata_dir= path.join(basedir, 'sourcedata')
-    stim_dir= path.join(sourcedata_dir,'stimuli')
-    vistadisp_dir= path.join(sourcedata_dir,'vistadisplog')
-    subses_dir= path.join(vistadisp_dir, f'sub-{sub}', f'ses-{ses}')
+    sourcedata_dir = path.join(basedir, 'sourcedata')
+    stim_dir = path.join(sourcedata_dir, 'stimuli')
+    vistadisp_dir = path.join(sourcedata_dir, 'vistadisplog')
+    subses_dir = path.join(vistadisp_dir, f'sub-{sub}', f'ses-{ses}')
+    srcdata_subses_dir = path.join(sourcedata_dir, f'sub-{sub}', f'ses-{ses}')
 
     if not path.exists(sourcedata_dir):
-        print(f'The PRF sourcedata dir is not there, creating')
+        print('The PRF sourcedata dir is not there, creating')
         os.makedirs(sourcedata_dir)
-    else:
-        if force and not os.listdir(stim_dir):
-            shutil.rmtree(sourcedata_dir)
-            os.makedirs(sourcedata_dir)      
-        elif os.listdir(stim_dir):
-            print(f'There are content in the {stim_dir}, not overwritting{sourcedata_dir}')
-    if not path.exists(vistadisp_dir):
-        print(f'The PRF sourcedata vistadisplog dir is not there, creating')
-        os.makedirs(vistadisp_dir)
-    else:
-        if force:
-            shutil.rmtree(vistadisp_dir)
-            os.makedirs(vistadisp_dir)
-    
-    if not path.exists(stim_dir):
-        print(f'The PRF sourcedata stim dir is not there, creating')
-        os.makedirs(stim_dir)
-    else:
-        if force and not os.listdir(stim_dir):
-            shutil.rmtree(stim_dir)
-            os.makedirs(stim_dir) 
-        elif os.listdir(stim_dir):
-            print(f'There are content in the {stim_dir}, not overwritting{stim_dir}')
 
-    if not path.exists(subses_dir):
-        print(f'The PRF sourcedata subses dir is not there, creating')
-        os.makedirs(subses_dir)
+    if not path.exists(vistadisp_dir):
+        print('The PRF sourcedata vistadisplog dir is not there, creating')
+        os.makedirs(vistadisp_dir)
+
+    if not path.exists(stim_dir):
+        print('The PRF sourcedata stim dir is not there, creating')
+        os.makedirs(stim_dir)
+
+    if not path.exists(path.join(vistadisp_dir, f'sub-{sub}')):
+        print('The PRF sourcedata sub dir is not there, creating')
+        os.makedirs(path.join(vistadisp_dir, f'sub-{sub}'))
+
+    if path.islink(subses_dir) and force:
+        print(f'{subses_dir} exists, you choose to overwrite, overwritting')
+        unlink(subses_dir)
+        symlink(srcdata_subses_dir, subses_dir)
+        print(f'symlink created for {srcdata_subses_dir} at {subses_dir}')
     else:
-        if force and not os.listdir(subses_dir):
-            print(f'{subses_dir} exists, you choose to overwrite, overwritting')
-            shutil.rmtree(subses_dir)
-            os.makedirs(subses_dir)
+        symlink(srcdata_subses_dir, subses_dir)
+        print(f'symlink created for  {srcdata_subses_dir} at {subses_dir}')
+
     return sourcedata_dir
+
 
 def link_vistadisplog(sourcedata, sub, ses, force, task='ret'):
     '''
     '''
     print('Staring to create vistadisplog link')
-    CB= 1
-    FF= 1
-    RW= 1
-    matFiles = np.sort(glob(path.join(sourcedata, 'vistadisplog',f'sub-{sub}', f'ses-{ses}', '20*.mat')))
-    if matFiles.size !=0 :
+    CB = 1
+    FF = 1
+    RW = 1
+    fixRW = 1
+    fixFF = 1
+    fixRWblock01 = 1
+    fixRWblock02 = 1
+    matFiles = np.sort(
+        glob(
+            path.join(
+                sourcedata, 'vistadisplog',
+                f'sub-{sub}', f'ses-{ses}', '20*.mat',
+            ),
+        ),
+    )
+    if matFiles.size != 0 :
         print('Got the matfiles, going to start symlink')
     else:
-        print(f'Not get the matfiles, please check path' )
+        print('Not get the matfiles, please check path')
     for matFile in matFiles:
 
         stimName = loadmat(matFile, simplify_cells=True)['params']['loadMatrix']
-        print(f'stimName')
+        print(f'{stimName}')
 
         if 'CB_' in stimName:
             if 'tr-2' in stimName:
-                linkName = path.join(path.dirname(matFile), f'sub-{sub}_ses-{ses}_task-retCB_run-0{CB}_params.mat')
+                linkName = path.join(
+                    path.dirname(matFile),
+                    f'sub-{sub}_ses-{ses}_task-retCB_run-0{CB}_params.mat',
+                )
                 CB += 1
         if 'FF_' in stimName:
             if 'tr-2' in stimName:
-                linkName = path.join(path.dirname(matFile), f'sub-{sub}_ses-{ses}_task-retFF_run-0{FF}_params.mat')
-                FF += 1                
+                linkName = path.join(
+                    path.dirname(matFile),
+                    f'sub-{sub}_ses-{ses}_task-retFF_run-0{FF}_params.mat',
+                )
+                FF += 1
         if 'RW_' in stimName:
             if 'tr-2' in stimName:
-                linkName = path.join(path.dirname(matFile), f'sub-{sub}_ses-{ses}_task-retRW_run-0{RW}_params.mat')
+                linkName = path.join(
+                    path.dirname(matFile),
+                    f'sub-{sub}_ses-{ses}_task-retRW_run-0{RW}_params.mat',
+                )
                 RW += 1
 
-
+        # for the wordcenter condition
+        if 'fixRW_' in stimName:
+            if 'tr-2' in stimName:
+                linkName = path.join(
+                    path.dirname(matFile),
+                    f'sub-{sub}_ses-{ses}_task-retfixRW_run-0{CB}_params.mat',
+                )
+                fixRW += 1
+        if 'fixFF_' in stimName:
+            if 'tr-2' in stimName:
+                linkName = path.join(
+                    path.dirname(matFile),
+                    f'sub-{sub}_ses-{ses}_task-retfixFF_run-0{FF}_params.mat',
+                )
+                fixFF += 1
+        if 'fixRWblock01_' in stimName:
+            if 'tr-2' in stimName:
+                linkName = path.join(
+                    path.dirname(
+                        matFile,
+                    ), f'sub-{sub}_ses-{ses}_task-retfixRWblock01_run-0{RW}_params.mat',
+                )
+                fixRWblock01 += 1
+        if 'fixRWblock02_' in stimName:
+            if 'tr-2' in stimName:
+                linkName = path.join(
+                    path.dirname(
+                        matFile,
+                    ), f'sub-{sub}_ses-{ses}_task-retfixRWblock02_run-0{RW}_params.mat',
+                )
+                fixRWblock02 += 1
 
         if path.islink(linkName) and force:
             unlink(linkName)
             symlink(path.basename(matFile), linkName)
             print(f'symlink created for {path.basename(matFile)} at {linkName}')
-        else: 
+        else:
+            # print(f'src dir of the matfile is {path.basename(matFile)}, and the link name is {linkName} ')
             symlink(path.basename(matFile), linkName)
             print(f'symlink created for {path.basename(matFile)} with {linkName}')
-            
+
+
 def main():
-    subs=['04']
-    sess=['02','03','04']
-    basedir='/bcbl/home/public/Gari/VOTCLOC/main_exp'
-    bids_folder_name='BIDS'
-    bids_dir=path.join(basedir,bids_folder_name)
-    force=True
-    copied_mat=True
-    task='ret'
-    sourcedata_dir= path.join(basedir, bids_folder_name ,'sourcedata')
+    subs = ['01']  # ,'02','03','04','05','06','08']
+    sess = ['01', '05']  # ['01','02','03','04','05','06','07','08','09','10']
+    basedir = '/bcbl/home/public/Gari/VOTCLOC/main_exp'
+    bids_folder_name = 'BIDS'
+    force = True
+    copied_mat = True
+    task = 'ret'
+    sourcedata_dir = path.join(basedir, bids_folder_name , 'sourcedata')
     for sub in subs:
         for ses in sess:
             if not copied_mat:
-                prepare_prf(basedir, sub, ses, bids_folder_name, force)                     
+                prepare_prf(basedir, sub, ses, bids_folder_name, force)
             else:
                 link_vistadisplog(sourcedata_dir, sub, ses, force, task)
 
-if  __name__ =='__main__':
+
+if __name__ == '__main__':
     main()

@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-#SBATCH -J passAN
+#SBATCH -J sub05test
 #SBATCH --time=00:02:00
 #SBATCH -n 1  # this stands for number of task
 #SBATCH --cpus-per-task=1    #6
@@ -11,8 +11,8 @@
 sublist="subseslist.txt"
 BIDS_DIR="/scratch/tlei/VOTCLOC/BIDS"
 
-OUTPUT_DIR="$BIDS_DIR/derivatives/fmriprep-${analysis_name}"
-LOG_DIR=$OUTPUT_DIR/logs
+OUTPUT_DIR="/derivatives/fmriprep-${analysis_name}"
+LOG_DIR=$BIDS_DIR/$$OUTPUT_DIR/logs
 
 export HOMES=/scratch/tlei/fmriprep_tmps_$analysis_name
 mkdir -p ${LOG_DIR}
@@ -74,6 +74,8 @@ cmd="module load Singularity/3.5.3-GCC-8.3.0 &&  \
       --omp-nthreads 20 --nthreads 20 --mem_mb 80000 \
       --skip-bids-validation \
       --fs-subjects-dir /base/derivatives/freesurfer \
+      --stop-on-first-crash \
+      --bids-filter-file /base/code/bids_filter.json \
       --output-spaces T1w func MNI152NLin2009cAsym fsnative fsaverage "
 
 # Add these two lines if you had freesurfer run already

@@ -4,7 +4,7 @@
 #SBATCH --time=10:00:00
 #SBATCH -n 1  # this stands for number of task
 #SBATCH --cpus-per-task=20    #6
-#SBATCH --mem=82000
+#SBATCH --mem=62000
 #SBATCH --partition=general  # Queue names you can submit to
 #SBATCH --qos=regular       #<regular,serial,test,long or xlong>
 
@@ -74,7 +74,7 @@ cmd="module load Apptainer/1.2.4 &&  \
       --participant-label $subject \
       -w /work/ -vv \
       --fs-license-file /base/.license \
-      --omp-nthreads 20 --nthreads 20 --mem_mb 80000 \
+      --omp-nthreads 20 --nthreads 20 --mem_mb 60000 \
       --skip-bids-validation \
       --fs-subjects-dir /base/derivatives/freesurfer \
       --stop-on-first-crash \
