@@ -7,3 +7,10 @@ vistadisplog: follow the sub-/ses- structure, are the params.mat files
 
 
 If prfprepare is point to some freesurfer dir, better to maintain it because the following prfresult will look for that
+
+freesurfer dir needs to be under fmriprep sourcedata
+
+fmriprep dir is hard coded, must be fmriprep/analysis-xxx
+
+
+For PRFprepare, we need to have sourcedata/stimuli field

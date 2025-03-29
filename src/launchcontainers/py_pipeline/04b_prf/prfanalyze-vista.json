@@ -4,7 +4,7 @@
     "tasks"      : "[all]",
     "isPRFSynthData" : false,
     "options": {
-    	"prfprepareAnalysis": "02",
+    	"prfprepareAnalysis": "01",
         "model"             : "one gaussian",
         "grid"              : false,
         "wsearch"           : "5",

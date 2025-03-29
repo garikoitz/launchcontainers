@@ -11,7 +11,7 @@
     "runs": [
         "all"
     ],
-    "prfanalyzeAnalysis": "02",
+    "prfanalyzeAnalysis": "01",
     "masks": {
         "rois": [
             [

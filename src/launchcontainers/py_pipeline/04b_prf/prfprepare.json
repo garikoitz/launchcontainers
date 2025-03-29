@@ -15,6 +15,6 @@
     "rois": "all",
     "atlases": "all",
     "fmriprep_bids_layout": false,
-    "fmriprep_analysis": "runall_US"
+    "fmriprep_analysis": "beforeMar05_US"
   }
 }
