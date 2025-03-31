@@ -40,7 +40,8 @@ def prepare_prf(basedir, sub, ses, bids_folder_name, force):
     This function will first prepare the general folder structure under either
     BIDS dir you are specifying
 
-    Then it will give instructions of where to get the source files, you need to find it and put them in place
+    Then it will give instructions of where to get the source files,
+    you need to find it and put them in place
 
     if there are targ_nifti_ana, then it will create things in both BIDS and targ_nifti
 
@@ -101,6 +102,7 @@ def link_vistadisplog(sourcedata, sub, ses, force, task='ret'):
     fixFF = 1
     fixRWblock01 = 1
     fixRWblock02 = 1
+    fixRWblock = 1
     matFiles = np.sort(
         glob(
             path.join(
@@ -171,13 +173,21 @@ def link_vistadisplog(sourcedata, sub, ses, force, task='ret'):
                     ), f'sub-{sub}_ses-{ses}_task-retfixRWblock02_run-0{RW}_params.mat',
                 )
                 fixRWblock02 += 1
-
+        if 'fixRWblock_' in stimName:
+            if 'tr-2' in stimName:
+                linkName = path.join(
+                    path.dirname(
+                        matFile,
+                    ), f'sub-{sub}_ses-{ses}_task-retfixRWblock02_run-0{RW}_params.mat',
+                )
+                fixRWblock += 1
         if path.islink(linkName) and force:
             unlink(linkName)
             symlink(path.basename(matFile), linkName)
             print(f'symlink created for {path.basename(matFile)} at {linkName}')
         else:
-            # print(f'src dir of the matfile is {path.basename(matFile)}, and the link name is {linkName} ')
+            # print(f'src dir of the matfile is {path.basename(matFile)},
+            # and the link name is {linkName} ')
             symlink(path.basename(matFile), linkName)
             print(f'symlink created for {path.basename(matFile)} with {linkName}')
 
