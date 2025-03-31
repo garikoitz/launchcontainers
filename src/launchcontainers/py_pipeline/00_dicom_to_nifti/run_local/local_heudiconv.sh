@@ -16,23 +16,24 @@
 # -----------------------------------------------------------------------------
 unset step
 
-step=$1
+step=$1 # step1 or step2
 project=votcloc
 basedir=/bcbl/home/public/Gari/VOTCLOC/main_exp
 dicom_dirname=dicom
 outputdir=$basedir/raw_nifti
 
-codedir=$basedir/BIDS/code
+codedir=$basedir/code
 script_dir=/export/home/tlei/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/00_dicom_to_nifti
 subseslist_path=$codedir/00_heudiconv/subseslist_heudiconv.txt
 heuristicfile=$codedir/00_heudiconv/heuristic_${project}.py
 sing_path=/bcbl/home/public/Gari/singularity_images/heudiconv_1.3.2.sif
 
 analysis_name=check_sub0709
-logdir=${outputdir}/log_heudiconv/$analysis_name_$(date +"%Y-%m-%d")/${step}
+logdir=${outputdir}/log_heudiconv/${analysis_name}_$(date +"%Y-%m-%d")/${step}
 echo "The logdir is $logdir"
 echo "The outputdir is $outputdir"
 mkdir -p $logdir
+
 
 echo "reading the subses"
 # Initialize a line counter
@@ -49,7 +50,7 @@ while IFS=$'\t' read -r sub ses; do
     fi
 
     echo "### CONVERTING TO NIFTI OF SUBJECT: $sub SESSION: $ses  ###"
-    now=$(date +"%H:%M")
+    now=$(date +"%H;%M")
     log_file="${logdir}/local_${sub}_${ses}_${now}.o"
     error_file="${logdir}/local_${sub}_${ses}_${now}.e"
     # Export variables for use in the called script
@@ -71,5 +72,5 @@ while IFS=$'\t' read -r sub ses; do
 
 done < "$subseslist_path"
 
-cp "$0" "$logdir/qsub_heudiconv${step}_${project}"
+cp "$0" "$logdir"
 cp "$script_dir/src_heudiconv_${step}.sh" "$logdir"

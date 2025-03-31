@@ -22,14 +22,14 @@ basedir=/bcbl/home/public/Gari/VOTCLOC/main_exp
 dicom_dirname=dicom
 outputdir=$basedir/raw_nifti
 
-codedir=$basedir/BIDS/code
+codedir=$basedir/code
 script_dir=/export/home/tlei/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/00_dicom_to_nifti
-subseslist_path=$codedir/00_heudiconv/subseslist_${project}.txt
+subseslist_path=$codedir/00_heudiconv/subseslist_heudiconv.txt
 heuristicfile=$codedir/00_heudiconv/heuristic_${project}.py
 sing_path=/bcbl/home/public/Gari/singularity_images/heudiconv_1.3.2.sif
 
 analysis_name=check_sub0709
-logdir=${outputdir}/log_heudiconv/$analysis_name_$(date +"%Y-%m-%d")/${step}
+logdir=${outputdir}/log_heudiconv/${analysis_name}_$(date +"%Y-%m-%d")/${step}
 echo "The logdir is $logdir"
 echo "The outputdir is $outputdir"
 mkdir -p $logdir
@@ -49,7 +49,7 @@ while IFS=$'\t' read -r sub ses; do
     fi
 
 	echo "### CONVERTING TO NIFTI OF SUBJECT: $sub $ses SESSION ###"
-	now=$(date +"%H:%M")
+	now=$(date +"%H;%M")
 	log_file="${logdir}/qsub_${sub}_${ses}_${now}.o"
     error_file="${logdir}/qsub_${sub}_${ses}_${now}.e"
 	cmd="qsub -q short.q \
@@ -58,19 +58,12 @@ while IFS=$'\t' read -r sub ses; do
 		-o $log_file \
     	-e $error_file \
 		-l mem_free=16G \
-		-v basedir=${basedir} \
-		-v logdir=${logdir} \
-		-v dicom_dirname=$dicom_dirname \
-		-v outputdir=${outputdir} \
-		-v sub=${sub} \
-		-v ses=${ses} \
-		-v heuristicfile=$heuristicfile \
-		-v sing_path=$sing_path \
-		$codedir/src_heudiconv_${step}_${project}.sh "
+		-v basedir=${basedir},logdir=${logdir},dicom_dirname=$dicom_dirname,outputdir=${outputdir},sub=${sub},ses=${ses},heuristicfile=$heuristicfile,sing_path=$sing_path \
+		$script_dir/src_heudiconv_${step}.sh "
 
 	echo $cmd
 	eval $cmd
 done < "$subseslist_path"
 
-cp "$0" "$logdir/qsub_heudiconv${step}_${project}"
+cp "$0" "$logdir"
 cp "$script_dir/src_heudiconv_${step}.sh" "$logdir"
