@@ -100,6 +100,7 @@ def link_vistadisplog(sourcedata, sub, ses, force, task='ret'):
     RW = 1
     fixRW = 1
     fixFF = 1
+    fixRWblock = 1
     fixRWblock01 = 1
     fixRWblock02 = 1
     fixRWblock = 1
@@ -173,6 +174,7 @@ def link_vistadisplog(sourcedata, sub, ses, force, task='ret'):
                     ), f'sub-{sub}_ses-{ses}_task-retfixRWblock02_run-0{RW}_params.mat',
                 )
                 fixRWblock02 += 1
+
         if 'fixRWblock_' in stimName:
             if 'tr-2' in stimName:
                 linkName = path.join(
@@ -192,13 +194,23 @@ def link_vistadisplog(sourcedata, sub, ses, force, task='ret'):
             print(f'symlink created for {path.basename(matFile)} with {linkName}')
 
 
+def check_params_and_bids(layout, sub, ses):
+    # need to check if params and bids task name match,
+    # they might not match because I put fixRWblock as CB
+    return
+
+
 def main():
-    subs = ['01']  # ,'02','03','04','05','06','08']
-    sess = ['01', '05']  # ['01','02','03','04','05','06','07','08','09','10']
-    basedir = '/bcbl/home/public/Gari/VOTCLOC/main_exp'
+    subs = ['02', '04', '06']  # ,'02','03','04','05','06','08']
+    # ['01','02','03','04','05','06','07','08','09','10']
+    sess = ['01', '02', '03', '04', '05', '06', '07', '08', '09']
+    basedir = '/scratch/tlei/VOTCLOC'
     bids_folder_name = 'BIDS'
     force = True
-    copied_mat = True
+    # first, need to set copied_mat to False, to create the vistadisplog foler, \
+    # the vistadisplog folder will point to sourcedata/sub/ses
+    # then set copied_mat to True, and then run link_vistadisplog
+    copied_mat = False
     task = 'ret'
     sourcedata_dir = path.join(basedir, bids_folder_name , 'sourcedata')
     for sub in subs:

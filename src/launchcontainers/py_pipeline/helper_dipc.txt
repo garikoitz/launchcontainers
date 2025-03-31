@@ -1,0 +1,1 @@
+In order to run interative  in DIPC use this code: salloc --ntasks=1 --cpus-per-task=6 --time=01:00:00 --mem=16GB 
