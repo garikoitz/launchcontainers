@@ -15,34 +15,30 @@
 # GitHub: https://github.com/yongninglei
 # -----------------------------------------------------------------------------
 unset step
-unset project
 
 step=$1 # step1 or step2
-project=$2 # votcloc
+project=votcloc
 basedir=/bcbl/home/public/Gari/VOTCLOC/main_exp
 dicom_dirname=dicom
 outputdir=$basedir/raw_nifti
 
-codedir=/export/home/tlei/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/00_dicom_to_nifti
-subseslist_path=$codedir/subseslist_${project}.txt
-heuristicfile=$codedir/heuristic/heuristic_${project}.py
-sing_path=/bcbl/home/public/Gari/singularity_images
+codedir=$basedir/BIDS/code
+script_dir=/export/home/tlei/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/00_dicom_to_nifti
+subseslist_path=$codedir/00_heudiconv/subseslist_${project}.txt
+heuristicfile=$codedir/00_heudiconv/heuristic_${project}.py
+sing_path=/bcbl/home/public/Gari/singularity_images/heudiconv_1.3.2.sif
 
-analysis_name=analysis-beforeMarch05
-logdir=${outputdir}/heudiconv_ips_log/$analysis_name/${step}_${project}
+analysis_name=check_sub0709
+logdir=${outputdir}/log_heudiconv/$analysis_name_$(date +"%Y-%m-%d")/${step}
 echo "The logdir is $logdir"
 echo "The outputdir is $outputdir"
 mkdir -p $logdir
-
-cp "$0" "$logdir/qsub_heudiconv${step}_${project}"
-cp "$codedir/src_heudiconv_${step}_${project}.sh" "$logdir"
 
 echo "reading the subses"
 # Initialize a line counter
 line_number=0
 # Read the file line by line
-while IFS=$'\t' read -r sub ses
-do
+while IFS=$'\t' read -r sub ses; do
     echo "line number is $line_number sub is $sub ses is $ses"
     # Increment line counter
     ((line_number++))
@@ -52,14 +48,15 @@ do
         continue
     fi
 
-	echo this is line number $line_number
 	echo "### CONVERTING TO NIFTI OF SUBJECT: $sub $ses SESSION ###"
-	now=$(date +"%Y-%m-%dT%H-%M")
+	now=$(date +"%H:%M")
+	log_file="${logdir}/qsub_${sub}_${ses}_${now}.o"
+    error_file="${logdir}/qsub_${sub}_${ses}_${now}.e"
 	cmd="qsub -q short.q \
 	    -S /bin/bash \
 		-N heudiconv_s-${sub}_s-${ses} \
-		-o $logdir/heudiconv_sub-${sub}_ses-${ses}_${now}.o \
-    	-e $logdir/heudiconv_sub-${sub}_ses-${ses}_${now}.e \
+		-o $log_file \
+    	-e $error_file \
 		-l mem_free=16G \
 		-v basedir=${basedir} \
 		-v logdir=${logdir} \
@@ -74,3 +71,6 @@ do
 	echo $cmd
 	eval $cmd
 done < "$subseslist_path"
+
+cp "$0" "$logdir/qsub_heudiconv${step}_${project}"
+cp "$script_dir/src_heudiconv_${step}.sh" "$logdir"

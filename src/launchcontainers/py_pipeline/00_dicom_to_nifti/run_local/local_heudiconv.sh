@@ -15,36 +15,29 @@
 # GitHub: https://github.com/yongninglei
 # -----------------------------------------------------------------------------
 unset step
-unset project
 
-step=$1 # step1 or step2
-project=$2 # votcloc
+step=$1
+project=votcloc
 basedir=/bcbl/home/public/Gari/VOTCLOC/main_exp
 dicom_dirname=dicom
 outputdir=$basedir/raw_nifti
 
-codedir=$basedir/code/00_dicom_to_nifti
-subseslist_path=$codedir/subseslist_${project}.txt
-heuristicfile=$codedir/heuristic/heuristic_${project}.py
-sing_path=/bcbl/home/public/Gari/singularity_images
+codedir=$basedir/BIDS/code
+script_dir=/export/home/tlei/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/00_dicom_to_nifti
+subseslist_path=$codedir/00_heudiconv/subseslist_heudiconv.txt
+heuristicfile=$codedir/00_heudiconv/heuristic_${project}.py
+sing_path=/bcbl/home/public/Gari/singularity_images/heudiconv_1.3.2.sif
 
-analysis_name=analysis-afterDec09
-logdir=${outputdir}/heudiconv_ips_log/$analysis_name/${step}_${project}
+analysis_name=check_sub0709
+logdir=${outputdir}/log_heudiconv/$analysis_name_$(date +"%Y-%m-%d")/${step}
 echo "The logdir is $logdir"
 echo "The outputdir is $outputdir"
 mkdir -p $logdir
-
 
 echo "reading the subses"
 # Initialize a line counter
 line_number=0
 # Read the file line by line
-#!/bin/bash
-
-# Initialize line number counter
-line_number=0
-max_jobs=10  # Set the maximum number of parallel jobs
-
 # Loop through the subseslist
 while IFS=$'\t' read -r sub ses; do
     echo "line number is $line_number sub is $sub ses is $ses"
@@ -55,9 +48,10 @@ while IFS=$'\t' read -r sub ses; do
         continue
     fi
 
-    echo $line_number 
     echo "### CONVERTING TO NIFTI OF SUBJECT: $sub SESSION: $ses  ###"
-
+    now=$(date +"%H:%M")
+    log_file="${logdir}/local_${sub}_${ses}_${now}.o"
+    error_file="${logdir}/local_${sub}_${ses}_${now}.e"
     # Export variables for use in the called script
     export basedir
     export logdir
@@ -69,21 +63,13 @@ while IFS=$'\t' read -r sub ses; do
     export sing_path
 
     # Command to execute locally
-    cmd="bash $codedir/src_heudiconv_${step}_${project}.sh"
+    cmd="bash $script_dir/src_heudiconv_${step}.sh"
 
-    log_file="${logdir}/heudiconv_${sub}_${ses}_${step}.log"
-    error_file="${logdir}/heudiconv_${sub}_${ses}_${step}.err"
     # Run the command in the background
     echo $cmd
-    eval $cmd > ${log_file} 2> ${error_file} &
-
-    # Control the number of parallel jobs
-    if (( $(jobs -r | wc -l) >= max_jobs )); then
-        wait -n  # Wait for the next background job to finish
-    fi
+    eval $cmd > ${log_file} 2> ${error_file}
 
 done < "$subseslist_path"
 
-# Wait for any remaining jobs to complete
-wait
-
+cp "$0" "$logdir/qsub_heudiconv${step}_${project}"
+cp "$script_dir/src_heudiconv_${step}.sh" "$logdir"

@@ -1,4 +1,4 @@
-## -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # Copyright (c) Yongning Lei 2024
 # All rights reserved.
 #
@@ -14,13 +14,19 @@
 # Email: yl4874@nyu.edu
 # GitHub: https://github.com/yongninglei
 # -----------------------------------------------------------------------------
+# This is the code for the first step of heudiconv
+# you can run this one by itself by uncomment the variables
+# or you can also use the qsub code to run them by inputing variables
+
+
 # basedir=/bcbl/home/public/Gari/VOTCLOC/VSS
 # dicom_dirname=dicom
 # outputdir=$basedir/BIDS
 # sing_path=/bcbl/home/public/Gari/singularity_images
-# sub='05'
-# ses='day6BCBL'
-# heuristicfile=$basedir/code/00_dicom_to_nifti/heuristic/heuristic_BCBL.py
+
+# sample code to run without ses
+#singularity run --bind /bcbl/home/public/Gari/VOTCLOC/main_exp:/base --bind /bcbl:/bcbl --bind /export:/export /bcbl/home/public/Gari/singularity_images/heudiconv_1.3.2.sif -d /base/dicom/sub-{subject}/*/*/*/*/* -s 01 02 03 04 05 06 08 -o /bcbl/home/public/Gari/VOTCLOC/main_exp/raw_nifti -f convertall -c none -g all --overwrite > ~/public/Gari/VOTCLOC/main_exp/raw_nifti/log_heudiconv/redo_heudiconv-and-using-subonly/all.log 2> ~/public/Gari/VOTCLOC/main_exp/raw_nifti/log_heudiconv/redo_heudiconv-and-using-subonly/all.err
+
 
 module load apptainer/latest
 echo "Now the singularity is loaded, it is: "
@@ -28,25 +34,25 @@ module list
 
 
 echo "Subject: ${sub} "
-# try the no session thing Feb 09 2025
 echo "Session: ${ses} "
 cmd="singularity run \
         	--bind ${basedir}:/base \
 	    	--bind /bcbl:/bcbl \
 			--bind /export:/export \
-        	${sing_path}/heudiconv_1.3.2.sif \
+        	${sing_path} \
 			-d /base/${dicom_dirname}/sub-{subject}/ses-{session}/*/*.dcm \
-	    	--subjects ${sub} \
-			--ses ${ses} \
+	    	-s ${sub} \
+			-ss ${ses} \
 			-o ${outputdir} \
-        	--overwrite \
-	    	-f ${heuristicfile} \
-	    	-c dcm2niix \
-	    	-b \
-        	--grouping all "
-			# try the no sesion
-			#--ses ${ses} \
+	    	-f convertall \
+	    	-c none \
+        	-g all \
+        	--overwrite "
+			# -ss ${ses} \
 echo $cmd
 eval $cmd
 
 module unload apptainer
+
+
+# I added this 			-d /base/${dicom_dirname}/sub-{subject}/ses-{session}/*/*.dcm \ is because some of the directory will be read and being processed

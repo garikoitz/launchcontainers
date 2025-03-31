@@ -1,11 +1,15 @@
+from __future__ import annotations
+
 import os
+
 import typer
 
+
 def generate_subses_list(
-    base_dir: str, 
+    base_dir: str,
     output_path: str,
-    output_file: str = "subseslist_Jan31.txt"
-    
+    output_file: str = 'subseslist_Jan31.txt',
+
 ):
     """
     Generate a list of subject-session pairs from a directory structure.
@@ -25,10 +29,10 @@ def generate_subses_list(
             sub_folder = path_parts[-2]
             ses_folder = path_parts[-1]
 
-            if sub_folder.startswith("sub-") and ses_folder.startswith("ses-"):
+            if sub_folder.startswith('sub-') and ses_folder.startswith('ses-'):
                 # Extract subject and session IDs
-                sub_id = sub_folder.split("-")[1]
-                ses_id = ses_folder.split("-")[1]
+                sub_id = sub_folder.split('-')[1]
+                ses_id = ses_folder.split('-')[1]
                 subses_pairs.append((sub_id, ses_id))
 
     # Determine the output path
@@ -41,12 +45,13 @@ def generate_subses_list(
     output_file_path = os.path.join(output_dir, output_file)
 
     # Write the results to the output file in TSV format
-    with open(output_file_path, "w") as f:
-        f.write("sub\tses\n")  # Add a header line
+    with open(output_file_path, 'w') as f:
+        f.write('sub\tses\n')  # Add a header line
         for sub_id, ses_id in sorted(subses_pairs):
             f.write(f"{sub_id}\t{ses_id}\n")
 
     print(f"subseslist.txt generated at {output_file_path}")
 
-if __name__ == "__main__":
+
+if __name__ == '__main__':
     typer.run(generate_subses_list)
