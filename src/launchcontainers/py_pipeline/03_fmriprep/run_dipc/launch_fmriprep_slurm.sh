@@ -7,25 +7,28 @@ code_dir="/scratch/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/0
 sublist="subseslist.txt"
 analysis_name='beforeMar05_US'
 
-slurm_log_dir=/scratch/tlei/VOTCLOC/logs_slurm/log_fmriprep-$analysis_name
+slurm_log_dir=$STUDY/dipc_fmriprep/$analysis_name_$(date +"%Y-%m-%d")
 mkdir -p ${slurm_log_dir}
 
 export analysis_name
 export sublist
 export slurm_log_dir
 
-TOTAL_LINES=$(wc -l < "${STUDY}/BIDS/code/$sublist")
+TOTAL_LINES=$(wc -l < "${STUDY}/code/$sublist")
 
 echo "Total lines is $TOTAL_LINES"
 
 DATA_LINES=$((TOTAL_LINES - 1))
 
+now=$(date +"%H-%M")
+
 cmd="sbatch
     --export=ALL,analysis_name="${analysis_name}",slurm_log_dir="${slurm_log_dir}",sublist="${sublist}"\
     --array=1-${DATA_LINES} \
-    -o "$slurm_log_dir/%J_%x-%A-%a.out" \
-    -e "$slurm_log_dir/%J_%x-%A-%a.err" \
-    ${code_dir}/run_on_slurm/fmriprep.slurm "
+    -J "run0709test"
+    -o "$slurm_log_dir/%J_%x-%A-%a_${now}.o" \
+    -e "$slurm_log_dir/%J_%x-%A-%a_${now}.e" \
+    ${code_dir}/run_dipc/fmriprep.slurm "
 
 ## Attention! the sublist needs to be subject only, and all the session will be processed in the same time
 ## if want to specify session, then specify the bids_filter.json file,
