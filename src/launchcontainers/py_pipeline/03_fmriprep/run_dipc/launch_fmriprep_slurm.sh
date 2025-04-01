@@ -20,7 +20,7 @@ echo "Total lines is $TOTAL_LINES"
 
 DATA_LINES=$((TOTAL_LINES - 1))
 
-cmd="sbatch 
+cmd="sbatch
     --export=ALL,analysis_name="${analysis_name}",slurm_log_dir="${slurm_log_dir}",sublist="${sublist}"\
     --array=1-${DATA_LINES} \
     -o "$slurm_log_dir/%J_%x-%A-%a.out" \
@@ -32,4 +32,3 @@ cmd="sbatch
 echo " The command for the slurm is "
 echo $cmd
 eval $cmd
-

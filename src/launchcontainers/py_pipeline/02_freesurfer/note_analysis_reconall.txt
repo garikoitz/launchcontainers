@@ -1,0 +1,5 @@
+recon-all how to set cores and paralle currently unknown
+
+right now recon-all can be launched 1 by 1 in different seperate local interactive jobs
+
+in the future maybe we could implement reconall in DIPC and in batch jobs

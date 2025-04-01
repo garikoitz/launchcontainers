@@ -1,7 +1,0 @@
-BIDS_sub	BIDS_ses
-pilotIF	01
-pilotJessi	01
-pilotLuo	01
-pilotLuo	02
-pilotLuo	03
-phantomDwi	01

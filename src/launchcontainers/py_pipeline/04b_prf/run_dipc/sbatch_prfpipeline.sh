@@ -55,14 +55,15 @@ time="00:10:00" #time="00:10:00" 10:00:00
 task="all" # retCB retRW retFF
 
 # json input
-json_dir="$baseP/BIDS/code/${step}_jsons"
+json_dir="$baseP/code/${step}_jsons"
 # subseslist dir:
-code_dir="/scratch/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/04b_prf"
+script_dir="/scratch/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/04b_prf"
+code_dir=$baseP/code
 subses_list_dir=$code_dir/subseslist_votcloc.txt
 sif_path="/scratch/tlei/containers/${step}_${version}.sif"
 
 # log dir
-LOG_DIR="$baseP/dipc_slurm_${step}_logs/march29"
+LOG_DIR="$baseP/ips_${step}_logs/hyperion20ses_$(date +"%Y-%m-%d")"
 # Ensure directories exist
 mkdir -p "$LOG_DIR"
 mkdir -p "$HOME_DIR"
@@ -71,7 +72,7 @@ line_num=1
 # Read subseslist.txt (Skipping header line)
 tail -n +2 $subses_list_dir | while read sub ses; do
     ((lin_num++))
-
+    now=$(date +"%H-%M")
     # Construct sbatch command
 	# if it is prepare and result, we use short.q, otherwise, long.q and more ram
     cmd="sbatch -J ${lin_num}_${task}_${step} \
@@ -81,10 +82,10 @@ tail -n +2 $subses_list_dir | while read sub ses; do
         --mem=${mem} \
         --partition=general \
         --qos=${qos} \
-        -o "$LOG_DIR/%J_%x_${sub}-${ses}.out" \
-        -e "$LOG_DIR/%J_%x_${sub}-${ses}.err" \
+        -o "$LOG_DIR/%J_%x_${sub}-${ses}_${now}.o" \
+        -e "$LOG_DIR/%J_%x_${sub}-${ses}_${now}.e" \
         --export=ALL,baseP=${baseP},license_path=${license_path},version=${version},sub=${sub},ses=${ses},json_path=$json_dir/${task}_sub-${sub}_ses-${ses}.json,sif_path=$sif_path \
-        $code_dir/run_dipc/${step}_dipc.sh "
+        $script_dir/run_dipc/${step}_dipc.sh "
 
     # Print and execute the command
     echo "Submitting job for sub-${sub} ses-${ses}"

@@ -15,16 +15,10 @@
 # GitHub: https://github.com/yongninglei
 # -----------------------------------------------------------------------------
 subject=$1
-# step can be minimal or final, if it is min, then will launch the other code,
-# if it is ifinal it will launch this code
-
-
 basedir="/bcbl/home/public/Gari/VOTCLOC/main_exp"
-analysis_name="forcebbr_tigeredit"
+analysis_name="forcebbr"
 BIDS_DIR="${basedir}/BIDS"
-DERIVS_DIR="${basedir}/BIDS/derivatives/fmriprep/analysis-${analysis_name}_minimal"
-OUTPUT_DIR="${basedir}/BIDS/derivatives/fmriprep/analysis-${analysis_name}_final"
-
+OUTPUT_DIR="${basedir}/BIDS/derivatives/fmriprep/analysis-${analysis_name}_minimal"
 # if BIDS is BIDS. then HOMES=$basedir
 # otherwise, it is HOMES=$BIDS_DIR
 export HOMES=$basedir
@@ -34,9 +28,9 @@ LOG_DIR=$OUTPUT_DIR/logs
 #LOCAL_FREESURFER_DIR="/dipc/tlei/.license"
 
 # Prepare some writeable bind-mount points.
-TEMPLATEFLOW_HOST_HOME=$OUTPUT_DIR/.cache/templateflow
-FMRIPREP_HOST_CACHE=$OUTPUT_DIR/.cache/fmriprep
-FMRIPREP_WORK_DIR=$OUTPUT_DIR/.work/fmriprep
+TEMPLATEFLOW_HOST_HOME=$BIDS_DIR/.cache/templateflow
+FMRIPREP_HOST_CACHE=$BIDS_DIR/.cache/fmriprep
+FMRIPREP_WORK_DIR=$BIDS_DIR/.work/fmriprep
 mkdir -p ${TEMPLATEFLOW_HOST_HOME}
 mkdir -p ${FMRIPREP_HOST_CACHE}
 mkdir -p ${FMRIPREP_WORK_DIR}
@@ -75,31 +69,30 @@ SINGULARITY_CMD="unset PYTHONPATH && apptainer run --cleanenv --no-home \
 
 
 # Compose the command line
-now=$(date +"%Y-%m-%dT%H:%M")  
+now=$(date +"%Y-%m-%dT%H:%M")
 cmd="module load apptainer/latest &&  \
      ${SINGULARITY_CMD} \
      ${BIDS_DIR} \
      ${OUTPUT_DIR} \
-     participant \
-          -d fmriprep=${DERIVS_DIR} \
-          --participant-label $subject \
+     participant --participant-label $subject \
           -w /work/ -vv \
           --fs-license-file ${SINGULARITYENV_FS_LICENSE} \
-          --omp-nthreads 10 --nthreads 20 --mem_mb 80000 \
+          --omp-nthreads 10 --nthreads 20 --mem_mb 60000 \
           --skip-bids-validation \
           --output-spaces T1w func MNI152NLin2009cAsym fsnative fsaverage \
           --notrack \
           --bids-filter-file /base/code/bids_filter.json \
           --force-bbr \
-          --stop-on-first-crash \
+          --level minimal \
           --fs-subjects-dir /base/BIDS/derivatives/fmriprep/analysis-beforeFebST05/sourcedata/freesurfer \
-     > ${LOG_DIR}/${analysis_name}_final_sub-${subject}_${now}.o 2> ${LOG_DIR}/${analysis_name}_final_sub-${subject}_${now}.e "
+          --stop-on-first-crash \
+     > ${LOG_DIR}/${analysis_name}_minimal_sub-${subject}_${now}.o 2> ${LOG_DIR}/${analysis_name}_minimal_sub-${subject}_${now}.e "
 
      #--fs-subjects-dir /base/BIDS/derivatives/freesurfer/analysis-${analysis_name} "
 # Add these two lines if you had freesurfer run already
 #  --bids-filter-file /base/code/bids_filter_okazaki.json \
 #  --use-syn-sdc \
-# --project-goodvoxels --notrack --mem_mb 60000 --nprocs 16 --omp-nthreads 8 --slice-time-ref 0 
+# --project-goodvoxels --notrack --mem_mb 60000 --nprocs 16 --omp-nthreads 8 --slice-time-ref 0
 #      --fs-subjects-dir /fsdir"
 #     --slice-time-ref 0 \
 #     --project-goodvoxels \

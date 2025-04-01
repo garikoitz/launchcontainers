@@ -1,18 +1,21 @@
 #!/bin/bash
 #
-#SBATCH -J sub05test
-#SBATCH --time=00:02:00
+#SBATCH -J s04t6789r3
+#SBATCH --time=10:00:00
 #SBATCH -n 1  # this stands for number of task
-#SBATCH --cpus-per-task=1    #6
-#SBATCH --mem=2000
+#SBATCH --cpus-per-task=20    #6
+#SBATCH --mem=62000
 #SBATCH --partition=general  # Queue names you can submit to
-#SBATCH --qos=test       #<regular,serial,test,long or xlong>
+#SBATCH --qos=regular       #<regular,serial,test,long or xlong>
 
-sublist="subseslist.txt"
+# if you want to syn the logs to the analysis folder, need to create the log folder first
+# the sublist is shared across launch.sh and the slurm
+
+
 BIDS_DIR="/scratch/tlei/VOTCLOC/BIDS"
 
-OUTPUT_DIR="/derivatives/fmriprep-${analysis_name}"
-LOG_DIR=$BIDS_DIR/$$OUTPUT_DIR/logs
+OUTPUT_DIR=/derivatives/fmriprep-${analysis_name}
+LOG_DIR=$BIDS_DIR/$OUTPUT_DIR/logs
 
 export HOMES=/scratch/tlei/fmriprep_tmps_$analysis_name
 mkdir -p ${LOG_DIR}
@@ -63,7 +66,7 @@ subject=$(
 )
 
 # Compose the command line
-cmd="module load Singularity/3.5.3-GCC-8.3.0 &&  \
+cmd="module load Apptainer/1.2.4 &&  \
      ${SINGULARITY_CMD} \
      /base \
      /base/${OUTPUT_DIR} \
@@ -71,18 +74,17 @@ cmd="module load Singularity/3.5.3-GCC-8.3.0 &&  \
       --participant-label $subject \
       -w /work/ -vv \
       --fs-license-file /base/.license \
-      --omp-nthreads 20 --nthreads 20 --mem_mb 80000 \
+      --omp-nthreads 20 --nthreads 20 --mem_mb 60000 \
       --skip-bids-validation \
       --fs-subjects-dir /base/derivatives/freesurfer \
       --stop-on-first-crash \
-      --bids-filter-file /base/code/bids_filter.json \
       --output-spaces T1w func MNI152NLin2009cAsym fsnative fsaverage "
 
 # Add these two lines if you had freesurfer run already
-#  --bids-filter-file /base/code/bids_filter_okazaki.json \
+#  --bids-filter-file /base/code/bids_filter.json \
 #  --use-syn-sdc \
-#  --fs-subjects-dir /base/derivatives/fmriprep/analysis-okazaki_correctfmap/sourcedata/freesurfer 
-# --project-goodvoxels --notrack --mem_mb 60000 --nprocs 16 --omp-nthreads 8 --slice-time-ref 0 
+#  --fs-subjects-dir /base/derivatives/fmriprep/analysis-okazaki_correctfmap/sourcedata/freesurfer
+# --project-goodvoxels --notrack --mem_mb 60000 --nprocs 16 --omp-nthreads 8 --slice-time-ref 0
 #      --fs-subjects-dir /fsdir"
 #     --slice-time-ref 0 \
 #     --project-goodvoxels \
@@ -100,5 +102,3 @@ exitcode=$?
 echo "sub-$subject   ${SLURM_ARRAY_TASK_ID} $exitcode" >> ${LOG_DIR}/${SLURM_JOB_NAME}_${SLURM_ARRAY_JOB_ID}.tsv
 echo Finished tasks ${SLURM_ARRAY_TASK_ID} with exit code $exitcode
 exit $exitcode
-
-

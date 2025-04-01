@@ -24,6 +24,9 @@ function nordic_fmri(src_dir, output_dir, sub, ses, nordic_scans_end, doNORDIC, 
 
     % BCBL
     %{
+    %%%%%%%%%% Note to run the code currently only on BCBL local
+        %%%%%%%%%% copy below to the MATLAB command line
+    %%%%%%%%%% remember to edi the src dir and subseslist
     src_dir = fullfile('/bcbl/home/public/Gari/VOTCLOC/main_exp','raw_nifti');
     output_dir = fullfile('/bcbl/home/public/Gari/VOTCLOC/main_exp','BIDS');
     if ~exist(output_dir, 'dir')
@@ -35,8 +38,8 @@ function nordic_fmri(src_dir, output_dir, sub, ses, nordic_scans_end, doNORDIC, 
     doNORDIC = true;
     dotsnr = false;
     %to run it
-    code_dir='/bcbl/home/home_n-z/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/01_prepare_nifti/prepare_func/';
-    subses=importdata(fullfile(code_dir,'subseslist_votcloc.txt'));
+    code_dir='/bcbl/home/public/Gari/VOTCLOC/main_exp/code/01_prepare_nifti';
+    subses=importdata(fullfile(code_dir,'subseslist_nordic.txt'));
 
     for I=1:length(subses.data)
      sub=subses.data(I,1);
@@ -70,7 +73,7 @@ function nordic_fmri(src_dir, output_dir, sub, ses, nordic_scans_end, doNORDIC, 
     fmamtPath = fullfile(tbPath, 'freesurfer_mrtrix_afni_matlab_tools'); % tbUse if not installed
     addpath(genpath(fmamtPath));
     addpath(genpath(fullfile(src_dir,'..','code')));
-    addpath(genpath('/bcbl/home/home_n-z/tlei/soft/MRIworkflow/01_prepare_nifti'));
+    addpath(genpath('/bcbl/home/home_n-z/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline'));
     nordicpath=fullfile(tbPath,'NORDIC_Raw');
     addpath(genpath(nordicpath));
     setenv('FSLOUTPUTTYPE', 'NIFTI_GZ');
@@ -81,8 +84,8 @@ function nordic_fmri(src_dir, output_dir, sub, ses, nordic_scans_end, doNORDIC, 
     src_sesP = fullfile(src_dir, sub, ses,'func');
     out_sesP = fullfile(output_dir, sub, ses, 'func');
     % change permission to src_sesP, output_dir all and out_sesP
-    system(['chmod 777 ', src_sesP]);
-    system(['chmod -R 777 ', output_dir]);
+    system(['chmod -R 777 ', src_sesP]);
+    system(['chmod -R 777 ', out_sesP]);
     fprintf('The input dir is: %s, and the output dir is %s \n', src_sesP, out_sesP);
     if ~exist(out_sesP, 'dir')
        mkdir(out_sesP);

@@ -1,0 +1,11 @@
+fmriprep usually we run it on DIPC
+
+move the BIDS files there, as well as check if scans.tsv is there in the BIDS folder
+
+launch it on DIPC cluster
+
+note: TODO: needs to put the code dir that stores subseslist into VOTCLOC/code/03_fmriprep
+
+note: the minimal is not working
+
+note: remember to change the sbatch name

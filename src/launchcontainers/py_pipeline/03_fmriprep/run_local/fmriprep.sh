@@ -68,7 +68,7 @@ SINGULARITY_CMD="unset PYTHONPATH && singularity run --cleanenv --no-home \
 
 subject=$1
 # Compose the command line
-now=$(date +"%Y-%m-%dT%H:%M")  
+now=$(date +"%Y-%m-%dT%H:%M")
 cmd="module load apptainer/latest &&  \
      ${SINGULARITY_CMD} \
      ${BIDS_DIR} \
@@ -91,7 +91,7 @@ cmd="module load apptainer/latest &&  \
 # Add these two lines if you had freesurfer run already
 #  --bids-filter-file /base/code/bids_filter_okazaki.json \
 #  --use-syn-sdc \
-# --project-goodvoxels --notrack --mem_mb 60000 --nprocs 16 --omp-nthreads 8 --slice-time-ref 0 
+# --project-goodvoxels --notrack --mem_mb 60000 --nprocs 16 --omp-nthreads 8 --slice-time-ref 0
 #      --fs-subjects-dir /fsdir"
 #     --slice-time-ref 0 \
 #     --project-goodvoxels \
@@ -102,4 +102,3 @@ cmd="module load apptainer/latest &&  \
 echo Running subject ${subject}
 echo Commandline: $cmd
 #eval $cmd
-

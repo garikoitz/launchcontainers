@@ -1,24 +1,10 @@
-#!/bin/bash
-#
-#SBATCH -J s04t6789r3
-#SBATCH --time=10:00:00
-#SBATCH -n 1  # this stands for number of task
-#SBATCH --cpus-per-task=20    #6
-#SBATCH --mem=62000
-#SBATCH --partition=general  # Queue names you can submit to
-#SBATCH --qos=regular       #<regular,serial,test,long or xlong>
-
-# if you want to syn the logs to the analysis folder, need to create the log folder first
-# the sublist is shared across launch.sh and the slurm 
-
-
+subject=$1
 BIDS_DIR="/scratch/tlei/VOTCLOC/BIDS"
-
-OUTPUT_DIR=/derivatives/fmriprep-${analysis_name}
-LOG_DIR=$BIDS_DIR/$OUTPUT_DIR/logs
-
+analysis_name='finalorigUS'
+OUTPUT_DIR="$BIDS_DIR/derivatives/fmriprep-${analysis_name}"
+DERIV_DIR="$BIDS_DIR/derivatives/fmriprep-minimalUS"
 export HOMES=/scratch/tlei/fmriprep_tmps_$analysis_name
-mkdir -p ${LOG_DIR}
+LOG_DIR=$OUTPUT_DIR/logs
 
 #LOCAL_FREESURFER_DIR="/dipc/tlei/.license"
 
@@ -29,9 +15,9 @@ FMRIPREP_WORK_DIR=$HOMES/.work/fmriprep
 mkdir -p ${TEMPLATEFLOW_HOST_HOME}
 mkdir -p ${FMRIPREP_HOST_CACHE}
 mkdir -p ${FMRIPREP_WORK_DIR}
-
+mkdir -p ${LOG_DIR}
 # Prepare derivatives folder
-mkdir -p ${BIDS_DIR}/${OUTPUT_DIR}
+mkdir -p ${OUTPUT_DIR}
 
 # This trick will help you reuse freesurfer results across pipelines and fMRIPrep versions
 # mkdir -p ${BIDS_DIR}/derivatives/freesurfer-6.0.1
@@ -48,6 +34,7 @@ export SINGULARITYENV_TEMPLATEFLOW_HOME="/templateflow"
 # SINGULARITY_CMD="unset PYTHONPATH && singularity run --cleanenv --home /scratch/glerma \
 #                  -B /scratch/glerma:/scratch/glerma \
 SINGULARITY_CMD="unset PYTHONPATH && singularity run --cleanenv --no-home --writable-tmpfs\
+                 -B /scratch:/scratch \
                  -B $BIDS_DIR:/base \
                  -B ${TEMPLATEFLOW_HOST_HOME}:${SINGULARITYENV_TEMPLATEFLOW_HOME}\
                  -B ${FMRIPREP_HOST_CACHE}:/work \
@@ -58,33 +45,34 @@ SINGULARITY_CMD="unset PYTHONPATH && singularity run --cleanenv --no-home --writ
 # Remove IsRunning files from FreeSurfer
 # find ${LOCAL_FREESURFER_DIR}/sub-$subject/ -name "*IsRunning*" -type f -delete
 
-# Parse the participants.tsv file and extract one subject ID from the
-# line corresponding to this SLURM task.
-subject=$(
-  sed -n -E "$((${SLURM_ARRAY_TASK_ID} + 1))s/^([0-9]+)[[:space:]]+([0-9]+)$/\1/p" \
-  ${BIDS_DIR}/code/${sublist}
-)
-
 # Compose the command line
-cmd="module load Apptainer/1.2.4 &&  \
+now=$(date +"%Y-%m-%dT%H:%M")
+cmd="module load Singularity/3.5.3-GCC-8.3.0 &&  \
      ${SINGULARITY_CMD} \
      /base \
-     /base/${OUTPUT_DIR} \
+     ${OUTPUT_DIR} \
      participant \
+      -d minimal=${DERIV_DIR}
       --participant-label $subject \
       -w /work/ -vv \
       --fs-license-file /base/.license \
-      --omp-nthreads 20 --nthreads 20 --mem_mb 60000 \
+      --omp-nthreads 20 --nthreads 20 --mem_mb 80000 \
       --skip-bids-validation \
-      --fs-subjects-dir /base/derivatives/freesurfer \
+      --force-bbr \
+      --level full \
       --stop-on-first-crash \
-      --output-spaces T1w func MNI152NLin2009cAsym fsnative fsaverage "
+      --bids-filter-file /base/code/bids_filter.json \
+      --fs-subjects-dir /base/derivatives/freesurfer \
+      --output-spaces T1w func MNI152NLin2009cAsym fsnative fsaverage \
+      --stop-on-first-crash \
+    > ${LOG_DIR}/${analysis_name}_final_sub-${subject}_${now}.o \
+    2> ${LOG_DIR}/${analysis_name}_final_sub-${subject}_${now}.e "
 
 # Add these two lines if you had freesurfer run already
-#  --bids-filter-file /base/code/bids_filter.json \
+#  --bids-filter-file /base/code/bids_filter_okazaki.json \
 #  --use-syn-sdc \
-#  --fs-subjects-dir /base/derivatives/fmriprep/analysis-okazaki_correctfmap/sourcedata/freesurfer 
-# --project-goodvoxels --notrack --mem_mb 60000 --nprocs 16 --omp-nthreads 8 --slice-time-ref 0 
+#  --fs-subjects-dir /base/derivatives/fmriprep/analysis-okazaki_correctfmap/sourcedata/freesurfer
+# --project-goodvoxels --notrack --mem_mb 60000 --nprocs 16 --omp-nthreads 8 --slice-time-ref 0
 #      --fs-subjects-dir /fsdir"
 #     --slice-time-ref 0 \
 #     --project-goodvoxels \
@@ -93,12 +81,3 @@ cmd="module load Apptainer/1.2.4 &&  \
 echo Running task ${SLURM_ARRAY_TASK_ID}, for subject ${subject}
 echo Commandline: $cmd
 eval $cmd
-
-echo "Coping the log files to the $LOG_DIR"
-rsync -av $slurm_log_dir $LOG_DIR
-exitcode=$?
-
-# Output results to a table
-echo "sub-$subject   ${SLURM_ARRAY_TASK_ID} $exitcode" >> ${LOG_DIR}/${SLURM_JOB_NAME}_${SLURM_ARRAY_JOB_ID}.tsv
-echo Finished tasks ${SLURM_ARRAY_TASK_ID} with exit code $exitcode
-exit $exitcode

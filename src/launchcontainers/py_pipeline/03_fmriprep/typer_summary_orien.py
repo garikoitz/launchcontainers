@@ -4,6 +4,8 @@
 # dependencies = ["nibabel", "typer"]
 # ///
 #  This is taking from online resoouces neurostart
+from __future__ import annotations
+
 from pathlib import Path
 
 import nibabel as nb
@@ -15,8 +17,8 @@ def main(paths: list[Path]) -> None:
         img = nb.load(path)
         axcodes = nb.aff2axcodes(img.affine)
 
-        print(f"{path}: {axcodes}")
+        print(f'{path}: {axcodes}')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     typer.run(main)

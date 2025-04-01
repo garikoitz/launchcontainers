@@ -47,7 +47,7 @@ license_path="$baseP/BIDS/.license"
 
 # # for prfresult:
 step="prfresult"
-version="0.1.1"
+version="0.1.3"
 queue="short.q"
 mem="16G"
 cpus="10"
@@ -55,15 +55,16 @@ time="02:00:00" #time="00:10:00" 10:00:00
 task="all" # retCB retRW retFF
 
 # json input
-json_dir="$baseP/BIDS/code/${step}_jsons"
+json_dir="$baseP/code/${step}_jsons"
 
 # subseslist dir:
-code_dir="/export/home/tlei/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/04b_prf"
+script_dir="/export/home/tlei/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/04b_prf"
+code_dir=$baseP/code
 subses_list_dir=$code_dir/subseslist_votcloc.txt
 sif_path="/bcbl/home/public/Gari/singularity_images/${step}_${version}.sif"
 
 # log dir
-LOG_DIR="$baseP/ips_${step}_logs/march29"
+LOG_DIR="$baseP/ips_${step}_logs/hyperion20ses_$(date +"%Y-%m-%d")"
 # Ensure directories exist
 mkdir -p "$LOG_DIR"
 mkdir -p "$HOME_DIR"
@@ -72,7 +73,9 @@ line_num=1
 # Read subseslist.txt (Skipping header line)
 tail -n +2 $subses_list_dir | while read sub ses; do
     ((line_num++))
-
+    now=$(date +"%H-%M")
+	log_file="${LOG_DIR}/qsub_${sub}_${ses}_${now}.o"
+    error_file="${LOG_DIR}/qsub_${sub}_${ses}_${now}.e"
     # Construct sbatch command
 	# if it is prepare and result, we use short.q, otherwise, long.q and more ram
     cmd="qsub -N ${task}_${line_num}_${step} \
@@ -81,10 +84,10 @@ tail -n +2 $subses_list_dir | while read sub ses; do
         -M t.lei@bcbl.eu \
         -q ${queue} \
         -l mem_free=${mem} \
-        -o $LOG_DIR/${task}_${line_num}_${sub}-${ses}.out \
-        -e $LOG_DIR/${task}_${line_num}_${sub}-${ses}.err \
+        -o $log_file \
+        -e $error_file \
         -v baseP=${baseP},license_path=${license_path},version=${version},sub=${sub},ses=${ses},json_path=$json_dir/${task}_sub-${sub}_ses-${ses}.json,sif_path=$sif_path \
-        $code_dir/run_ips/${step}_ips.sh "
+        $script_dir/run_ips/${step}_ips.sh "
 
     # Print and execute the command
     echo "Submitting job for sub-${sub} ses-${ses}"

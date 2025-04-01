@@ -52,14 +52,15 @@ time="02:00:00" #time="00:10:00" 10:00:00
 task="all" # retCB retRW retFF
 
 # json input
-json_dir="$baseP/BIDS/code/${step}_jsons"
+json_dir="$baseP/code/${step}_jsons"
 # subseslist dir:
-code_dir="/export/home/tlei/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/04b_prf"
+script_dir="/export/home/tlei/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/04b_prf"
+code_dir=$baseP/code
 subses_list_dir=$code_dir/subseslist_votcloc.txt
 sif_path="/bcbl/home/public/Gari/singularity_images/${step}_${version}.sif"
 
 # log dir
-LOG_DIR="$baseP/local_${step}_logs/march29"
+LOG_DIR="$baseP/ips_${step}_logs/hyperion20ses_$(date +"%Y-%m-%d")"
 # Ensure directories exist
 mkdir -p "$LOG_DIR"
 mkdir -p "$HOME_DIR"
@@ -69,9 +70,9 @@ line_num=1
 tail -n +2 "$subses_list_dir" | while read sub ses; do
     ((line_num++))
 
-    # Set log files
-    stdout_log="$LOG_DIR/${task}_${line_num}_${sub}-${ses}.out"
-    stderr_log="$LOG_DIR/${task}_${line_num}_${sub}-${ses}.err"
+    now=$(date +"%H-%M")
+	log_file="${LOG_DIR}/local_${sub}_${ses}_${now}.o"
+    error_file="${LOG_DIR}/local_${sub}_${ses}_${now}.e"
 
     # Export variables for the script
     export baseP="$baseP"
@@ -85,11 +86,11 @@ tail -n +2 "$subses_list_dir" | while read sub ses; do
     # Info
     echo "Running job locally for sub-${sub} ses-${ses}"
     echo "Logging to:"
-    echo "  STDOUT: $stdout_log"
-    echo "  STDERR: $stderr_log"
+    echo "  STDOUT: $log_file"
+    echo "  STDERR: $error_file"
 
     # Run the script in background and log output
-    cmd="bash $code_dir/run_local/${step}_local.sh" >"$stdout_log" 2>"$stderr_log"
+    cmd="bash $script_dir/run_local/${step}_local.sh" >"$log_file" 2>"$error_file"
     echo "###***#*#*#*##*$cmd"
     eval $cmd
 done

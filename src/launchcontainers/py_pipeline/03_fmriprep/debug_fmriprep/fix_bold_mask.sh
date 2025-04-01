@@ -1,4 +1,4 @@
-# I was thinking at something simpler: 
+# I was thinking at something simpler:
 # fmriprep projects the T1w and the functional data in the same spaces (after correcting the functional data and aligning it to the T1w) but usually at different resolutions.
 
 # For example you could use different tools: (FSLeyes - resample, FLIRT (with -applyxfm), niftyreg/reg_resample, AFNI 3dresample, … )
@@ -9,10 +9,10 @@
 
 
 
-# another thing is using fsl to get the bold brian mask 
+# another thing is using fsl to get the bold brian mask
 
 module load fsl/6.0.3
-module load ants/2.3 
+module load ants/2.3
 basedir='/bcbl/home/public/Gari/VOTCLOC/main_exp/BIDS/derivatives/fmriprep/analysis-forcenobbr_minimal'
 sub='01'
 ses='09'
@@ -40,4 +40,3 @@ cmd_ants="antsApplyTransforms -d 3 -i ${anat_mask} -r ${boldref} \
 echo "Conducting bold mask fixing on sub- ${sub} ses- ${ses}"
 echo "The command is   ${cmd_ants}"
 eval $cmd_ants
-

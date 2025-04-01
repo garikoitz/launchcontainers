@@ -1,6 +1,6 @@
 subject=$1
 BIDS_DIR="/scratch/tlei/VOTCLOC/BIDS"
-analysis_name='runall_US'
+analysis_name='minimalUS'
 OUTPUT_DIR="$BIDS_DIR/derivatives/fmriprep-${analysis_name}"
 
 export HOMES=/scratch/tlei/fmriprep_tmps_$analysis_name
@@ -46,7 +46,7 @@ SINGULARITY_CMD="unset PYTHONPATH && singularity run --cleanenv --no-home --writ
 # find ${LOCAL_FREESURFER_DIR}/sub-$subject/ -name "*IsRunning*" -type f -delete
 
 # Compose the command line
-now=$(date +"%Y-%m-%dT%H:%M") 
+now=$(date +"%Y-%m-%dT%H:%M")
 cmd="module load Singularity/3.5.3-GCC-8.3.0 &&  \
      ${SINGULARITY_CMD} \
      /base \
@@ -57,6 +57,9 @@ cmd="module load Singularity/3.5.3-GCC-8.3.0 &&  \
       --fs-license-file /base/.license \
       --omp-nthreads 20 --nthreads 20 --mem_mb 80000 \
       --skip-bids-validation \
+      --level minimal \
+      --force-bbr \
+      --stop-on-first-crash \
       --bids-filter-file /base/code/bids_filter.json \
       --fs-subjects-dir /base/derivatives/freesurfer \
       --output-spaces T1w func MNI152NLin2009cAsym fsnative fsaverage \
@@ -67,8 +70,8 @@ cmd="module load Singularity/3.5.3-GCC-8.3.0 &&  \
 # Add these two lines if you had freesurfer run already
 #  --bids-filter-file /base/code/bids_filter_okazaki.json \
 #  --use-syn-sdc \
-#  --fs-subjects-dir /base/derivatives/fmriprep/analysis-okazaki_correctfmap/sourcedata/freesurfer 
-# --project-goodvoxels --notrack --mem_mb 60000 --nprocs 16 --omp-nthreads 8 --slice-time-ref 0 
+#  --fs-subjects-dir /base/derivatives/fmriprep/analysis-okazaki_correctfmap/sourcedata/freesurfer
+# --project-goodvoxels --notrack --mem_mb 60000 --nprocs 16 --omp-nthreads 8 --slice-time-ref 0
 #      --fs-subjects-dir /fsdir"
 #     --slice-time-ref 0 \
 #     --project-goodvoxels \

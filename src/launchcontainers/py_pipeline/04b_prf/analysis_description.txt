@@ -25,3 +25,6 @@ move all the stimuli, vistadisplog thing to BIDS folder, run the prepare_prf_log
 then run prfprepare and prfanalyze on DIPC
 
 move everything back to BCBL and run the prfresult on lmc02
+
+### IMPORTANT for PRFresult
+it seems it needed a derivatives --> BIDS/derivatives folder so that prfresult can run

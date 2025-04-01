@@ -58,11 +58,10 @@ criteria = ['First', 'Closest']
 
 def main():
     basedir = '/bcbl/home/public/Gari/VOTCLOC/main_exp/BIDS'
-    code_dir = '/export/home/tlei/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline \
-        /01_prepare_nifti/prepare_fmap'
+    code_dir = '/bcbl/home/public/Gari/VOTCLOC/main_exp/code/01_prepare_nifti'
     subseslist = pd.read_csv(
         os.path.join(
-            code_dir, 'subseslist_votcloc.txt',
+            code_dir, 'subseslist_fmap.txt',
         ), sep='\t', dtype='str',
     )
     # force = True

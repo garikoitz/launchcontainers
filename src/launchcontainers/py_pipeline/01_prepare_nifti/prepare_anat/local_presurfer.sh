@@ -3,14 +3,18 @@ basedir=/bcbl/home/public/Gari/VOTCLOC/main_exp
 bids_dirname=BIDS
 
 src_dir=$basedir/raw_nifti
-analysis_name=beforeMar05
+analysis_name=check_sub0709
 outputdir=${basedir}/${bids_dirname}
 force=false # if overwrite exsting file
 
-codedir=/export/home/tlei/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/01_prepare_nifti/prepare_anat
-subseslist_path=$codedir/subseslist_votcloc.txt
-logdir=${outputdir}/log_${step}/analysis_$analysis_name
+codedir=$basedir/code/01_prepare_nifti
+subseslist_path=$codedir/subseslist_presurfer.txt
+script_dir=/export/home/tlei/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/01_prepare_nifti/prepare_anat
+logdir=${outputdir}/log_${step}/${analysis_name}_$(date +"%Y-%m-%d")
+echo "The logdir is $logdir"
+echo "The outputdir is $outputdir"
 mkdir -p $logdir
+
 
 echo "reading the subses"
 # Initialize a line counter
@@ -29,19 +33,21 @@ do
 
 	echo this is line number $line_number
 	echo "### CONVERTING TO NIFTI OF SUBJECT: $sub $ses SESSION ###"
+
+    # Define the name of logs
+    now=$(date +"%H;%M")
+    log_file="${logdir}/presurfer_${sub}_${ses}_${now}.o"
+    error_file="${logdir}/presurfer_${sub}_${ses}_${now}.e"
 	# Export variables for use in the called script
     export src_dir
     export outputdir
     export sub
     export ses
     export force
-    export codedir
+    export script_dir
     # Command to execute locally
-    cmd="bash $codedir/run_${step}.sh "
+    cmd="bash $script_dir/run_${step}.sh "
 
-    now=$(date +"%Y-%m-%dT%H-%M")
-    log_file="${logdir}/presurfer_${sub}_${ses}_${step}_${now}.log"
-    error_file="${logdir}/presurfer_${sub}_${ses}_${step}_${now}.err"
     # Run the command in the background
     echo $cmd
     eval $cmd > ${log_file} 2> ${error_file}
