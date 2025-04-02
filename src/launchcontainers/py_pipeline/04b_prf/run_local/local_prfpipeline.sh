@@ -55,7 +55,7 @@ task="all" # retCB retRW retFF
 json_dir="$baseP/code/${step}_jsons"
 # subseslist dir:
 script_dir="/export/home/tlei/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/04b_prf"
-code_dir=$baseP/code
+code_dir=$baseP/code/04b_prf
 subses_list_dir=$code_dir/subseslist_votcloc.txt
 sif_path="/bcbl/home/public/Gari/singularity_images/${step}_${version}.sif"
 

@@ -28,3 +28,15 @@ move everything back to BCBL and run the prfresult on lmc02
 
 ### IMPORTANT for PRFresult
 it seems it needed a derivatives --> BIDS/derivatives folder so that prfresult can run
+
+
+1. to run prf-pipelines in general, you need to prepare the vistadisplog at correct place
+2. Run prfprepare there is no option to specify task
+3. to have multiple sessions do this: "[02, 03, 04]" (the "" needs to be outside of the [] list)
+    this is particularly for prf-analyze and prfprepare
+
+
+for prfresult: both "[bar,wedge]" and ["bar", "wedge"] should be working
+
+
+the code should be under: baseP/code/04b_prf

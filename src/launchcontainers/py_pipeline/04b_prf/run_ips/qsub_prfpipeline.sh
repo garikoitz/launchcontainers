@@ -47,7 +47,7 @@ license_path="$baseP/BIDS/.license"
 
 # # for prfresult:
 step="prfresult"
-version="0.1.3"
+version="1.0"
 queue="short.q"
 mem="16G"
 cpus="10"
@@ -59,7 +59,7 @@ json_dir="$baseP/code/${step}_jsons"
 
 # subseslist dir:
 script_dir="/export/home/tlei/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/04b_prf"
-code_dir=$baseP/code
+code_dir=$baseP/code/04b_prf
 subses_list_dir=$code_dir/subseslist_votcloc.txt
 sif_path="/bcbl/home/public/Gari/singularity_images/${step}_${version}.sif"
 
