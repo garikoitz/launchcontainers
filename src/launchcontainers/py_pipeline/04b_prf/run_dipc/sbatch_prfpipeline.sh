@@ -63,7 +63,7 @@ subses_list_dir=$code_dir/subseslist_votcloc.txt
 sif_path="/scratch/tlei/containers/${step}_${version}.sif"
 
 # log dir
-LOG_DIR="$baseP/ips_${step}_logs/hyperion20ses_$(date +"%Y-%m-%d")"
+LOG_DIR="$baseP/dipc_${step}_logs/hyperion20ses_$(date +"%Y-%m-%d")"
 # Ensure directories exist
 mkdir -p "$LOG_DIR"
 mkdir -p "$HOME_DIR"

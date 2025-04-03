@@ -1,20 +1,21 @@
 #!/bin/bash
 #
-#SBATCH -J s04t6789r3
-#SBATCH --time=10:00:00
+#SBATCH --time=02:00:00
 #SBATCH -n 1  # this stands for number of task
 #SBATCH --cpus-per-task=20    #6
 #SBATCH --mem=62000
 #SBATCH --partition=general  # Queue names you can submit to
 #SBATCH --qos=regular       #<regular,serial,test,long or xlong>
 
-# if you want to syn the logs to the analysis folder, need to create the log folder first
+# #SBATCH -J s0709test
+# if you want to syn the logs to the analysis folder, 
+# need to create the log folder first
 # the sublist is shared across launch.sh and the slurm
 
-
+basedir="/scratch/tlei/VOTCLOC"
 BIDS_DIR="/scratch/tlei/VOTCLOC/BIDS"
 
-OUTPUT_DIR=/derivatives/fmriprep-${analysis_name}
+OUTPUT_DIR=derivatives/fmriprep-${analysis_name}
 LOG_DIR=$BIDS_DIR/$OUTPUT_DIR/logs
 
 export HOMES=/scratch/tlei/fmriprep_tmps_$analysis_name
@@ -62,7 +63,7 @@ SINGULARITY_CMD="unset PYTHONPATH && singularity run --cleanenv --no-home --writ
 # line corresponding to this SLURM task.
 subject=$(
   sed -n -E "$((${SLURM_ARRAY_TASK_ID} + 1))s/^([0-9]+)[[:space:]]+([0-9]+)$/\1/p" \
-  ${BIDS_DIR}/code/${sublist}
+  ${basedir}/code/${sublist}
 )
 
 # Compose the command line
@@ -81,7 +82,7 @@ cmd="module load Apptainer/1.2.4 &&  \
       --output-spaces T1w func MNI152NLin2009cAsym fsnative fsaverage "
 
 # Add these two lines if you had freesurfer run already
-#  --bids-filter-file /base/code/bids_filter.json \
+#  --bids-filter-file /base/bids_filter.json \
 #  --use-syn-sdc \
 #  --fs-subjects-dir /base/derivatives/fmriprep/analysis-okazaki_correctfmap/sourcedata/freesurfer
 # --project-goodvoxels --notrack --mem_mb 60000 --nprocs 16 --omp-nthreads 8 --slice-time-ref 0
