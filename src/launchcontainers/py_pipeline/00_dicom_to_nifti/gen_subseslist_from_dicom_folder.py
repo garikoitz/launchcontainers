@@ -46,9 +46,9 @@ def generate_subses_list(
 
     # Write the results to the output file in TSV format
     with open(output_file_path, 'w') as f:
-        f.write('sub\tses\n')  # Add a header line
+        f.write('sub,ses\n')  # Add a header line
         for sub_id, ses_id in sorted(subses_pairs):
-            f.write(f"{sub_id}\t{ses_id}\n")
+            f.write(f"{sub_id},{ses_id}\n")
 
     print(f"subseslist.txt generated at {output_file_path}")
 

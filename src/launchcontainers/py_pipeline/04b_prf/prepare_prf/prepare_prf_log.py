@@ -29,6 +29,7 @@ from os import path
 from os import symlink
 from os import unlink
 
+import pandas as pd
 import numpy as np
 from scipy.io import loadmat
 
@@ -115,7 +116,7 @@ def link_vistadisplog(sourcedata, sub, ses, force, task='ret'):
     if matFiles.size != 0 :
         print('Got the matfiles, going to start symlink')
     else:
-        print('Not get the matfiles, please check path')
+        print(f'##### sub-{sub} ses-{ses} Not get the matfiles, please check path')
     for matFile in matFiles:
 
         stimName = loadmat(matFile, simplify_cells=True)['params']['loadMatrix']
@@ -180,7 +181,7 @@ def link_vistadisplog(sourcedata, sub, ses, force, task='ret'):
                 linkName = path.join(
                     path.dirname(
                         matFile,
-                    ), f'sub-{sub}_ses-{ses}_task-retfixRWblock02_run-0{RW}_params.mat',
+                    ), f'sub-{sub}_ses-{ses}_task-retfixRWblock_run-0{RW}_params.mat',
                 )
                 fixRWblock += 1
         if path.islink(linkName) and force:
@@ -201,24 +202,27 @@ def check_params_and_bids(layout, sub, ses):
 
 
 def main():
-    subs = ['02', '04', '06']  # ,'02','03','04','05','06','08']
+    #subs = ['02', '04', '06']  # ,'02','03','04','05','06','08']
     # ['01','02','03','04','05','06','07','08','09','10']
-    sess = ['01', '02', '03', '04', '05', '06', '07', '08', '09']
+    #sess = ['01', '02', '03', '04', '05', '06', '07', '08', '09']
     basedir = '/scratch/tlei/VOTCLOC'
+    subseslist_fpath=path.join(basedir,'code','subseslist_fmriprep.txt')
+    subseslist= pd.read_csv(subseslist_fpath,sep=',',header=0, dtype='str')    
     bids_folder_name = 'BIDS'
     force = True
     # first, need to set copied_mat to False, to create the vistadisplog foler, \
     # the vistadisplog folder will point to sourcedata/sub/ses
     # then set copied_mat to True, and then run link_vistadisplog
-    copied_mat = False
+    copied_mat = True
     task = 'ret'
     sourcedata_dir = path.join(basedir, bids_folder_name , 'sourcedata')
-    for sub in subs:
-        for ses in sess:
-            if not copied_mat:
-                prepare_prf(basedir, sub, ses, bids_folder_name, force)
-            else:
-                link_vistadisplog(sourcedata_dir, sub, ses, force, task)
+    for idx, row in subseslist.iterrows():
+        sub=row['sub']
+        ses=row['ses']
+        if not copied_mat:
+            prepare_prf(basedir, sub, ses, bids_folder_name, force)
+        else:
+            link_vistadisplog(sourcedata_dir, sub, ses, force, task)
 
 
 if __name__ == '__main__':

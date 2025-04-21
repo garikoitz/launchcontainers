@@ -27,13 +27,13 @@ license_path="$baseP/BIDS/.license"
 
 ##### For each container
 #####
-# step="prfprepare"
-# version="1.5.0"
-# qos="regular" # or test or regular
-# mem="8G"
-# cpus="6"
-# time="00:10:00"
-# task="all"
+step="prfprepare"
+version="1.5.0"
+qos="regular" # or test or regular
+mem="8G"
+cpus="6"
+time="00:10:00"
+task="all"
 
 # # # for prfanalyze-vista:
 # step="prfanalyze-vista"
@@ -45,32 +45,32 @@ license_path="$baseP/BIDS/.license"
 # task="retFF" # retCB retRW retFF
 
 
-# # for prfresult:
-step="prfresult"
-version="0.1.1"
-qos="test" # regular or test
-mem="16G"
-cpus="10"
-time="00:10:00" #time="00:10:00" 10:00:00
-task="all" # retCB retRW retFF
+# # # for prfresult:
+# step="prfresult"
+# version="0.1.1"
+# qos="test" # regular or test
+# mem="16G"
+# cpus="10"
+# time="00:10:00" #time="00:10:00" 10:00:00
+# task="all" # retCB retRW retFF
 
 # json input
 json_dir="$baseP/code/${step}_jsons"
 # subseslist dir:
 script_dir="/scratch/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/04b_prf"
 code_dir=$baseP/code/04b_prf
-subses_list_dir=$code_dir/subseslist_votcloc.txt
+subses_list_dir=$code_dir/subseslist_prfnormal.txt
 sif_path="/scratch/tlei/containers/${step}_${version}.sif"
 
 # log dir
-LOG_DIR="$baseP/dipc_${step}_logs/hyperion20ses_$(date +"%Y-%m-%d")"
+LOG_DIR="$baseP/dipc_${step}_logs/edr25ses_$(date +"%Y-%m-%d")"
 # Ensure directories exist
 mkdir -p "$LOG_DIR"
 mkdir -p "$HOME_DIR"
 
 line_num=1
 # Read subseslist.txt (Skipping header line)
-tail -n +2 $subses_list_dir | while read sub ses; do
+tail -n +2 $subses_list_dir | while IFS=',' read -r sub ses _; do
     ((lin_num++))
     now=$(date +"%H-%M")
     # Construct sbatch command

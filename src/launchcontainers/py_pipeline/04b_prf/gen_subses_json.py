@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 import os
 
-code_dir = '/bcbl/home/public/Gari/VOTCLOC/main_exp/code/04b_prf'
-script_dir = '/export/home/tlei/tlei/soft/launchcontainers/src \
+code_dir = '/scratch/tlei/VOTCLOC/code/04b_prf'
+script_dir = '/scratch/tlei/soft/launchcontainers/src \
     /launchcontainers/py_pipeline/04b_prf'
 # prfprepare #prfanalyze-vista #prfresult # 'prfprepare', 'prfanalyze-vista',
 steps = ['prfprepare', 'prfanalyze-vista', 'prfresult']
@@ -26,8 +26,9 @@ def gen_batch_json(subseslist_path, template_json, output_dir, step, tasks, forc
         if step in ['prfprepare']:
             # Generate JSONs for each subject-session pair
             for line in lines:
-                sub, ses = line.strip('/t').split()
-
+                # change the logic for the comma sep list
+                parts = line.strip().split(',')
+                sub , ses = parts[0], parts[1]
                 # Replace placeholders in the template
                 config = template.copy()
                 config['subjects'] = f'{sub}'
@@ -42,8 +43,9 @@ def gen_batch_json(subseslist_path, template_json, output_dir, step, tasks, forc
         elif step in ['prfresult']:
             # Generate JSONs for each subject-session pair
             for line in lines:
-                sub, ses = line.strip('/t').split()
-
+                # change the logic for the comma sep list
+                parts = line.strip().split(',')
+                sub , ses = parts[0], parts[1]
                 # Replace placeholders in the template
                 config = template.copy()
                 config['subjects'] = f'{sub}'
@@ -60,8 +62,9 @@ def gen_batch_json(subseslist_path, template_json, output_dir, step, tasks, forc
             for task in tasks:
                 # Generate JSONs for each subject-session pair
                 for line in lines:
-                    sub, ses = line.strip('/t').split()
-
+                    # change the logic for the comma sep list
+                    parts = line.strip().split(',')
+                    sub , ses = parts[0], parts[1]
                     # Replace placeholders in the template
                     config = template.copy()
                     config['subjectName'] = f'{sub}'
@@ -78,8 +81,8 @@ def gen_batch_json(subseslist_path, template_json, output_dir, step, tasks, forc
 if __name__ == '__main__':
     for step in steps:
 
-        subseslist_path = os.path.join(code_dir, 'subseslist_votcloc.txt')
-        output_dir = f'/bcbl/home/public/Gari/VOTCLOC/main_exp/code/{step}_jsons'
+        subseslist_path = os.path.join(code_dir, 'subseslist_prfnormal.txt')
+        output_dir = f'/scratch/tlei/VOTCLOC/code/{step}_jsons'
 
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
