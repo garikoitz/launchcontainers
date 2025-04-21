@@ -14,21 +14,23 @@
 # Email: yl4874@nyu.edu
 # GitHub: https://github.com/yongninglei
 # -----------------------------------------------------------------------------
-unset step
+#### user customize
 
-step=$1 # step1 or step2
-project=votcloc
-basedir=/bcbl/home/public/Gari/VOTCLOC/main_exp
+project=paperdv
+basedir=/bcbl/home/public/Gari/MINI/paper_dv
+outputdir=$basedir/BIDS
 dicom_dirname=dicom
-outputdir=$basedir/raw_nifti
 
+#### below are not going to be changed
 codedir=$basedir/code
+unset step
+step=$1 # step1 or step2
 script_dir=/export/home/tlei/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/00_dicom_to_nifti
 subseslist_path=$codedir/00_heudiconv/subseslist_heudiconv.txt
 heuristicfile=$codedir/00_heudiconv/heuristic_${project}.py
 sing_path=/bcbl/home/public/Gari/singularity_images/heudiconv_1.3.2.sif
 
-analysis_name=check_sub0709
+analysis_name=test_1sub_paperdv
 logdir=${outputdir}/log_heudiconv/${analysis_name}_$(date +"%Y-%m-%d")/${step}
 echo "The logdir is $logdir"
 echo "The outputdir is $outputdir"

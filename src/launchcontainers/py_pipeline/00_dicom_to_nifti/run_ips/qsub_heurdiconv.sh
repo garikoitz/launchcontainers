@@ -14,15 +14,15 @@
 # Email: yl4874@nyu.edu
 # GitHub: https://github.com/yongninglei
 # -----------------------------------------------------------------------------
-unset step
-
-step=$1 # step1 or step2
-project=votcloc
-basedir=/bcbl/home/public/Gari/VOTCLOC/main_exp
+project=paperdv
+basedir=/bcbl/home/public/Gari/MINI/paper_dv
+outputdir=$basedir/BIDS
 dicom_dirname=dicom
-outputdir=$basedir/raw_nifti
 
+#### below are not going to be changed
 codedir=$basedir/code
+unset step
+step=$1 # step1 or step2
 script_dir=/export/home/tlei/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/00_dicom_to_nifti
 subseslist_path=$codedir/00_heudiconv/subseslist_heudiconv.txt
 heuristicfile=$codedir/00_heudiconv/heuristic_${project}.py
@@ -49,7 +49,7 @@ while IFS=$'\t' read -r sub ses; do
     fi
 
 	echo "### CONVERTING TO NIFTI OF SUBJECT: $sub $ses SESSION ###"
-	now=$(date +"%H;%M")
+	now=$(date +"%H-%M")
 	log_file="${logdir}/qsub_${sub}_${ses}_${now}.o"
     error_file="${logdir}/qsub_${sub}_${ses}_${now}.e"
 	cmd="qsub -q short.q \

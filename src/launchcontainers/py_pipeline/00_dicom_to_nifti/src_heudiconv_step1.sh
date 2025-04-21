@@ -40,7 +40,7 @@ cmd="singularity run \
 	    	--bind /bcbl:/bcbl \
 			--bind /export:/export \
         	${sing_path} \
-			-d /base/${dicom_dirname}/sub-{subject}/ses-{session}/*/*.dcm \
+			-d /base/${dicom_dirname}/sub-{subject}/ses-{session}/*/*/*/*.dcm \
 	    	-s ${sub} \
 			-ss ${ses} \
 			-o ${outputdir} \

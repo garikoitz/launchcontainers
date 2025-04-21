@@ -8,33 +8,43 @@
 #       None: python None type, Usually used for optional arguement, don't put anything after column, not even ""
 general:
   # Base directory of project
-  basedir: /bcbl/home/public/Gari/VOTCLOC/main_exp
+  basedir: /bcbl/home/public/DB/devtrajtract/DATA/MINI
   # Name of bids directory, 1 level under basedir, must contain dataset_description
-  bidsdir_name: raw_nifti
+  bidsdir_name: nifti
   # Directory contains singularity images
   containerdir: /bcbl/home/public/Gari/containers
   # Name of the container
-  # VALID OPTIONS: freesurferator, rtp2-preproc, rtp2-pipeline, anatrois, rtppreproc, rtp-pipeline, l1_glm, fmriprep 
-  container: freesurferator
-  # Name of analysis folder 
-  analysis_name: kepa_recon_all
-  # Place the computing will be held. 
+  # VALID OPTIONS:
+  # Convert dcm to nifti: heudiconv
+  # preprocessing: presurfer and nordic
+  # fMRIprep
+  # DWI pipelines:
+  ## freesurferator, rtp2-preproc, rtp2-pipeline (RTP2)
+  ## anatrois, rtppreproc, rtp-pipeline (RTP_old)
+  # prf pipelines:
+  ## prfprepare, prfanalyze-vista, prfresult
+  # glm :
+  ## l1_glm
+  container: rtppreproc
+  # Name of analysis folder; if input 01, need to add quote ""
+  analysis_name: paper_dv-main
+  # Place the computing will be held.
   # VALID OPTIONS: local, BCBL, DIPC.
   host: local
   # Whether force to overwrite
   force: True
   # Verbosity of command-line console. If true, only print information at level: CRITICAL (based on python logging package)
-  print_command_only: True
-  # Log directory to store launchcontainers logging 
+  print_command_only: False
+  # Log directory to store launchcontainers logging
   # VALID OPTIONS: analysis_dir or full path you want
   # This log dir will be used for dask_log and launchcontainer log
-  log_dir: analysis_dir
+  log_dir: /bcbl/home/public/DB/devtrajtract/DATA/MINI/lc_launch_log
   # Name of launchcontainers log file
   log_filename: lc_log
 
 container_specific:
   anatrois:
-    # Version identifier for container 
+    # Version identifier for container
     version: 4.6.1-7.3.2
     # Pre-run freesurfer or not?
     pre_fs: True
@@ -46,39 +56,46 @@ container_specific:
     prefs_zipname: '^anatrois_S.*\.zip$'
     # optional
     # Freesurfer annotefiles
-    annotfile: 
+    annotfile:
     # MNI roi zip file
-    mniroizip: 
+    mniroizip:
+    # for multiple session assign to single T1
+    # input a src session
+    retest_session: True
+    # the program will loop for the subeselist, if it detect src_session_id, it will do nothing
+    # if it detects other session id, it will create a symlink ot the src_session folder in the anatrois or freesurferator folder
+    src_session_id: T01
 
   rtppreproc:
     # Version identifier for container
-    version: 1.2.0-3.0.3   
+    version: 1.2.0-3.0.3
     # anatrois or freesurferator dir, used to find the brainmask
     precontainer_anat: anatrois_4.5.3-7.3.2
-    # Analysis name 
+    # Analysis name
     anat_analysis_name: control_points_01
     # optional
     # if your encoding direction DWI is multishell sequence and they are in seperate files
-    separated_shell_files: False
+    separated_shell_files: True
     # If reverse phase encoding is applied in the sequence
     # It checks if there is a reverse phase encoding acquisition
     # Old dcm2nixx will not create empty bvec and bval files if there was an acquisition with just b0-s
-    rpe: False
-  
+    rpe: True
+
+
   rtp-pipeline:
-    # Version identifier for container      
-    version: 4.5.2-3.0.3 
+    # Version identifier for container
+    version: 4.5.2-3.0.3
     # anatrois or freesurferator dir, used to find the brainmask and fs/ROIs
     precontainer_anat: anatrois_4.6.1-7.3.2
-    # Analysis name 
+    # Analysis name
     anat_analysis_name: fulltract_anatrerun
     # rtppreproc or rtp2-preproc dir, used to find the dwi.nii.gz, bvec and bval
     precontainer_preproc: rtppreproc_1.2.0-3.0.3
-    # Analysis name 
+    # Analysis name
     preproc_analysis_name: 6sub_wrongbvec
 
   freesurferator:
-    # Version identifier for container 
+    # Version identifier for container
     version: 0.2.1_7.4.1
     # Pre-run freesurfer or not?
     pre_fs: False
@@ -86,25 +103,31 @@ container_specific:
     prefs_dir_name: freesurferator_0.2.0-7.4.1rc19
     # Analysis name of pre-run freesurfer
     prefs_analysis_name: control_points_02
-    # A super identifier to find the pattern 
+    # A super identifier to find the pattern
     prefs_zipname: '^freesurferator_S.*\.zip$'
     # If you want to use the control points created in the previous analysis (control.dat), set this True:
     control_points: False
     # If you created control points, you'll have an unzipped folder in the output analysis. Fill prefs_unzipname
-    # with the name of the unzipped folder to let launchcontainers create a symbolic link to the control.dat  
+    # with the name of the unzipped folder to let launchcontainers create a symbolic link to the control.dat
     prefs_unzipname: 'S.*$'
-    # optional 
+    # optional
     # Freesurfer annotefiles
     annotfile:
     # MNI roi zip file
     mniroizip:
+    # for multiple session assign to single T1
+    # input a src session
+    retest_session: True
+    # the program will loop for the subeselist, if it detect src_session_id, it will do nothing
+    # if it detects other session id, it will create a symlink ot the src_session folder in the anatrois or freesurferator folder
+    src_session_id: T01
 
   rtp2-preproc:
-    # Version identifier for container      
-    version: 0.2.2_3.0.4  
+    # Version identifier for container
+    version: 0.2.2_3.0.4
     # anatrois or freesurferator dir, used to find the brainmask
     precontainer_anat: freesurferator_0.2.1_7.4.1
-    # Analysis name 
+    # Analysis name
     anat_analysis_name: week1
     # optional
     # if your encoding direction DWI is multishell sequence and they are in seperate files
@@ -120,26 +143,26 @@ container_specific:
     # Analysis name of pre-run freesurfer
     qmap_analysis_name: test_qmap
     # qunatitative MRI maps, must be nifti format
-    # A super identifier to find the pattern 
+    # A super identifier to find the pattern
     qmap_fname: '^qmap.*\.zip$'
 
 
   rtp2-pipeline:
-    # Version identifier for container 
-    version: 0.2.2_3.0.4   
+    # Version identifier for container
+    version: 0.2.2_3.0.4
     # anatrois or freesurferator dir, used to find the brainmask and fs/ROIs
     precontainer_anat: freesurferator_0.2.1_7.4.1
-    # Analysis name 
+    # Analysis name
     anat_analysis_name: week1
     # rtppreproc or rtp2-preproc dir, used to find the dwi.nii.gz, bvec and bval
     precontainer_preproc: rtp2-preproc_0.2.2_3.0.4
-    # Analysis name 
+    # Analysis name
     preproc_analysis_name: week1
     # Path to tractparams files, needs to be a .csv
     tractparams: /bcbl/home/public/Gari/VOTCLOC/main_exp/code/lc_dwi/rtp-pipeline_4.5.2-3.0.3_tractparams_20240703.csv
     # optional
-    # Path to brain.nii.gz of freesurfer If use fsmask or define manually, this option is set in case you need 
-    fsmask: 
+    # Path to brain.nii.gz of freesurfer If use fsmask or define manually, this option is set in case you need
+    fsmask:
     # Use qmap file or not?
     use_qmap: False
     # Directory name of your pre-run freesurfer, this directory should be under /basedir/bidsdir/derivatives
@@ -147,13 +170,13 @@ container_specific:
     # Analysis name of pre-run freesurfer
     qmap_analysis_name: test_qmap
     # qunatitative MRI maps, must be nifti format
-    # A super identifier to find the pattern 
+    # A super identifier to find the pattern
     qmap_fname: '^qmap.*\.zip$'
 
 host_options:
     BCBL:
       # SGE manager
-      use_module: False 
+      use_module: False
       apptainer: apptainer/latest
       maxwall: 10
       manager: sge
