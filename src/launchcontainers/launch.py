@@ -21,6 +21,8 @@ import numpy as np
 import logging
 import math
 import re
+from datetime import datetime
+
 # modules in lc
 
 from bids import BIDSLayout
@@ -84,6 +86,9 @@ def generate_cmd(
 
     path_to_sub_derivatives = os.path.join(analysis_dir, f"sub-{sub}", f"ses-{ses}")
 
+    # get timestamp for output log
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
     bind_cmd = ""
     for bind in bind_options:
         bind_cmd += f"--bind {bind}:{bind} "
@@ -104,7 +109,7 @@ def generate_cmd(
             f"--bind {path_to_sub_derivatives}/input:/flywheel/v0/input:ro "
             f"--bind {path_to_sub_derivatives}/output:/flywheel/v0/output "
             f"--bind {path_to_sub_derivatives}/output/log/config.json:/flywheel/v0/config.json "
-            f"{container_name} 1>> {logfilename}.o 2>> {logfilename}.e  "
+            f"{container_name} 1>> {logfilename}_{timestamp}.o 2>> {logfilename}_{timestamp}.e  "
         )
 
     if container == "freesurferator":
@@ -153,7 +158,7 @@ def generate_cmd(
             f"--env QT_QPA_PLATFORM=xcb "
             f"--env PWD=/flywheel/v0 "
             f"{container_name} "
-            f"-c python run.py 1> {logfilename}.o 2> {logfilename}.e  "
+            f"-c python run.py 1> {logfilename}_{timestamp}.o 2> {logfilename}_{timestamp}.e  "
         )
 
     if container == "rtp2-preproc":
@@ -191,7 +196,7 @@ def generate_cmd(
             f"--env FS_LICENSE=/opt/freesurfer/license.txt  "
             f"--env PWD=/flywheel/v0 "
             f"{container_name} "
-            f"-c python run.py 1> {logfilename}.o 2> {logfilename}.e  "
+            f"-c python run.py 1> {logfilename}_{timestamp}.o 2> {logfilename}_{timestamp}.e  "
         )
     
     if container == "rtp2-pipeline":
@@ -231,7 +236,7 @@ def generate_cmd(
             f"--env MRTRIX_TMPFILE_DIR=/flywheel/v0/output/tmp "
             f"--env PWD=/flywheel/v0 "
             f"{container_name} "
-            f"-c python run.py 1> {logfilename}.o 2> {logfilename}.e  "
+            f"-c python run.py 1> {logfilename}_{timestamp}.o 2> {logfilename}_{timestamp}.e  "
         )
     
     # Check which container we are using, and define the command accordingly

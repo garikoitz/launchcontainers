@@ -111,7 +111,7 @@ def force_symlink(file1, file2, force):
         # If the symlink exists, OSError will be raised
         except OSError as e:
             if e.errno == errno.EEXIST:
-                shutil.rmtree(file2)
+                os.remove(file2)
                 logger.info(
                     '\n'
                     + f'--- force is {force} but the symlink exists, unlinking\n ',
@@ -645,7 +645,7 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout,
             else:
                 logger.error(
                     '\n'
-                    + 'Missing bval files',
+                    + f'Missing bval files for {sub} and {ses} ',
                 )
             if len(dwi_acq) == len(bvecs_acq) and not os.path.isfile(target_bvec):
                 bvecs_acq.sort()
