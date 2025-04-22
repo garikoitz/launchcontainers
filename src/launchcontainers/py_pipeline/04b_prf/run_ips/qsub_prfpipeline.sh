@@ -27,13 +27,13 @@ license_path="$baseP/BIDS/.license"
 
 ##### For each container
 #####
-# step="prfprepare"
-# version="1.5.0"
-# queue="veryshort.q"
-# mem="8G"
-# cpus="6"
-# time="00:10:00"
-# task="all"
+step="prfprepare"
+version="1.5.0"
+queue="veryshort.q"
+mem="8G"
+cpus="6"
+time="00:10:00"
+task="all"
 
 # # # for prfanalyze-vista:
 # step="prfanalyze-vista"
@@ -45,33 +45,33 @@ license_path="$baseP/BIDS/.license"
 # task="retFF" # retCB retRW retFF
 
 
-# # for prfresult:
-step="prfresult"
-version="1.0"
-queue="short.q"
-mem="16G"
-cpus="10"
-time="02:00:00" #time="00:10:00" 10:00:00
-task="all" # retCB retRW retFF
+# # # for prfresult:
+# step="prfresult"
+# version="1.0"
+# queue="short.q"
+# mem="16G"
+# cpus="10"
+# time="02:00:00" #time="00:10:00" 10:00:00
+# task="all" # retCB retRW retFF
 
 # json input
 json_dir="$baseP/code/${step}_jsons"
 
 # subseslist dir:
 script_dir="/export/home/tlei/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/04b_prf"
-code_dir=$baseP/code/04b_prf
-subses_list_dir=$code_dir/subseslist_votcloc.txt
+code_dir=$baseP/code
+subses_list_dir=$code_dir/04b_prf/subseslist_prfnormal.txt
 sif_path="/bcbl/home/public/Gari/singularity_images/${step}_${version}.sif"
 
 # log dir
-LOG_DIR="$baseP/ips_${step}_logs/hyperion20ses_$(date +"%Y-%m-%d")"
+LOG_DIR="$baseP/ips_${step}_logs/make_freesurfer_$(date +"%Y-%m-%d")"
 # Ensure directories exist
 mkdir -p "$LOG_DIR"
 mkdir -p "$HOME_DIR"
 
 line_num=1
 # Read subseslist.txt (Skipping header line)
-tail -n +2 $subses_list_dir | while read sub ses; do
+tail -n +2 $subses_list_dir | while IFS=',' read -r sub ses _; do
     ((line_num++))
     now=$(date +"%H-%M")
 	log_file="${LOG_DIR}/qsub_${sub}_${ses}_${now}.o"
@@ -80,8 +80,6 @@ tail -n +2 $subses_list_dir | while read sub ses; do
 	# if it is prepare and result, we use short.q, otherwise, long.q and more ram
     cmd="qsub -N ${task}_${line_num}_${step} \
         -S /bin/bash \
-        -m be \
-        -M t.lei@bcbl.eu \
         -q ${queue} \
         -l mem_free=${mem} \
         -o $log_file \

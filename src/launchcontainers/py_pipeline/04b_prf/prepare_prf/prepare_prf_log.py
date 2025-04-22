@@ -29,8 +29,8 @@ from os import path
 from os import symlink
 from os import unlink
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 from scipy.io import loadmat
 
 
@@ -202,12 +202,11 @@ def check_params_and_bids(layout, sub, ses):
 
 
 def main():
-    #subs = ['02', '04', '06']  # ,'02','03','04','05','06','08']
-    # ['01','02','03','04','05','06','07','08','09','10']
-    #sess = ['01', '02', '03', '04', '05', '06', '07', '08', '09']
-    basedir = '/scratch/tlei/VOTCLOC'
-    subseslist_fpath=path.join(basedir,'code','subseslist_fmriprep.txt')
-    subseslist= pd.read_csv(subseslist_fpath,sep=',',header=0, dtype='str')    
+    # for bcbl /bcbl/home/public/Gari/VOTCLOC/main_exp
+    # for dipc it is /scratch/tlei/VOTCLOC
+    basedir = '/bcbl/home/public/Gari/VOTCLOC/main_exp'
+    subseslist_fpath = path.join(basedir, 'code', 'subseslist_fmriprep.txt')
+    subseslist = pd.read_csv(subseslist_fpath, sep=',', header=0, dtype='str')
     bids_folder_name = 'BIDS'
     force = True
     # first, need to set copied_mat to False, to create the vistadisplog foler, \
@@ -217,8 +216,8 @@ def main():
     task = 'ret'
     sourcedata_dir = path.join(basedir, bids_folder_name , 'sourcedata')
     for idx, row in subseslist.iterrows():
-        sub=row['sub']
-        ses=row['ses']
+        sub = row['sub']
+        ses = row['ses']
         if not copied_mat:
             prepare_prf(basedir, sub, ses, bids_folder_name, force)
         else:

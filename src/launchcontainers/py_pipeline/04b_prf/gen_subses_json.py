@@ -3,14 +3,6 @@ from __future__ import annotations
 import json
 import os
 
-code_dir = '/scratch/tlei/VOTCLOC/code/04b_prf'
-script_dir = '/scratch/tlei/soft/launchcontainers/src \
-    /launchcontainers/py_pipeline/04b_prf'
-# prfprepare #prfanalyze-vista #prfresult # 'prfprepare', 'prfanalyze-vista',
-steps = ['prfprepare', 'prfanalyze-vista', 'prfresult']
-tasks = ['retRW', 'retFF', 'retCB']
-force = True
-
 
 def gen_batch_json(subseslist_path, template_json, output_dir, step, tasks, force):
     # Load the template JSON
@@ -79,14 +71,25 @@ def gen_batch_json(subseslist_path, template_json, output_dir, step, tasks, forc
 
 
 if __name__ == '__main__':
+
+    # for bcbl /bcbl/home/public/Gari/VOTCLOC/main_exp
+    # for dipc it is /scratch/tlei/VOTCLOC
+    basedir = '/bcbl/home/public/Gari/VOTCLOC/main_exp'
+
+    code_dir = os.path.join(basedir, 'code')
+    # prfprepare #prfanalyze-vista #prfresult # 'prfprepare', 'prfanalyze-vista',
+    steps = ['prfprepare', 'prfanalyze-vista', 'prfresult']
+    tasks = ['retRW', 'retFF', 'retCB']
+    force = True
+
     for step in steps:
 
         subseslist_path = os.path.join(code_dir, 'subseslist_prfnormal.txt')
-        output_dir = f'/scratch/tlei/VOTCLOC/code/{step}_jsons'
+        output_dir = os.path.join(code_dir , f'{step}_jsons')
 
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
-        template_json = os.path.join(code_dir, f'{step}.json')
+        template_json = os.path.join(code_dir, '04b_prf', f'{step}.json')
 
         gen_batch_json(subseslist_path, template_json, output_dir, step, tasks, force)
