@@ -27,13 +27,13 @@ license_path="$baseP/BIDS/.license"
 
 ##### For each container
 #####
-step="prfprepare"
-version="1.5.0"
-queue="veryshort.q"
-mem="8G"
-cpus="6"
-time="00:10:00"
-task="all"
+# step="prfprepare"
+# version="1.5.0"
+# queue="veryshort.q"
+# mem="8G"
+# cpus="6"
+# time="00:10:00"
+# task="all"
 
 # # # for prfanalyze-vista:
 # step="prfanalyze-vista"
@@ -46,13 +46,13 @@ task="all"
 
 
 # # # for prfresult:
-# step="prfresult"
-# version="1.0"
-# queue="short.q"
-# mem="16G"
-# cpus="10"
-# time="02:00:00" #time="00:10:00" 10:00:00
-# task="all" # retCB retRW retFF
+step="prfresult"
+version="1.0"
+queue="short.q"
+mem="16G"
+cpus="10"
+time="01:00:00" #time="00:10:00" 10:00:00
+task="all" # retCB retRW retFF
 
 # json input
 json_dir="$baseP/code/${step}_jsons"

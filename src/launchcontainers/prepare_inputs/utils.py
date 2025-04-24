@@ -254,6 +254,7 @@ def read_df(path_to_df_file):
         num_of_true_run = None
         logger.warn(f'The df you are reading is not subseslist \
             or something is wrong {e}')
+    logger.info(outputdf.head(5))
     """     # Print the result
         logger.info(
             "\n"
