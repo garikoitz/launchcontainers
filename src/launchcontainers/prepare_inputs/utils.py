@@ -8,9 +8,15 @@ Copyright (c) 2022-2023 Yongning Lei
 Copyright (c) 2023 David Linhardt
 Copyright (c) 2023 Iñigo Tellaetxe
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation the rights to use,
+copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
+and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 """
 from __future__ import annotations
 
@@ -24,19 +30,9 @@ from argparse import RawDescriptionHelpFormatter
 from os import makedirs
 
 import pandas as pd
-import requests
 import yaml
 from yaml.loader import SafeLoader
-try:
-    from importlib.metadata import version, PackageNotFoundError
-except ImportError:  # For Python < 3.8
-    from pkg_resources import get_distribution, DistributionNotFound
 
-    def version(package_name):
-        try:
-            return get_distribution(package_name).version
-        except DistributionNotFound:
-            return None
 
 logger = logging.getLogger('Launchcontainers')
 
@@ -70,7 +66,8 @@ def get_parser():
         ##--cc note, for the case of rtp-pipeline, you need to input two paths,
         # one for config.json and one for tractparm.csv \n\n
         ###########STEP2############# \n
-        After you have done step 1, all the config files are copied to BIDS/sub/ses/analysis/ directory
+        After you have done step 1, all the config files are copied to
+        BIDS/sub/ses/analysis/ directory
         When you are confident everything is there, press up arrow to
         recall the command in STEP 1, and just add --run_lc after it. \n\n
 
@@ -100,9 +97,9 @@ def get_parser():
         '-cc',
         '--container_specific_config',
         type=str,
-        # default=["/export/home/tlei/tlei/PROJDATA/TESTDATA_LC/Testing_02/BIDS/config.json"],
-        help='path to the container specific config file, \
-            it stores the parameters for the container.',
+        help='path to the container specific \
+         config file, \
+        it stores the parameters for the container.',
     )
     parser.add_argument(
         '--copy_configs',
@@ -114,7 +111,8 @@ def get_parser():
         action='store_true',
         help='if you type --run_lc, the entire program will be launched, jobs will be send to \
                 cluster and launch the corresponding container you suggest in config_lc.yaml. \
-                We suggest that the first time you run launchcontainer.py, leave this argument empty. \
+                We suggest that the first time you run launchcontainer.py, \
+                leave this argument empty \
                 then the launchcontainer.py will prepare \
                 all the input files for you and print the command you want \
                 to send to container, after you \
@@ -370,42 +368,6 @@ def copy_file(src_file, dst_file, force):
     logger.info('\n' + '#####################################################\n')
 
     return dst_file
-
-
-def get_launchcontainers_version():
-    try:
-        from importlib.metadata import version
-    except ImportError:  # For Python < 3.8
-        from pkg_resources import get_distribution as version
-
-    try:
-        return version('launchcontainers')
-    except Exception as e:
-        logger.error(f'Error getting launchcontainers version: {e}')
-        return None
-
-
-def get_mocked_launchcontainers_version():
-    # Specify the version you want to mock for testing purposes
-    return '0.3.0'
-
-
-def download_configs(version, download_path):
-    # https://github.com/garikoitz/launchcontainers/tree/master/example_configs/0.3.0
-    github_url = f'https://github.com/garikoitz/launchcontainers/raw/main/example_configs\
-        /{version}/example_config.yaml'
-    response = requests.get(github_url)
-
-    if response.status_code == 200:
-        config_path = os.path.join(download_path, f'{version}_config.yaml')
-        with open(config_path, 'wb') as file:
-            file.write(response.content)
-        logger.info(f'Configs for version {version} downloaded successfully.')
-    else:
-        logger.error(
-            f'Failed to download configs for version {version}. \
-                 HTTP Status Code: {response.status_code}',
-        )
 
 
 def copy_configs(output_path, force=True):

@@ -27,7 +27,6 @@ import logging
 import os
 import os.path as op
 import re
-import shutil
 import subprocess as sp
 import sys
 import zipfile
@@ -590,7 +589,7 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout,
             subject=sub, session=ses, extension='nii.gz',
             suffix='dwi', direction=PE_direction, return_type='filename',
         )
-        dwi_acq = [f for f in diff_files if 'acq-' in f]
+        dwi_file_with_acq_in_name = [f for f in diff_files if 'acq-' in f]
         # create the file name, it will be a file after concat
         target_dwi_concat = re.sub(r'acq-[^_]+', '', diff_files[0])
         src_path_DIFF = target_dwi_concat
@@ -606,7 +605,7 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout,
         target_bval = re.sub(r'acq-[^_]+', '', bval_files[0])
         src_path_BVEC = target_bvec
         src_path_BVAL = target_bval
-        if len(dwi_acq) == 0:
+        if len(dwi_file_with_acq_in_name) == 0:
             logger.error(
                 '\n'
                 + 'No files with different acq- to concatenate.\n',
@@ -614,27 +613,32 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout,
             raise FileNotFoundError(
                 "Didn't found the multi shell DWI, check your bids naming of acq- field",
             )
-        elif len(dwi_acq) == 1:
+        elif len(dwi_file_with_acq_in_name) == 1:
             logger.error(
                 '\n'
-                + f'Found only {dwi_acq[0]} to concatenate. \
+                + f'Found only {dwi_file_with_acq_in_name[0]} to concatenate. \
                     There must be at least two files with different acq.\n',
             )
             raise FileNotFoundError("Didn't found 2 multi shell DWI, only found 1")
-        elif len(dwi_acq) > 1:
+        else:
             if not op.isfile(target_dwi_concat):
                 logger.info(
                     '\n'
-                    + f'Concatenating with mrcat of mrtrix3 these files: {dwi_acq} \
-                        in: {target_dwi_concat} \n',
+                    + f'Concatenating with mrcat of mrtrix3 these files: \
+                    {dwi_file_with_acq_in_name} in: {target_dwi_concat} \n',
                 )
-                dwi_acq.sort()
-                sp.run(['mrcat', *dwi_acq, target_dwi_concat])
+                dwi_file_with_acq_in_name.sort()
+                sp.run(['mrcat', *dwi_file_with_acq_in_name, target_dwi_concat])
                 src_path_DIFF = target_dwi_concat
+            else:
+                logger.info(
+                    '\n'
+                    + f'The final DWI file is already being prepared: {target_dwi_concat} \n',
+                )
             # also get the bvecs and bvals
             bvals_acq = [f for f in bval_files if 'acq-' in f]
             bvecs_acq = [f for f in bvec_files if 'acq-' in f]
-            if len(dwi_acq) == len(bvals_acq) and not os.path.isfile(target_bval):
+            if len(dwi_file_with_acq_in_name) == len(bvals_acq) and not op.isfile(target_bval):
                 bvals_acq.sort()
                 bval_cmd = "paste -d ' '"
                 for bvalF in bvals_acq:
@@ -642,12 +646,17 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout,
                 bval_cmd = bval_cmd + ' > ' + target_bval
                 sp.run(bval_cmd, shell=True)
                 src_path_BVAL = target_bval
-            else:
+            elif len(dwi_file_with_acq_in_name) != len(bvals_acq):
                 logger.error(
                     '\n'
                     + f'Missing bval files for {sub} and {ses} ',
                 )
-            if len(dwi_acq) == len(bvecs_acq) and not os.path.isfile(target_bvec):
+            else:
+                logger.info(
+                    '\n'
+                    + f'The final DWI bvals is already being prepared: {target_bval} \n',
+                )
+            if len(dwi_file_with_acq_in_name) == len(bvecs_acq) and not op.isfile(target_bvec):
                 bvecs_acq.sort()
                 bvec_cmd = "paste -d ' '"
                 for bvecF in bvecs_acq:
@@ -655,13 +664,18 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout,
                 bvec_cmd = bvec_cmd + ' > ' + target_bvec
                 sp.run(bvec_cmd, shell=True)
                 src_path_BVEC = target_bvec
-            else:
+            elif len(dwi_file_with_acq_in_name) != len(bvecs_acq):
                 logger.error(
                     '\n'
-                    + 'Missing bvec files',
+                    + f'Missing bvec files for {sub} and {ses} ',
                 )
-
-        elif len(diff_files) == 0:
+            else:
+                logger.info(
+                    '\n'
+                    + f'The final DWI bvec is already being prepared: {target_bvec} \n',
+                )
+        # finishing checking the dwi.nii.gz, now checking the RPE file
+        if len(diff_files) == 0:
             logger.error('DIFF file for rtppreproc/rtp2-preproc not found')
             raise FileNotFoundError('No DIFF in the BIDS folder, check your configs')
         else:
