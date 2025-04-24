@@ -613,8 +613,10 @@ def main():
         sub_ses_list, num_of_true_run = do.read_df(sub_ses_list_path)
 
         if log_dir == 'analysis_dir':
-            log_dir = op.join(basedir, bidsdir_name, 'derivatives',
-                              f'{container}_{version}', f'analysis-{analysis_name}')
+            log_dir = op.join(
+                basedir, bidsdir_name, 'derivatives',
+                f'{container}_{version}', f'analysis-{analysis_name}',
+            )
 
         do.setup_logger(print_command_only, verbose, debug, log_dir, log_filename)
 

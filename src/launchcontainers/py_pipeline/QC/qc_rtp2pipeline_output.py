@@ -34,4 +34,5 @@ def check_rtp_logs(analysis_dir):
 
 # Example usage:
 check_rtp_logs(
-    '/bcbl/home/public/DB/devtrajtract/DATA/MINI/nifti/derivatives/rtp2-pipeline_0.2.1_3.0.4rc2/analysis-dipc_paper_dv-60subj')
+    '/bcbl/home/public/DB/devtrajtract/DATA/MINI/nifti/derivatives/rtp2-pipeline_0.2.1_3.0.4rc2/analysis-dipc_paper_dv-60subj',
+)

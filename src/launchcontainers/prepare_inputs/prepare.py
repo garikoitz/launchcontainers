@@ -78,14 +78,17 @@ def prepare_analysis_folder(parser_namespace, lc_config):
     subSeslist_under_analysis_folder = op.join(analysis_dir, 'subSesList.txt')
     # the name of container_specific configs is consitant with your input name, it is not necessary a .json file
     container_configs_under_analysis_folder = op.join(
-        analysis_dir, os.path.basename(parser_namespace.container_specific_config))
+        analysis_dir, os.path.basename(parser_namespace.container_specific_config),
+    )
 
     # then we have optional configs we need to add to the list
     # copy the config under the analysis folder
     do.copy_file(parser_namespace.lc_config, lc_config_under_analysis_folder, force)
     do.copy_file(parser_namespace.sub_ses_list, subSeslist_under_analysis_folder, force)
-    do.copy_file(parser_namespace.container_specific_config,
-                 container_configs_under_analysis_folder, force)
+    do.copy_file(
+        parser_namespace.container_specific_config,
+        container_configs_under_analysis_folder, force,
+    )
 
     logger.debug(f'\n The analysis folder is {analysis_dir}, all the configs has been copied')
 
@@ -166,10 +169,14 @@ def prepare_analysis_folder(parser_namespace, lc_config):
     # copy qmap.nii of qmap.nii.gz to analysis folder
     if container in ['rtppreproc']:
         preproc_json_keys = ['ANAT', 'BVAL', 'BVEC', 'DIFF', 'FSMASK']
-        preproc_json_val = ['ANAT/T1.nii.gz', 'BVAL/dwiF.bval',
-                            'BVEC/dwiF.bvec', 'DIFF/dwiF.nii.gz', 'FSMASK/brain.nii.gz']
-        dict_store_cs_configs[container] = {key: value for key,
-                                            value in zip(preproc_json_keys, preproc_json_val)}
+        preproc_json_val = [
+            'ANAT/T1.nii.gz', 'BVAL/dwiF.bval',
+            'BVEC/dwiF.bvec', 'DIFF/dwiF.nii.gz', 'FSMASK/brain.nii.gz',
+        ]
+        dict_store_cs_configs[container] = {
+            key: value for key,
+            value in zip(preproc_json_keys, preproc_json_val)
+        }
         rpe = lc_config['container_specific'][container]['rpe']
         if rpe:
             dict_store_cs_configs[container]['RBVC'] = 'RBVC/dwiR.bvec'
@@ -177,10 +184,14 @@ def prepare_analysis_folder(parser_namespace, lc_config):
             dict_store_cs_configs[container]['RDIF'] = 'RDIF/dwiR.nii.gz'
     if container in ['rtp2-preproc']:
         preproc_json_keys = ['ANAT', 'BVAL', 'BVEC', 'DIFF', 'FSMASK']
-        preproc_json_val = ['ANAT/T1.nii.gz', 'BVAL/dwiF.bval',
-                            'BVEC/dwiF.bvec', 'DIFF/dwiF.nii.gz', 'FSMASK/brain.nii.gz']
-        dict_store_cs_configs[container] = {key: value for key,
-                                            value in zip(preproc_json_keys, preproc_json_val)}
+        preproc_json_val = [
+            'ANAT/T1.nii.gz', 'BVAL/dwiF.bval',
+            'BVEC/dwiF.bvec', 'DIFF/dwiF.nii.gz', 'FSMASK/brain.nii.gz',
+        ]
+        dict_store_cs_configs[container] = {
+            key: value for key,
+            value in zip(preproc_json_keys, preproc_json_val)
+        }
 
         rpe = lc_config['container_specific'][container]['rpe']
         use_qmap = lc_config['container_specific'][container]['use_qmap']
@@ -194,10 +205,14 @@ def prepare_analysis_folder(parser_namespace, lc_config):
 
     if container in ['rtp-pipeline']:
         pipeline_json_keys = ['anatomical', 'bval', 'bvec', 'dwi', 'fs']
-        pipeline_json_val = ['anatomical/T1.nii.gz', 'bval/dwi.bval',
-                             'bvec/dwi.bvec', 'dwi/dwi.nii.gz', 'fs/fs.zip']
-        dict_store_cs_configs[container] = {key: value for key,
-                                            value in zip(pipeline_json_keys, pipeline_json_val)}
+        pipeline_json_val = [
+            'anatomical/T1.nii.gz', 'bval/dwi.bval',
+            'bvec/dwi.bvec', 'dwi/dwi.nii.gz', 'fs/fs.zip',
+        ]
+        dict_store_cs_configs[container] = {
+            key: value for key,
+            value in zip(pipeline_json_keys, pipeline_json_val)
+        }
 
         tractparams = lc_config['container_specific'][container]['tractparams']
         if tractparams:
@@ -205,10 +220,14 @@ def prepare_analysis_folder(parser_namespace, lc_config):
             dict_store_cs_configs[container]['tractparams'] = f'tractparams/{file_name}'
     if container in ['rtp2-pipeline']:
         pipeline_json_keys = ['anatomical', 'bval', 'bvec', 'dwi', 'fs']
-        pipeline_json_val = ['anatomical/T1.nii.gz', 'bval/dwi.bval',
-                             'bvec/dwi.bvec', 'dwi/dwi.nii.gz', 'fs/fs.zip']
-        dict_store_cs_configs[container] = {key: value for key,
-                                            value in zip(pipeline_json_keys, pipeline_json_val)}
+        pipeline_json_val = [
+            'anatomical/T1.nii.gz', 'bval/dwi.bval',
+            'bvec/dwi.bvec', 'dwi/dwi.nii.gz', 'fs/fs.zip',
+        ]
+        dict_store_cs_configs[container] = {
+            key: value for key,
+            value in zip(pipeline_json_keys, pipeline_json_val)
+        }
         tractparams = lc_config['container_specific'][container]['tractparams']
         fsmask = lc_config['container_specific'][container]['fsmask']
         use_qmap = lc_config['container_specific'][container]['use_qmap']
@@ -226,8 +245,10 @@ def prepare_analysis_folder(parser_namespace, lc_config):
     ############################ Do the checks###################################################
     ############################################################################################
 
-    copies = [lc_config_under_analysis_folder, subSeslist_under_analysis_folder,
-              container_configs_under_analysis_folder]
+    copies = [
+        lc_config_under_analysis_folder, subSeslist_under_analysis_folder,
+        container_configs_under_analysis_folder,
+    ]
 
     all_copies_present = all(op.isfile(copy_path) for copy_path in copies)
 
@@ -235,7 +256,8 @@ def prepare_analysis_folder(parser_namespace, lc_config):
         pass
     else:
         logger.error(
-            '\n did NOT detect back up configs in the analysis folder, Please check then continue the run mode')
+            '\n did NOT detect back up configs in the analysis folder, Please check then continue the run mode',
+        )
 
     return analysis_dir, dict_store_cs_configs
 
@@ -252,7 +274,8 @@ def prepare_dwi_config_json(dict_store_cs_configs, lc_config, force):
             config_json_instance['inputs'] = config_json_extra
         else:
             logger.warn(
-                f'{json_under_analysis_dir} json file already has field input, we will overwrite it if you set force to true')
+                f'{json_under_analysis_dir} json file already has field input, we will overwrite it if you set force to true',
+            )
             if force:
                 config_json_instance['inputs'] = config_json_extra
             else:
@@ -362,7 +385,8 @@ def prepare_dwi_input(parser_namespace, analysis_dir, lc_config, df_subSes, layo
             + 'Prepare json not finished. Please check\n',
         )
         raise Exception(
-            'Sorry the Json file seems not being written correctly, it may cause container dysfunction')
+            'Sorry the Json file seems not being written correctly, it may cause container dysfunction',
+        )
 
     logger.info(
         '\n'
@@ -407,28 +431,38 @@ def prepare_dwi_input(parser_namespace, analysis_dir, lc_config, df_subSes, layo
                 use_src_session = lc_config['container_specific'][container]['use_src_session']
                 if use_src_session and ses != use_src_session:
                     logger.warning(
-                        f'\n You are preparing for the session:{ses} that are not the reference session:{use_src_session}')
+                        f'\n You are preparing for the session:{ses} that are not the reference session:{use_src_session}',
+                    )
                     logger.warning('\n Not creating tmp dir, skip')
                 else:
                     os.makedirs(tmpdir, exist_ok=True)
                     os.makedirs(container_logdir, exist_ok=True)
             try:
-                do.copy_file(parser_namespace.lc_config, op.join(
-                    container_logdir, 'lc_config.yaml'), force)
+                do.copy_file(
+                    parser_namespace.lc_config, op.join(
+                        container_logdir, 'lc_config.yaml',
+                    ), force,
+                )
                 config_file_path = dict_store_cs_configs['config_path']
                 do.copy_file(config_file_path, op.join(container_logdir, 'config.json'), force)
             except Exceotion:
                 logger.error(f'\n copy config file and create tmp failed for sub-{sub}_ses-{ses}')
 
             if container in ['rtppreproc' , 'rtp2-preproc']:
-                dwipre.rtppreproc(dict_store_cs_configs, analysis_dir,
-                                  lc_config, sub, ses, layout, run_lc)
+                dwipre.rtppreproc(
+                    dict_store_cs_configs, analysis_dir,
+                    lc_config, sub, ses, layout, run_lc,
+                )
             elif container in ['rtp-pipeline', 'rtp2-pipeline']:
-                dwipre.rtppipeline(dict_store_cs_configs, analysis_dir,
-                                   lc_config, sub, ses, layout, run_lc)
+                dwipre.rtppipeline(
+                    dict_store_cs_configs, analysis_dir,
+                    lc_config, sub, ses, layout, run_lc,
+                )
             elif container in ['anatrois', 'freesurferator']:
-                dwipre.anatrois(dict_store_cs_configs, analysis_dir,
-                                lc_config, sub, ses, layout, run_lc)
+                dwipre.anatrois(
+                    dict_store_cs_configs, analysis_dir,
+                    lc_config, sub, ses, layout, run_lc,
+                )
             else:
                 logger.error(
                     '\n'
