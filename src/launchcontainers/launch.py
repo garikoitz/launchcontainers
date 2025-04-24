@@ -611,13 +611,16 @@ def main():
         # get stuff from subseslist for future jobs scheduling
         sub_ses_list_path = parser_namespace.sub_ses_list
         sub_ses_list, num_of_true_run = do.read_df(sub_ses_list_path)
-
+        timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         if log_dir == 'analysis_dir':
             log_dir = op.join(
                 basedir, bidsdir_name, 'derivatives',
                 f'{container}_{version}', f'analysis-{analysis_name}',
             )
-
+        
+        else:
+            log_dir = f'{log_dir}_{container}_{analysis_name}'
+        log_filename= f'{log_filename}_{timestamp}'
         do.setup_logger(print_command_only, verbose, debug, log_dir, log_filename)
 
         # logger the settings

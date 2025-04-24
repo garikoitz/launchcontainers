@@ -81,17 +81,18 @@ def initiate_cluster(jobqueue_config, n_job, logdir):
     elif "slurm" in jobqueue_config["manager"]:
         envextra = [f"module load {jobqueue_config['apptainer']} ",\
                     f"export SINGULARITYENV_TMPDIR={jobqueue_config['tmpdir']}",\
-                    "export SINGULARITY_BIND=''",\
-                    "TMPDIR="]
+                    "export SINGULARITY_BIND=''"]
         cluster_by_config = SLURMCluster(cores = jobqueue_config["cores"], 
                                          memory = jobqueue_config["memory"],
-                                         job_script_prologue = envextra,
                                          log_directory = logdir,
                                          queue = jobqueue_config["queue"],
                                          name = jobqueue_config["name"],
                                          death_timeout = 300,#jobqueue_config["death-timeout"],
                                          walltime=jobqueue_config["walltime"],
-                                         job_extra_directives = ["--export=ALL"]+jobqueue_config["job_extra_directives"])
+                                         job_extra_directives = ["--export=ALL"]+jobqueue_config["job_extra_directives"],
+                                         job_script_prologue = envextra
+                                         )
+                                         
         cluster_by_config.scale(jobs=n_job)
     elif "local" in jobqueue_config["manager"]:
         logger.debug("defining local cluster")

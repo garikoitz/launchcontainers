@@ -529,7 +529,11 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout,
         PE_direction = config_json_data['config']['pe_dir']
     if container == 'rtppreproc':
         PE_direction = config_json_data['config']['acqd']
-
+    # get the rpe dir        
+    if PE_direction == 'PA':
+        RPE_direction = 'AP'
+    elif PE_direction == 'AP':
+        RPE_direction = 'PA'
     precontainer_anat_dir = op.join(
         basedir,
         bidsdir_name,
@@ -589,6 +593,7 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout,
             subject=sub, session=ses, extension='nii.gz',
             suffix='dwi', direction=PE_direction, return_type='filename',
         )
+
         dwi_file_with_acq_in_name = [f for f in diff_files if 'acq-' in f]
         # create the file name, it will be a file after concat
         target_dwi_concat = re.sub(r'acq-[^_]+', '', diff_files[0])
@@ -674,14 +679,6 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout,
                     '\n'
                     + f'The final DWI bvec is already being prepared: {target_bvec} \n',
                 )
-        # finishing checking the dwi.nii.gz, now checking the RPE file
-        if len(diff_files) == 0:
-            logger.error('DIFF file for rtppreproc/rtp2-preproc not found')
-            raise FileNotFoundError('No DIFF in the BIDS folder, check your configs')
-        else:
-            raise FileExistsError("You have multiple multi-shell DWI files \
-                under sub-{sub}/ses-{ses}, \
-                don't know which one to use, please prepare your BIDS folder and run again")
     # destination directory under dstDir_input
     if not op.exists(op.join(dstDir_input, 'ANAT')):
         os.makedirs(op.join(dstDir_input, 'ANAT'))
@@ -718,20 +715,16 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout,
     )
     # check_create_bvec_bval（force) one of the todo here
     if rpe:
-        if PE_direction == 'PA':
-            rpe_dir = 'AP'
-        elif PE_direction == 'AP':
-            rpe_dir = 'PA'
         # the reverse direction nii.gz
         src_path_RDIF = layout.get(
             subject=sub, session=ses, extension='nii.gz',
-            suffix='dwi', direction=rpe_dir, return_type='filename',
+            suffix='dwi', direction=RPE_direction, return_type='filename',
         )[0]
 
         # the reverse direction bval
         src_path_RBVL_lst = layout.get(
             subject=sub, session=ses, extension='bval', suffix='dwi',
-            direction=rpe_dir, return_type='filename',
+            direction=RPE_direction, return_type='filename',
         )
 
         if len(src_path_RBVL_lst) == 0:
@@ -740,13 +733,13 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout,
         else:
             src_path_RBVL = layout.get(
                 subject=sub, session=ses, extension='bval',
-                suffix='dwi', direction=rpe_dir, return_type='filename',
+                suffix='dwi', direction=RPE_direction, return_type='filename',
             )[0]
 
         # the reverse direction bvec
         src_path_RBVC_lst = layout.get(
             subject=sub, session=ses, extension='bvec',
-            suffix='dwi', direction=rpe_dir, return_type='filename',
+            suffix='dwi', direction=RPE_direction, return_type='filename',
         )
         if len(src_path_RBVC_lst) == 0:
             src_path_RBVC = src_path_RDIF.replace('dwi.nii.gz', 'dwi.bvec')
@@ -754,7 +747,7 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout,
         else:
             src_path_RBVC = layout.get(
                 subject=sub, session=ses, extension='bvec',
-                suffix='dwi', direction=rpe_dir, return_type='filename',
+                suffix='dwi', direction=RPE_direction, return_type='filename',
             )[0]
 
         # If bval and bvec do not exist because it is only b0-s, create them
