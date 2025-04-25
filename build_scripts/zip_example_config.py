@@ -1,25 +1,31 @@
-import subprocess
-from pathlib import Path
+from __future__ import annotations
+
 import os
+import subprocess
 import zipfile
 from importlib.metadata import version
+from pathlib import Path
 
 
 def get_git_root():
     try:
-        git_root = subprocess.check_output(['git', 'rev-parse', '--show-toplevel']).strip().decode('utf-8')
+        git_root = subprocess.check_output(
+            ['git', 'rev-parse', '--show-toplevel'],
+        ).strip().decode('utf-8')
         return Path(git_root)
     except subprocess.CalledProcessError:
         return None
-
 
 
 def zip_example_config():
     # Paths
     repo_dir = get_git_root()
     package_version = version('launchcontainers')
-    example_configs_dir = os.path.join(repo_dir,'example_configs')
-    output_zip = os.path.join(repo_dir,'src','launchcontainers' ,'configs', f'example_configs_{package_version}.zip')
+    example_configs_dir = os.path.join(repo_dir, 'example_configs')
+    output_zip = os.path.join(
+        repo_dir, 'launchcontainers' , 'example_configs',
+        f'example_configs_{package_version}.zip',
+    )
 
     # Create the src/configs directory if it doesn't exist
     os.makedirs(os.path.dirname(output_zip), exist_ok=True)
@@ -31,6 +37,8 @@ def zip_example_config():
                 filepath = os.path.join(root, file)
                 arcname = os.path.relpath(filepath, example_configs_dir)
                 zipf.write(filepath, arcname)
-    print ("successfully zip your all your example configs into the package")
-if __name__ == "__main__":
-    zip_example_configs()
+    print('successfully zip your all your example configs into the package')
+
+
+if __name__ == '__main__':
+    zip_example_config()

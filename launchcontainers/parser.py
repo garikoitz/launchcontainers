@@ -184,7 +184,8 @@ def get_copy_config_parser():
     )
 
     parser.add_argument(
-        '--copy_configs',
+        '-o',
+        '--output',
         type=str,
         help='Path to copy the configs, usually your working directory',
     )

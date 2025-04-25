@@ -22,6 +22,7 @@ import os
 import os.path as op
 import re
 import subprocess as sp
+import sys
 from datetime import datetime
 from subprocess import Popen
 
@@ -358,7 +359,7 @@ def logger_the_option_for_review(
 
 
 def main():
-    parser_namespace, parse_dict = lc_parser.get_parser()
+    parser_namespace, _ = lc_parser.get_parser()
     lc_config_path = parser_namespace.lc_config
 
     print('Executing main function with arguments')
@@ -431,6 +432,16 @@ def main():
         force,
         bidsdir_name,
     )
+
+    # === Ask user to confirm before launching anything ===
+
+    ans = input(
+        'You are about to launch jobs, please review the'
+        "previous session's info. Continue? [y / N]: ",
+    )
+    if ans.strip().lower() not in ('y', 'yes'):
+        logger.info('Aborted by user.')
+        sys.exit(0)
 
     logger.info('Reading the BIDS layout...')
     layout = BIDSLayout(bids_dname)

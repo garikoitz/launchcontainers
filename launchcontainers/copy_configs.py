@@ -107,7 +107,7 @@ def main():
     # Check if download_configs argument is provided
 
     print('You are copying configs to target place')
-    copy_configs = parser_namespace.copy_configs
+    copy_configs = parser_namespace.output
     # Check if download_configs argument is provided
     if copy_configs:
         copy_example_configs(copy_configs)
