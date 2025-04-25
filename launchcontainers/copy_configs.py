@@ -20,10 +20,10 @@ import logging
 import os
 import os.path as op
 
-# modules in lc
-# for package mode, the import needs to import launchcontainer module
 from launchcontainers import parser as lc_parser
 from launchcontainers import utils as do
+# modules in lc
+# for package mode, the import needs to import launchcontainer module
 
 
 logger = logging.getLogger('Copy-configs')
@@ -33,13 +33,13 @@ logger = logging.getLogger('Copy-configs')
 def setup_logger_cb(verbose=True, log_dir=None, log_filename=None):
     '''
     stream_handler_level: str,  optional
-        if no input, it will be default at INFO level, 
+        if no input, it will be default at INFO level,
         this will be the setting for the command line logging
 
     verbose: bool, optional
     debug: bool, optional
     log_dir: str, optional
-        if no input, there will have nothing to be saved in log file 
+        if no input, there will have nothing to be saved in log file
         but only the command line output
 
     log_filename: str, optional
@@ -52,7 +52,7 @@ def setup_logger_cb(verbose=True, log_dir=None, log_filename=None):
     # set up formatter and handler so that the logging info can go to stream or log files
     # with specific format
     log_formatter = logging.Formatter(
-        '%(asctime)s (%(name)s):[%(levelname)s] %(module)s ' \
+        '%(asctime)s (%(name)s):[%(levelname)s] %(module)s '
         '- %(funcName)s() - line:%(lineno)d   $ %(message)s ',
         datefmt='%Y-%m-%d %H:%M:%S',
     )

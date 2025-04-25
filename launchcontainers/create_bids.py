@@ -22,10 +22,10 @@ import os.path as op
 import shutil
 from pathlib import Path
 
-# modules in lc
-# for package mode, the import needs to import launchcontainer module
 from launchcontainers import parser as lc_parser
 from launchcontainers import utils as do
+# modules in lc
+# for package mode, the import needs to import launchcontainer module
 
 
 logger = logging.getLogger('Create-fake-bids')
@@ -35,13 +35,13 @@ logger = logging.getLogger('Create-fake-bids')
 def setup_logger_cb(verbose=True, log_dir=None, log_filename=None):
     '''
     stream_handler_level: str,  optional
-        if no input, it will be default at INFO level, this will be 
+        if no input, it will be default at INFO level, this will be
         the setting for the command line logging
 
     verbose: bool, optional
     debug: bool, optional
     log_dir: str, optional
-        if no input, there will have nothing to be saved in log file 
+        if no input, there will have nothing to be saved in log file
         but only the command line output
 
     log_filename: str, optional
@@ -97,8 +97,10 @@ def main():
 
     # Check if download_configs argument is provided
 
-    print('You are creating a fake BIDS folder structure based on ' \
-    'your input basedir, and subseslist')
+    print(
+        'You are creating a fake BIDS folder structure based on '
+        'your input basedir, and subseslist',
+    )
     # Your main function logic here
     # e.g., launch_container(args.other_arg)
     # read yaml and setup the bids folder
