@@ -1,0 +1,1 @@
+salloc --ntasks=1 --cpus-per-task=10 --time=02:00:00 --mem=32GB
