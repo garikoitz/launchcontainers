@@ -28,7 +28,7 @@ def check_rtp_preproc_logs(analysis_dir):
             )
 
             log_file=os.path.join(log_file_dir, 
-            [f for f in os.listdir(log_file_dir) if f.endswith('.e')][0])
+            [f for f in os.listdir(log_file_dir) if f.endswith('.err')][0])
             if not os.path.isfile(dwi_file):
                 print(f'*****for sub-{sub}_ses-{ses}')
                 print(f'!!!Issue with sub-{sub}, ses-{ses}*****\n')
@@ -44,5 +44,5 @@ def check_rtp_preproc_logs(analysis_dir):
 
 # Example usage:
 check_rtp_preproc_logs(
-    '/scratch/tlei/paper_dv/BIDS/derivatives/rtppreproc_1.2.0-3.0.3/analysis-paper_dv-retest',
+    '/scratch/tlei/paper_dv/BIDS/derivatives/rtppreproc_1.2.0-3.0.3/analysis-paper_dv-retest_newlaunch',
 )
