@@ -31,6 +31,7 @@ help_mri = "launchcontainers.mrhelp:main"
 lc = "launchcontainers.launch:main"
 launchcontainers = "launchcontainers.launch:main"
 createbids = "launchcontainers.create_bids:main"
+copyconfigs =  "launchcontainers.copy_configs:main"
 zip_configs = "build_scripts.zip_example_config:zip_example_config"
 
 [tool.poetry.dependencies]

@@ -1,7 +1,7 @@
 {
     "python.analysis.typeCheckingMode": "basic",
     "workbench.colorTheme": "Default Light+",
-    "workbench.preferredDarkColorTheme": "Monokai Dimmed",
+    "workbench.preferredDarkColorTheme": "Default Light+",
     "workbench.preferredHighContrastColorTheme": "Abyss",
     "workbench.iconTheme": "vs-seti",
     "workbench.colorCustomizations": {

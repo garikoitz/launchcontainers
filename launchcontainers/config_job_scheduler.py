@@ -7,12 +7,12 @@
 # Copyright (c) 2023 David Linhardt
 # Copyright (c) 2023 Iñigo Tellaetxe
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software
-# and associated documentation files (the "Software"), to deal in the Software without restriction,
-# including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,
-# subject to the following conditions:
-# The above copyright notice and this permission notice shall be included in all copies or substantial
-# portions of the Software.
+# and associated documentation files (the "Software"), to deal in the Software without
+# restriction, including without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to permit persons to
+# whom the Software is furnished to do so, subject to the following conditions:
+# The above copyright notice and this permission notice shall be included in all copies or
+# substantial portions of the Software.
 # """
 from __future__ import annotations
 
@@ -126,10 +126,7 @@ def initiate_cluster(jobqueue_config, n_job, logdir):
             'You can find a jobqueue YAML example in the pySPFM/jobqueue.yaml file.',
         )
         cluster_by_config = None
-   # print(f"----------------This is the self report of function initiate_cluster()\n, the cluster was defined as the {jobqueue_config['manager']}cluster \n")
-   # print(f"----------------------------The cluster job_scipt is  {cluster_by_config.job_script()} \n")
-   # print(f"----check for job scale,  the number of jobs is {n_job}")
-   # print(f"-----under of initiate_cluster() report the cluster is {cluster_by_config}")
+
     return cluster_by_config
 
 

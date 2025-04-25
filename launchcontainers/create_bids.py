@@ -7,12 +7,12 @@
 # Copyright (c) 2023 David Linhardt
 # Copyright (c) 2023 Iñigo Tellaetxe
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software
-# and associated documentation files (the "Software"), to deal in the Software without restriction,
-# including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,
-# subject to the following conditions:
-# The above copyright notice and this permission notice shall be included in all copies or substantial
-# portions of the Software.
+# and associated documentation files (the "Software"), to deal in the Software without
+# restriction, including without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to permit persons to
+# whom the Software is furnished to do so, subject to the following conditions:
+# The above copyright notice and this permission notice shall be included in all copies or
+# substantial portions of the Software.
 # """
 from __future__ import annotations
 
@@ -22,15 +22,10 @@ import os.path as op
 import shutil
 from pathlib import Path
 
-from launchcontainers import parser as lc_parser
-from launchcontainers import utils as do
 # modules in lc
 # for package mode, the import needs to import launchcontainer module
-
-# for testing mode using repo; first do a poetry install, then the code will work normally
-# from prepare_inputs import dask_scheduler_config as dsq
-# from prepare_inputs import prepare as prepare
-# from prepare_inputs import utils as do
+from launchcontainers import parser as lc_parser
+from launchcontainers import utils as do
 
 
 logger = logging.getLogger('Create-fake-bids')
@@ -40,12 +35,14 @@ logger = logging.getLogger('Create-fake-bids')
 def setup_logger_cb(verbose=True, log_dir=None, log_filename=None):
     '''
     stream_handler_level: str,  optional
-        if no input, it will be default at INFO level, this will be the setting for the command line logging
+        if no input, it will be default at INFO level, this will be 
+        the setting for the command line logging
 
     verbose: bool, optional
     debug: bool, optional
     log_dir: str, optional
-        if no input, there will have nothing to be saved in log file but only the command line output
+        if no input, there will have nothing to be saved in log file 
+        but only the command line output
 
     log_filename: str, optional
         the name of your log_file.
@@ -57,7 +54,8 @@ def setup_logger_cb(verbose=True, log_dir=None, log_filename=None):
     # set up formatter and handler so that the logging info can go to stream or log files
     # with specific format
     log_formatter = logging.Formatter(
-        '%(asctime)s (%(name)s):[%(levelname)s] %(module)s - %(funcName)s() - line:%(lineno)d   $ %(message)s ',
+        '%(asctime)s (%(name)s):[%(levelname)s] %(module)s - '
+        '%(funcName)s() - line:%(lineno)d   $ %(message)s ',
         datefmt='%Y-%m-%d %H:%M:%S',
     )
 
@@ -99,7 +97,8 @@ def main():
 
     # Check if download_configs argument is provided
 
-    print('You are creating a fake BIDS folder structure based on your input basedir, and subseslist')
+    print('You are creating a fake BIDS folder structure based on ' \
+    'your input basedir, and subseslist')
     # Your main function logic here
     # e.g., launch_container(args.other_arg)
     # read yaml and setup the bids folder
@@ -166,7 +165,6 @@ def main():
     for row in sub_ses_list.itertuples(index=True, name='Pandas'):
         sub = row.sub
         ses = row.ses
-        RUN = row.RUN
 
         bids_dir_subses = op.join(
             basedir,

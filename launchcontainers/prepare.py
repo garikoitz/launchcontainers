@@ -7,12 +7,12 @@
 # Copyright (c) 2023 David Linhardt
 # Copyright (c) 2023 Iñigo Tellaetxe
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software
-# and associated documentation files (the "Software"), to deal in the Software without restriction,
-# including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,
-# subject to the following conditions:
-# The above copyright notice and this permission notice shall be included in all copies or substantial
-# portions of the Software.
+# and associated documentation files (the "Software"), to deal in the Software without
+# restriction, including without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to permit persons to
+# whom the Software is furnished to do so, subject to the following conditions:
+# The above copyright notice and this permission notice shall be included in all copies or
+# substantial portions of the Software.
 # """
 from __future__ import annotations
 
@@ -41,7 +41,8 @@ def prepare_analysis_folder(parser_namespace, lc_config):
     In the end, it will check if everything are in place and ready for the next level preparation
     which is at the subject and session level
 
-    After this step, the following preparing method will based on the config files under the analysis folder instread of your input
+    After this step, the following preparing method will based on the config files
+    under the analysis folder instread of your input
     '''
     # read parameters from lc_config
     basedir = lc_config['general']['basedir']
@@ -72,13 +73,13 @@ def prepare_analysis_folder(parser_namespace, lc_config):
     if jobqueue_config['manager'] in ['local']:
         if (jobqueue_config['launch_mode'] == 'dask_worker'):
             os.makedirs(daskworer_logdir)
-    ############################################################################################
-    ############################ Copy the configs################################################
-    ############################################################################################
+    # Copy the configs
+
     # define the potential exist config files
     lc_config_under_analysis_folder = op.join(analysis_dir, 'lc_config.yaml')
     subSeslist_under_analysis_folder = op.join(analysis_dir, 'subSesList.txt')
-    # the name of container_specific configs is consitant with your input name, it is not necessary a .json file
+    # the name of container_specific configs is consitant with your input name,
+    # it is not necessary a .json file
     container_configs_under_analysis_folder = op.join(
         analysis_dir, os.path.basename(parser_namespace.container_specific_config),
     )
@@ -101,7 +102,8 @@ def prepare_analysis_folder(parser_namespace, lc_config):
         if os.path.isfile(file_path):
             logger.info(
                 '\n'
-                + f' You have chosen to pass  {file_path} to {container}, it will be first copy to {analysis_dir}',
+                + f' You have chosen to pass  {file_path} to {container}, \
+                    it will be first copy to {analysis_dir}',
             )
         else:
             logger.error(
@@ -243,9 +245,8 @@ def prepare_analysis_folder(parser_namespace, lc_config):
             file_name = 'qmap.zip'
             dict_store_cs_configs[container]['qmap'] = f'qmap/{file_name}'
 
-    ############################################################################################
-    ############################ Do the checks###################################################
-    ############################################################################################
+    # ---------------------
+    # Do the checks
 
     copies = [
         lc_config_under_analysis_folder, subSeslist_under_analysis_folder,
@@ -258,7 +259,8 @@ def prepare_analysis_folder(parser_namespace, lc_config):
         pass
     else:
         logger.error(
-            '\n did NOT detect back up configs in the analysis folder, Please check then continue the run mode',
+            '\n did NOT detect back up configs in the analysis folder, \
+                Please check then continue the run mode',
         )
 
     return analysis_dir, dict_store_cs_configs
@@ -266,7 +268,8 @@ def prepare_analysis_folder(parser_namespace, lc_config):
 
 def prepare_dwi_config_json(dict_store_cs_configs, lc_config, force):
     '''
-    This function is used to automatically read config.yaml and get the input file info and put them in the config.json
+    This function is used to automatically read config.yaml
+    and get the input file info and put them in the config.json
 
     '''
 
@@ -276,7 +279,8 @@ def prepare_dwi_config_json(dict_store_cs_configs, lc_config, force):
             config_json_instance['inputs'] = config_json_extra
         else:
             logger.warn(
-                f'{json_under_analysis_dir} json file already has field input, we will overwrite it if you set force to true',
+                f'{json_under_analysis_dir} json file already has field input, \
+                    we will overwrite it if you set force to true',
             )
             if force:
                 config_json_instance['inputs'] = config_json_extra
@@ -338,7 +342,10 @@ def prepare_dwi_config_json(dict_store_cs_configs, lc_config, force):
     return True
 
 
-def prepare_dwi_input(parser_namespace, analysis_dir, lc_config, df_subSes, layout, dict_store_cs_configs):
+def prepare_dwi_input(
+    parser_namespace, analysis_dir,
+    lc_config, df_subSes, layout, dict_store_cs_configs,
+):
     """
     This is the major function for doing the preparation, it is doing the work
     1. write the config.json (analysis level)
@@ -387,7 +394,8 @@ def prepare_dwi_input(parser_namespace, analysis_dir, lc_config, df_subSes, layo
             + 'Prepare json not finished. Please check\n',
         )
         raise Exception(
-            'Sorry the Json file seems not being written correctly, it may cause container dysfunction',
+            'Sorry the Json file seems not being written correctly, \
+                it may cause container dysfunction',
         )
 
     logger.info(
@@ -424,7 +432,8 @@ def prepare_dwi_input(parser_namespace, analysis_dir, lc_config, df_subSes, layo
                 'output', 'log',
             )
             # For all the container, create ses-/output/log and output/tmp
-            # if we will use 1 session anatrois/freesurferator as ref, we will not creat outoput dir for other session
+            # if we will use 1 session anatrois/freesurferator as ref,
+            # we will not creat outoput dir for other session
             # else, we will create
             if container not in ['anatrois', 'freesurferator']:
                 os.makedirs(tmpdir, exist_ok=True)
@@ -433,7 +442,8 @@ def prepare_dwi_input(parser_namespace, analysis_dir, lc_config, df_subSes, layo
                 use_src_session = lc_config['container_specific'][container]['use_src_session']
                 if use_src_session and ses != use_src_session:
                     logger.warning(
-                        f'\n You are preparing for the session:{ses} that are not the reference session:{use_src_session}',
+                        f'\n You are preparing for the session:{ses} that are \
+                            not the reference session:{use_src_session}',
                     )
                     logger.warning('\n Not creating tmp dir, skip')
                 else:
@@ -469,7 +479,8 @@ def prepare_dwi_input(parser_namespace, analysis_dir, lc_config, df_subSes, layo
                 logger.error(
                     '\n'
                     + '***An error occurred'
-                    + f'{container} is not created, check for typos or contact admin for singularity images\n',
+                    + f'{container} is not created, check for typos or \
+                    contact admin for singularity images\n',
                 )
         else:
             continue

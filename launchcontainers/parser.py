@@ -7,12 +7,12 @@
 # Copyright (c) 2023 David Linhardt
 # Copyright (c) 2023 Iñigo Tellaetxe
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software
-# and associated documentation files (the "Software"), to deal in the Software without restriction,
-# including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,
-# subject to the following conditions:
-# The above copyright notice and this permission notice shall be included in all copies or substantial
-# portions of the Software.
+# and associated documentation files (the "Software"), to deal in the Software without
+# restriction, including without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to permit persons to
+# whom the Software is furnished to do so, subject to the following conditions:
+# The above copyright notice and this permission notice shall be included in all copies or
+# substantial portions of the Software.
 # """
 from __future__ import annotations
 
@@ -33,8 +33,15 @@ def get_parser():
     parser = argparse.ArgumentParser(
         description="""
         This python program helps you analysis MRI data through different containers,
-        Before you make use of this program, please prepare the environment, \
+        Before you make use of this program, please prepare the environment,
         edit the required config files, to match your analysis demand. \n
+
+        we have another 2 command line tools embeeded with this software: \n
+        createbids: it can help you create a fake bids folder for testing
+        TYPE: createbids -h for more help \n
+
+        copyconfigs: it can help you copy the example configs for launching
+        TYPE: copyconfigs -h for more help \n
 
         SAMPLE CMD LINE COMMAND \n\n
         ###########STEP1############# \n
@@ -80,11 +87,7 @@ def get_parser():
          config file, \
         it stores the parameters for the container.',
     )
-    parser.add_argument(
-        '--copy_configs',
-        type=str,
-        help='Path to copy the configs, usually your working directory',
-    )
+
     parser.add_argument(
         '--run_lc',
         action='store_true',
@@ -155,6 +158,37 @@ def get_create_bids_parser():
         # default="",
         help='path to the subSesList',
     )
+    if len(sys.argv) == 1:
+        parser.print_help(sys.stderr)
+        sys.exit(1)
+
+    parse_dict = vars(parser.parse_args())
+    parse_namespace = parser.parse_args()
+
+    return parse_namespace, parse_dict
+
+
+def get_copy_config_parser():
+    """
+    Input:
+    Parse command line inputs
+
+    Returns:
+    a dict stores information about the cmd input
+
+    """
+    parser = argparse.ArgumentParser(
+        description="""
+        #########This function is for you to copy the example configs to the target path""",
+        formatter_class=RawDescriptionHelpFormatter,
+    )
+
+    parser.add_argument(
+        '--copy_configs',
+        type=str,
+        help='Path to copy the configs, usually your working directory',
+    )
+
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
         sys.exit(1)
