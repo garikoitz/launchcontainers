@@ -20,18 +20,31 @@ import logging
 import os
 from datetime import datetime
 
-from launchcontainers import prepare as prepare
-
-logger = logging.getLogger('Launchcontainers')
+logger = logging.getLogger(__name__)
 
 
-def container_specific_cmd():
-    cmd_container = ''
-    return cmd_container
+def host_specific_cmd_prefix(lc_config):
+    host = lc_config['general']['host']
+    jobqueue_config = lc_config['host_options'][host]
+    use_module = jobqueue_config['use_module']
+    mount_options = jobqueue_config['mount_options']
+    env_cmd = ''
+    if host == 'local':
+        if use_module:
+            env_cmd = f"module load {jobqueue_config['apptainer']} &&"
+    path_mount_cmd = ''
+    for mount in mount_options:
+        path_mount_cmd += f'--bind {mount}:{mount} '
+
+    cmd_prefix = (
+        f'{env_cmd} apptainer run -e --no-home '
+        f'--containall --pwd /flywheel/v0 {path_mount_cmd}'
+    )
+    return cmd_prefix
 
 
-def gen_launch_cmd(
-    lc_config, sub, ses, analysis_dir, run_lc,
+def gen_sub_ses_cmd(
+    lc_config, sub, ses, analysis_dir,
 ):
     """Puts together the command to send to the container.
 
@@ -40,7 +53,6 @@ def gen_launch_cmd(
         sub (str): _description_
         ses (str): _description_
         analysis_dir (str): _description_
-        run_lc (str): _description_
 
     Raises:
         ValueError: Raised in presence of a faulty config.yaml file, or when the formed command is not recognized.
@@ -50,44 +62,23 @@ def gen_launch_cmd(
     """
 
     # Relevant directories
-
     container = lc_config['general']['container']
-    host = lc_config['general']['host']
     containerdir = lc_config['general']['containerdir']
-
-    # Information relevant to the host and container
-    jobqueue_config = lc_config['host_options'][host]
     version = lc_config['container_specific'][container]['version']
-    use_module = jobqueue_config['use_module']
-    bind_options = jobqueue_config['bind_options']
 
     # Location of the Singularity Image File (.sif)
     container_name = os.path.join(containerdir, f'{container}_{version}.sif')
     # Define the directory and the file name to output the log of each subject
-    container_logdir = os.path.join(analysis_dir, 'sub-' + sub, 'ses-' + ses, 'output', 'log')
-
+    container_logdir = os.path.join(analysis_dir, 'sub-' + sub, 'ses-' + ses, 'log')
     # get timestamp for output log
     timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     logfilename = f'{container_logdir}/{container}-sub-{sub}_ses-{ses}_{timestamp}'
     subses_direvatives_dname = os.path.join(analysis_dir, f'sub-{sub}', f'ses-{ses}')
-
-    bind_cmd = ''
-    for bind in bind_options:
-        bind_cmd += f'--bind {bind}:{bind} '
-
-    env_cmd = ''
-    if host == 'local':
-        if use_module == True:
-            env_cmd = f"module load {jobqueue_config['apptainer']} &&"
-
+    # get the cmd prefix
+    cmd_prefix = host_specific_cmd_prefix(lc_config)
     if container in ['anatrois', 'rtppreproc', 'rtp-pipeline']:
-        logger.info('\n' + 'start to generate the DWI PIPELINE command')
-        logger.debug(
-            f'\n the sub is {sub} \n the ses is {ses} \n the analysis dir is {analysis_dir}',
-        )
-
         cmd = (
-            f'{env_cmd} singularity run -e --no-home {bind_cmd}'
+            f'{cmd_prefix} '
             f'--bind {subses_direvatives_dname}/input:/flywheel/v0/input:ro '
             f'--bind {subses_direvatives_dname}/output:/flywheel/v0/output '
             f'--bind {subses_direvatives_dname}/output/log/config.json:/flywheel/v0/config.json '
@@ -95,13 +86,9 @@ def gen_launch_cmd(
         )
 
     if container == 'freesurferator':
-        logger.info('\n' + 'FREESURFERATOR command')
-        logger.debug(
-            f'\n the sub is {sub} \n the ses is {ses} \n the analysis dir is {analysis_dir}',
-        )
-
+        # prefix cmd= f'{env_cmd} apptainer run --containall --pwd /flywheel/v0 {path_mount_cmd}'
         cmd = (
-            f'{env_cmd} apptainer run --containall --pwd /flywheel/v0 {bind_cmd}'
+            f'{cmd_prefix} '
             f'--bind {subses_direvatives_dname}/input:/flywheel/v0/input:ro '
             f'--bind {subses_direvatives_dname}/output:/flywheel/v0/output '
             f'--bind {subses_direvatives_dname}/work:/flywheel/v0/work '
@@ -144,16 +131,11 @@ def gen_launch_cmd(
         )
 
     if container == 'rtp2-preproc':
-        logger.info('\n' + 'rtp2-preprc command')
-        logger.debug(
-            f'\n the sub is {sub} \n the ses is {ses} \n the analysis dir is {analysis_dir}',
-        )
-
+        # f'{env_cmd} apptainer run --containall --pwd /flywheel/v0 {path_mount_cmd}'
         cmd = (
-            f'{env_cmd} apptainer run --containall --pwd /flywheel/v0 {bind_cmd}'
+            f'{cmd_prefix} '
             f'--bind {subses_direvatives_dname}/input:/flywheel/v0/input:ro '
             f'--bind {subses_direvatives_dname}/output:/flywheel/v0/output '
-            # f"--bind {subses_direvatives_dname}/work:/flywheel/v0/work "
             f'--bind {subses_direvatives_dname}/output/log/config.json:/flywheel/v0/config.json '
             f'--env FLYWHEEL=/flywheel/v0 '
             f'--env LD_LIBRARY_PATH=/opt/fsl/lib:  '
@@ -182,15 +164,11 @@ def gen_launch_cmd(
         )
 
     if container == 'rtp2-pipeline':
-        logger.info('\n' + 'rtp2-pipeline command')
-        logger.debug(
-            f'\n the sub is {sub} \n the ses is {ses} \n the analysis dir is {analysis_dir}',
-        )
+        # f'{env_cmd} apptainer run --containall --pwd /flywheel/v0 {path_mount_cmd}'
         cmd = (
-            f'{env_cmd} apptainer run --containall --pwd /flywheel/v0 {bind_cmd}'
+            f'{cmd_prefix} '
             f'--bind {subses_direvatives_dname}/input:/flywheel/v0/input:ro '
             f'--bind {subses_direvatives_dname}/output:/flywheel/v0/output '
-            # f"--bind {subses_direvatives_dname}/work:/flywheel/v0/work "
             f'--bind {subses_direvatives_dname}/output/log/config.json:/flywheel/v0/config.json '
             f'--env PATH=/opt/mrtrix3/bin:/opt/ants/bin:/opt/art/bin:/opt/fsl/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin '
             f'--env LANG=C.UTF-8 '
@@ -223,17 +201,8 @@ def gen_launch_cmd(
     # If after all configuration, we do not have command, raise an error
     if cmd is None:
         logger.error(
-            '\n'
-            + 'the DWI PIPELINE command is not assigned, please check your config.yaml[general][host] session\n',
+            'the DWI PIPELINE command is not assigned, please check your config.yaml[general][host] session\n',
         )
         raise ValueError('Launch command is not defined, aborting')
 
     return cmd
-    # GLU: I don't think this is right, run is done below, I will make it work just for local but not in here,
-    #      it is good that this function just creates the cmd, I would keep it like that
-    # if run_lc:
-    #     return (sp.run(cmd, shell=True))
-    # else:
-
-    #     sp.run(cmd, shell=True)
-    # return cmd

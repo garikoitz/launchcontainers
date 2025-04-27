@@ -31,16 +31,18 @@ general:
   # Place the computing will be held.
   # VALID OPTIONS: local, BCBL, DIPC.
   host: DIPC
+  # if use dask to launch jobs
+  use_dask: False
   # Whether force to overwrite
   force: True
   # Verbosity of command-line console. If true, only print information at level: CRITICAL (based on python logging package)
   print_command_only: False
   # Log directory to store launchcontainers logging
   # VALID OPTIONS: analysis_dir or full path you want
-  # This log dir will be used for dask_log and launchcontainer log
-  log_dir: /scratch/tlei/paper_dv/lc_launch_log
+  # This log dir will be used for launchcontainer log
+  logging_dir: /scratch/tlei/paper_dv/lc_launch_log
   # Name of launchcontainers log file
-  log_filename: lc_log
+  logging_fname: lc_log
 
 container_specific:
   anatrois:
@@ -150,56 +152,43 @@ container_specific:
     fsmask: /home/tlei/Desktop/FG.nii.gz
     # zip file for rtp2-pipeline
     qmap_zip: /home/tlei/Desktop/annnnooott.zip
-
+# computing cluster host options
 host_options:
     BCBL:
       # SGE manager
       use_module: False
       apptainer: apptainer/latest
-      maxwall: 10
       manager: sge
-      name: "anatrois"
-      # Dask worker options
+      mount_options: ['/bcbl', '/tmp','/scratch']
+      envextra: []
+      # config the machine
       # Total number of cores per job (it was core for BCBL)
-      cores: 6
+      cores: 8
       # Total amount of memory per job (it was mem for BCBL)
       memory: 32G
-      # Number of Python processes per job
-      processes: 1
-      # Network interface to use like eth0 or ib0
-      interface: lo
-      # Number of seconds to wait if a worker can not find a scheduler
-      death-timeout: 100
-      # Location of fast local storage like /scratch or $TMPDIR
-      local-directory: null
-      # It was que in BCBL
+      # BCBL queue:
       queue: long.q
-      project: null
       walltime: 25:30:00'
-      extra: []
-      env-extra: []
-      job-extra: []
-      resource-spec: null
-      bind_options: ['/bcbl', '/tmp','/scratch']
 
     DIPC:
-      # SLURM manager
-      memory: 32G
-      # to mimic this:
-      #--partition=general \
-      #--qos=${qos} \ # qos can be : regular test long xlong serial
-      queue: general
-      job_extra_directives: [--qos=regular]
-      cores: 20
-      walltime: '10:00:00'
-      # for SLURM, it is always False
+     # for SLURM, it is always False
       use_module: False
       apptainer: Apptainer
       manager: slurm
       system: scratch
-      name: "rtppreproc"
       tmpdir: /scratch/tlei/tmp
-      bind_options: ['/scratch']
+      mount_options: ['/scratch']
+      # config the machine
+      cores: 20
+      memory: 32G
+      # DIPC setting
+      #--partition=general \
+      #--qos=${qos} \ # qos can be : regular test long xlong serial
+      queue: general
+      qos: regular
+      job_extra_directives: [--qos=regular]
+      walltime: '10:00:00'
+
 
     local:
       # Local machine, ubuntu, MacOS
@@ -207,11 +196,11 @@ host_options:
       use_module: False
       apptainer: apptainer/latest
       # Copy the example list: for BCBL we need ['/bcbl', '/tmp', '/export']; for okazaki we need ['/fileserver', '/tmp']
-      bind_options: ['/bcbl', '/tmp', '/scratch', '/export']
+      mount_options: ['/bcbl', '/tmp', '/scratch', '/export']
       manager: 'local'
-      # This can only be serial, parallel, or dask_worker any other options will make it fail.
+      # This can only be serial, parallel
       launch_mode: 'parallel'
       # Arguments below only affect to parallel launch mode
       njobs: 5
       memory_limit: '32GiB'
-      threads_per_worker: 6
+      threads_per_worker: 10
