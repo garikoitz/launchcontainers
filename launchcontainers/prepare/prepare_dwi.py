@@ -413,15 +413,19 @@ def prepare_dwi(parser_namespace, df_subses, layout):
                 os.makedirs(container_logdir, exist_ok=True)
             else:
                 use_src_session = lc_config['container_specific'][container]['use_src_session']
-                current_session_dir = op.join(analysis_dir, 'sub-' + sub, 'ses-' + ses)
-                src_session_dir = op.join(analysis_dir, 'sub-' + sub, 'ses-' + use_src_session)
-                if use_src_session and ses != use_src_session and \
-                        (os.path.islink(current_session_dir) or os.path.exists(src_session_dir)):
-                    logger.warning(
-                        f'\n You are preparing for the session:{ses} that are'
-                        + 'not the reference session:{use_src_session}',
-                    )
-                    logger.warning('\n Not creating tmp dir, skip')
+                if use_src_session:
+                    current_session_dir = op.join(analysis_dir, 'sub-' + sub, 'ses-' + ses)
+                    src_session_dir = op.join(analysis_dir, 'sub-' + sub, 'ses-' + use_src_session)
+                    if ses != use_src_session and \
+                            (
+                                os.path.islink(current_session_dir)
+                                or os.path.exists(src_session_dir)
+                            ):
+                        logger.warning(
+                            f'\n You are preparing for the session:{ses} that are'
+                            + 'not the reference session:{use_src_session}',
+                        )
+                        logger.warning('\n Not creating tmp dir, skip')
                 else:
                     os.makedirs(tmpdir, exist_ok=True)
                     os.makedirs(container_logdir, exist_ok=True)
