@@ -24,7 +24,6 @@ from os import makedirs
 logger = logging.getLogger('Launchcontainers')
 
 
-
 def setup_logger(quiet, verbose=False, debug=False, log_dir=None, log_filename=None):
     '''
     stream_handler_level: str,  optional

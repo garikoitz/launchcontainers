@@ -28,7 +28,6 @@ from launchcontainers.prepare import prepare_dwi as prep_dwi
 logger = logging.getLogger('Launchcontainers')
 
 
-
 def setup_analysis_folder(parse_namespace):
     '''
     Description: create analysis folder based on your container and your analysis.
