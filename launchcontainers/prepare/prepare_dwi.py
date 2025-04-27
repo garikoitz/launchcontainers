@@ -416,7 +416,7 @@ def prepare_dwi(parser_namespace, df_subses, layout):
                 current_session_dir = op.join(analysis_dir, 'sub-' + sub, 'ses-' + ses)
                 src_session_dir = op.join(analysis_dir, 'sub-' + sub, 'ses-' + use_src_session)
                 if use_src_session and ses != use_src_session and \
-                        (os.path.exists(current_session_dir) or os.path.exists(src_session_dir)):
+                        (os.path.islink(current_session_dir) or os.path.exists(src_session_dir)):
                     logger.warning(
                         f'\n You are preparing for the session:{ses} that are'
                         + 'not the reference session:{use_src_session}',
