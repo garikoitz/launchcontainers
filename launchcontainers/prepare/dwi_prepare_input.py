@@ -169,16 +169,17 @@ def anatrois(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout):
     # if have retest session and the src session id is specified, then
     # for each src_session_id, we will do the normal procedure
     # for each not src_session_id, we will create symlink to the src_session_id
-    src_session_dpath = op.join(
-        analysis_dir,
-        'sub-' + sub,
-        'ses-' + use_src_session,
-    )
-    dst_session_dpath = op.join(
-        analysis_dir,
-        'sub-' + sub,
-        'ses-' + ses,
-    )
+    if use_src_session is not None:
+        src_session_dpath = op.join(
+            analysis_dir,
+            'sub-' + sub,
+            'ses-' + use_src_session,
+        )
+        dst_session_dpath = op.join(
+            analysis_dir,
+            'sub-' + sub,
+            'ses-' + ses,
+        )
     if use_src_session and (not ses == use_src_session):
         logger.info(
             '\n'

@@ -48,19 +48,23 @@ def initiate_cluster(jobqueue_config, n_job, dask_logdir):
     config.set(admin__tick__limit='3h')
 
     if 'sge' in jobqueue_config['manager']:
+        # envextra is needed for launch jobs on SGE and SLURM
+        envextra = [
+            f"module load {jobqueue_config['apptainer']} ",
+        ]
         cluster_by_config = SGECluster(
-            shebang='#!/bin/bash',
             queue=jobqueue_config['queue'],
             cores=jobqueue_config['cores'],
             memory=jobqueue_config['memory'],
             walltime=jobqueue_config['walltime'],
             log_directory=dask_logdir,
-            job_script_prologue=jobqueue_config['envextra'],
+            job_script_prologue=envextra,
         )
         cluster_by_config.scale(jobs=n_job)
 
     elif 'slurm' in jobqueue_config['manager']:
         envextra = [
+            f"module load {jobqueue_config['apptainer']} "
             f"export SINGULARITYENV_TMPDIR={jobqueue_config['tmpdir']}",
             "export SINGULARITY_BIND=''",
         ]

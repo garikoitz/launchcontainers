@@ -32,6 +32,9 @@ def host_specific_cmd_prefix(lc_config):
     if host == 'local':
         if use_module:
             env_cmd = f"module load {jobqueue_config['apptainer']} &&"
+    # dask not working, need to put under envextra
+    # else:
+    #     env_cmd = f"module load {jobqueue_config['apptainer']} &&"
     path_mount_cmd = ''
     for mount in mount_options:
         path_mount_cmd += f'--bind {mount}:{mount} '

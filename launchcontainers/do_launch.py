@@ -33,7 +33,7 @@ logger = logging.getLogger('Launchcontainers')
 def show_first_tree(analysis_dir, sub, ses):
 
     # Build the path to that subject/session folder
-    path = os.path.join(analysis_dir, sub, ses)
+    path = os.path.join(analysis_dir, f'sub-{sub}', f'ses-{ses}')
 
     # Call “tree -C <path>” and let it print directly to your terminal
     sp.run(['tree', '-C', path], check=True)
@@ -47,6 +47,7 @@ def print_option_for_review(
 ):
 
     basedir = lc_config['general']['basedir']
+    host = lc_config['general']['host']
     bids_dname = os.path.join(basedir, bidsdir_name)
     version = lc_config['container_specific'][container]['version']
     analysis_name = lc_config['general']['analysis_name']
@@ -54,7 +55,8 @@ def print_option_for_review(
     logger.critical(
         '\n'
         + '#####################################################\n'
-        + f'SubsesList is read, there are * {num_of_true_run} * jobs needed to be launched'
+        + f'SubsesList is read, there are * {num_of_true_run} * jobs '
+        + f'Host is {host}'
         + f'Basedir is: {basedir} \n'
         + f'Container is: {container}_{version} \n'
         + f'analysis name is: {analysis_name} \n'
@@ -63,7 +65,7 @@ def print_option_for_review(
 
     if container in ['freesurferator', 'anatrois']:
         src_dir = bids_dname
-        logger.critical(f'The source dir is: {src_dir}')
+        logger.critical(f'\n### The source dir is: {src_dir}')
     if container in ['rtppreproc', 'rtp2-preproc']:
         precontainer_anat = lc_config['container_specific'][container]['precontainer_anat']
         anat_analysis_name = lc_config['container_specific'][container]['anat_analysis_name']
@@ -210,9 +212,9 @@ def launch_jobs(
             dir_analysiss.append(analysis_dir)
 
     if not run_lc:
-        logger.critical('\n No launching, here is the command line command')
+        logger.critical('\n### No launching, here is the command line command')
         print_job_script(host, jobqueue_config , n_jobs, daskworker_logdir)
-        logger.critical(f'\n Example launch command is: {commands[0]}')
+        logger.critical(f'\n### Example launch command is: {commands[0]}')
 
     # RUN mode
     else:
@@ -259,7 +261,7 @@ def main(parse_namespace):
     )
     # 4. tree sub-/ses- structure for checking
     # get the first valid sub and ses using tree to show the data structure
-    mask = (df_subses['RUN']) & (df_subses['dwi'])
+    mask = (df_subses['RUN'] == 'True') & (df_subses['dwi'] == 'True')
 
     # select the first row matching that mask
     first_row = df_subses.loc[mask].iloc[0]
@@ -267,7 +269,7 @@ def main(parse_namespace):
     # extract sub and ses
     sub = first_row['sub']
     ses = first_row['ses']
-    logger.critical('\n## output example subject folder structure \n')
+    logger.critical('\n### output example subject folder structure \n')
     show_first_tree(analysis_dir, sub, ses)
 
     # 5. generate the job script

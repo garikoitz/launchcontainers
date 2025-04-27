@@ -170,5 +170,8 @@ def main(parse_namespace):
     else:
         logger.error(f'{container} is not in the list')
 
-    logger.critical(f'\n#####\nAnalysis dir for run mode is {analysis_dir}\n')
+    logger.critical(
+        '\n#####\nAnalysis dir for run mode is \n'
+        + f'{analysis_dir}\n',
+    )
     return prepare_step1 and prepare_step2

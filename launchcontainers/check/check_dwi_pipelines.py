@@ -163,7 +163,7 @@ def check_dwi_analysis_folder(parse_namespace, container):
 
     if general_config_present:
         logger.critical(
-            f'Analysis folder {analysis_dir} is having all the general configs\n'
+            f'\n### Analysis folder {analysis_dir} is having all the general configs\n'
             + 'Pass to next step',
         )
     else:

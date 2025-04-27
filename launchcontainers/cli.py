@@ -61,7 +61,7 @@ def get_parser():
         formatter_class=RawDescriptionHelpFormatter,
     )
     parser.add_argument(
-        '--log-dir', '-L',
+        '--log-dir', '-l',
         type=str,
         default=None,
         help='Directory to write lc.log and dask.log into (default: <workdir>/logs)',
@@ -110,6 +110,7 @@ def get_parser():
         help='Validate and submit jobs to cluster',
     )
     run.add_argument(
+        '-w',
         '--workdir',
         required=True,
         type=str,
@@ -203,7 +204,7 @@ def main():
     verbose = parse_namespace.verbose
     debug = parse_namespace.debug
     logging_dir = parse_namespace.log_dir
-
+    print(f' The logging dir is {logging_dir}')
     # get the dir and fpath for launchcontainer logger
     timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     logging_fname = f'lc_logger_{timestamp}'
