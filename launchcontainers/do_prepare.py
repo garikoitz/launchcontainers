@@ -25,7 +25,8 @@ from bids import BIDSLayout
 from launchcontainers import utils as do
 from launchcontainers.prepare import prepare_dwi as prep_dwi
 # import lc package utilities
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('Launchcontainers')
+
 
 
 def setup_analysis_folder(parse_namespace):

@@ -27,7 +27,7 @@ import yaml
 from yaml.loader import SafeLoader
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('Launchcontainers')
 
 
 def die(*args):

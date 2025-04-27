@@ -33,7 +33,7 @@ import nibabel as nib
 
 from launchcontainers.check import check_dwi_pipelines as check
 from launchcontainers.utils import read_df
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('Launchcontainers')
 
 
 def force_symlink(file1, file2, force):

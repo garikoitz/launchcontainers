@@ -20,7 +20,7 @@ import logging
 import os
 from datetime import datetime
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('Launchcontainers')
 
 
 def host_specific_cmd_prefix(lc_config):

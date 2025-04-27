@@ -27,7 +27,7 @@ import os.path as op
 
 from launchcontainers import utils as do
 from launchcontainers.prepare import dwi_prepare_input as prep_dwi
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('Launchcontainers')
 
 
 def copy_configs(container, extra_config_fpath, analysis_dir, force, option=None):

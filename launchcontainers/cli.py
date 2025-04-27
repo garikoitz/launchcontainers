@@ -28,7 +28,8 @@ from launchcontainers import do_prepare
 from launchcontainers.other_cli_tool import copy_configs
 from launchcontainers.other_cli_tool import create_bids
 from launchcontainers.other_cli_tool.zip_example_config import do_zip_configs
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('Launchcontainers')
+
 
 
 def get_parser():
@@ -208,7 +209,7 @@ def main():
     timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     logging_fname = f'lc_logger_{timestamp}'
     # set up the logger for prepare mode
-    config_logger.setup_logger(quiet, verbose, debug, logging_dir, logging_fname)
+    logger=config_logger.setup_logger(quiet, verbose, debug, logging_dir, logging_fname)
     if parse_namespace.mode == 'prepare':
         print('\n....running prepare mode\n')
         do_prepare.main(parse_namespace)

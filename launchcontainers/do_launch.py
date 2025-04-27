@@ -27,7 +27,7 @@ from launchcontainers.check import check_dwi_pipelines as check
 from launchcontainers.clusters import dask_scheduler as daskq
 from launchcontainers.gen_launch_cmd import gen_sub_ses_cmd
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('Launchcontainers')
 
 
 def show_first_tree(analysis_dir, sub, ses):

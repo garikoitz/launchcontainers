@@ -21,10 +21,11 @@ import os
 import os.path as op
 from os import makedirs
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('Launchcontainers')
 
 
-def setup_logger(print_command_only, verbose=False, debug=False, log_dir=None, log_filename=None):
+
+def setup_logger(quiet, verbose=False, debug=False, log_dir=None, log_filename=None):
     '''
     stream_handler_level: str,  optional
         if no input, it will be default at INFO level, \
@@ -59,7 +60,7 @@ def setup_logger(print_command_only, verbose=False, debug=False, log_dir=None, l
     stream_handler.setFormatter(stream_formatter)
     if verbose:
         stream_handler.setLevel(logging.INFO)
-    elif print_command_only:
+    elif quiet:
         stream_handler.setLevel(logging.CRITICAL)
     elif debug:
         stream_handler.setLevel(logging.DEBUG)

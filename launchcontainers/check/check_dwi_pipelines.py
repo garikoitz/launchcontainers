@@ -25,7 +25,7 @@ import logging
 import os
 import os.path as op
 import zipfile
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('Launchcontainers')
 
 
 def check_symlink(path: str) -> None:
