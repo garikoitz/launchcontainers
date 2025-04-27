@@ -398,11 +398,12 @@ def prepare_dwi(parser_namespace, df_subses, layout):
                 'ses-' + ses,
                 'output', 'tmp',
             )
+            # container log has to be under output/log
             container_logdir = op.join(
                 analysis_dir,
                 'sub-' + sub,
                 'ses-' + ses,
-                'log',
+                'output', 'log',
             )
             # For all the container, create ses-/log and ses-/output/tmp
             # if we will use 1 session anatrois/freesurferator as ref,

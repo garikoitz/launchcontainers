@@ -40,7 +40,7 @@ def host_specific_cmd_prefix(lc_config):
         path_mount_cmd += f'--bind {mount}:{mount} '
 
     cmd_prefix = (
-        f'{env_cmd} apptainer run -e --no-home '
+        f'{env_cmd} apptainer run '  # -e --no-home '
         f'--containall --pwd /flywheel/v0 {path_mount_cmd}'
     )
     return cmd_prefix
@@ -72,7 +72,10 @@ def gen_sub_ses_cmd(
     # Location of the Singularity Image File (.sif)
     container_name = os.path.join(containerdir, f'{container}_{version}.sif')
     # Define the directory and the file name to output the log of each subject
-    container_logdir = os.path.join(analysis_dir, 'sub-' + sub, 'ses-' + ses, 'log')
+    container_logdir = os.path.join(
+        analysis_dir, 'sub-' + sub, 'ses-' + ses,
+        'output', 'log',
+    )
     # get timestamp for output log
     timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     logfilename = f'{container_logdir}/{container}-sub-{sub}_ses-{ses}_{timestamp}'

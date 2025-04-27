@@ -134,22 +134,29 @@ container_specific:
 
   rtp2-pipeline:
     # Version identifier for container
-    version: 0.1.0_3.0.4rc20
+    version: 0.2.2_3.0.4
     # anatrois or freesurferator dir, used to find the brainmask and fs/ROIs
-    precontainer_anat: freesurferator_0.2.0-7.4.1rc19
+    precontainer_anat: freesurferator_0.2.1_7.4.1
     # Analysis name
-    anat_analysis_name: control_points_02
+    anat_analysis_name: week1
     # rtppreproc or rtp2-preproc dir, used to find the dwi.nii.gz, bvec and bval
-    precontainer_preproc: rtp2-preproc_0.1.0_3.0.4rc31
+    precontainer_preproc: rtp2-preproc_0.2.2_3.0.4
     # Analysis name
-    preproc_analysis_name: control_points_02
-    # optional
+    preproc_analysis_name: week1
     # Path to tractparams files, needs to be a .csv
-    tractparams: /home/tlei/tlei/LMC_DWI_course/scripts/tractparams_short_course.csv
+    tractparams: /bcbl/home/public/Gari/VOTCLOC/main_exp/code/lc_dwi/rtp-pipeline_4.5.2-3.0.3_tractparams_20240703.csv
+    # optional
     # Path to brain.nii.gz of freesurfer If use fsmask or define manually, this option is set in case you need
-    fsmask: /home/tlei/Desktop/FG.nii.gz
-    # zip file for rtp2-pipeline
-    qmap_zip: /home/tlei/Desktop/annnnooott.zip
+    fsmask:
+    # Use qmap file or not?
+    use_qmap: False
+    # Directory name of your pre-run freesurfer, this directory should be under /basedir/bidsdir/derivatives
+    qmap_dir_name: mrVista_0.1.0
+    # Analysis name of pre-run freesurfer
+    qmap_analysis_name: test_qmap
+    # qunatitative MRI maps, must be nifti format
+    # A super identifier to find the pattern
+    qmap_fname: '^qmap.*\.zip$'
 
 host_options:
     BCBL:

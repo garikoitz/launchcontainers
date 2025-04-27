@@ -171,18 +171,18 @@ def get_parser():
     # Other optional arguements for lc
 
     parser.add_argument(
-        '--quiet',
+        '-q', '--quiet',
         action='store_true',
         help='if you want to open quiet mode, type --quiet, the the level will be critical',
     )
     # Other optional arguements for lc
     parser.add_argument(
-        '--verbose',
+        '-v', '--verbose',
         action='store_true',
         help='if you want to open verbose mode, type --verbose, the the level will be info',
     )
     parser.add_argument(
-        '--debug',
+        '-d', '--debug',
         action='store_true',
         help='if you want to find out what is happening of particular step, \
             --type debug, this will print you more detailed information',

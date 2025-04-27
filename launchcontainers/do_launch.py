@@ -21,6 +21,7 @@ import os
 import os.path as op
 import subprocess as sp
 import sys
+from datetime import datetime
 
 from launchcontainers import utils as do
 from launchcontainers.check import check_dwi_pipelines as check
@@ -36,7 +37,7 @@ def show_first_tree(analysis_dir, sub, ses):
     path = os.path.join(analysis_dir, f'sub-{sub}', f'ses-{ses}')
 
     # Call “tree -C <path>” and let it print directly to your terminal
-    sp.run(['tree', '-C', path], check=True)
+    sp.run(['tree', '-C', '-L', '3' , path], check=True)
 
 
 def print_option_for_review(
@@ -49,8 +50,15 @@ def print_option_for_review(
     basedir = lc_config['general']['basedir']
     host = lc_config['general']['host']
     bids_dname = os.path.join(basedir, bidsdir_name)
+    containerdir = lc_config['general']['containerdir']
     version = lc_config['container_specific'][container]['version']
     analysis_name = lc_config['general']['analysis_name']
+    all_containers = os.listdir(containerdir)
+    # add a check to see if container is there
+    container_sif_name = f'{container}_{version}.sif'
+    container_in_place = container_sif_name in all_containers
+    if not container_in_place :
+        raise FileNotFoundError(f'No such file : {container_sif_name} \n under {containerdir} ')
     # output the options here for the user to review:
     logger.critical(
         '\n'
@@ -58,7 +66,8 @@ def print_option_for_review(
         + f'SubsesList is read, there are * {num_of_true_run} * jobs '
         + f'Host is {host}'
         + f'Basedir is: {basedir} \n'
-        + f'Container is: {container}_{version} \n'
+        + f'Container is:  {container_sif_name}\n'
+        + f'singularity image dir is {containerdir} \n'
         + f'analysis name is: {analysis_name} \n'
         + '##################################################### \n',
     )
@@ -77,7 +86,7 @@ def print_option_for_review(
             'analysis-' + anat_analysis_name,
         )
 
-        logger.critical(f'The source FSMASK and T1w dir: {pre_anatrois_dir}')
+        logger.critical(f'\n ### The source FSMASK and T1w dir: {pre_anatrois_dir}')
     if container in ['rtp-pipeline', 'rtp2-pipeline']:
         # rtppipeline specefic variables
         precontainer_anat = lc_config['container_specific'][container]['precontainer_anat']
@@ -102,7 +111,7 @@ def print_option_for_review(
         )
 
         logger.critical(
-            f'The source FSMASK and ROI dir is: {pre_anatrois_dir} \n'
+            f'\n### The source FSMASK and ROI dir is: {pre_anatrois_dir} \n'
             + f'The source DWI preprocessing dir is: {pre_preproc_dir} \n',
         )
     return
@@ -249,17 +258,11 @@ def main(parse_namespace):
     # 2. do a independent check to see if everything is in place
     check.check_dwi_analysis_folder(parse_namespace, container)
 
-    # 3. ask for user input about folder structure and example command
     # get stuff from subseslist for future jobs scheduling
     sub_ses_list_path = op.join(analysis_dir, 'subseslist.txt')
     df_subses, num_of_true_run = do.read_df(sub_ses_list_path)
-    print_option_for_review(
-        num_of_true_run,
-        lc_config,
-        container,
-        bidsdir_name,
-    )
-    # 4. tree sub-/ses- structure for checking
+
+    # 3. tree sub-/ses- structure for checking
     # get the first valid sub and ses using tree to show the data structure
     mask = (df_subses['RUN'] == 'True') & (df_subses['dwi'] == 'True')
 
@@ -271,6 +274,14 @@ def main(parse_namespace):
     ses = first_row['ses']
     logger.critical('\n### output example subject folder structure \n')
     show_first_tree(analysis_dir, sub, ses)
+
+    # 4. ask for user input about folder structure and example command
+    print_option_for_review(
+        num_of_true_run,
+        lc_config,
+        container,
+        bidsdir_name,
+    )
 
     # 5. generate the job script
     # 6. generate command for sample subject
@@ -317,12 +328,16 @@ def main(parse_namespace):
         sys.exit(0)
 
     # 7. launch the work
+    timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    logger.critical(f'\n##### The launching time is {timestamp}')
     launch_jobs(
         parse_namespace,
         df_subses,
         num_of_true_run,
         run_lc,
     )
+
+    # when finished launch QC to read the log and check if everything is there
     return
 
 
