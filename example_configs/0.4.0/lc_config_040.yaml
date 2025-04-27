@@ -35,14 +35,6 @@ general:
   use_dask: False
   # Whether force to overwrite
   force: True
-  # Verbosity of command-line console. If true, only print information at level: CRITICAL (based on python logging package)
-  print_command_only: False
-  # Log directory to store launchcontainers logging
-  # VALID OPTIONS: analysis_dir or full path you want
-  # This log dir will be used for launchcontainer log
-  logging_dir: /scratch/tlei/paper_dv/lc_launch_log
-  # Name of launchcontainers log file
-  logging_fname: lc_log
 
 container_specific:
   anatrois:

@@ -20,7 +20,9 @@ import argparse
 import logging
 import sys
 from argparse import RawDescriptionHelpFormatter
+from datetime import datetime
 
+from launchcontainers import config_logger
 from launchcontainers import do_launch
 from launchcontainers import do_prepare
 from launchcontainers.other_cli_tool import copy_configs
@@ -58,12 +60,19 @@ def get_parser():
         """,
         formatter_class=RawDescriptionHelpFormatter,
     )
+    parser.add_argument(
+        '--log-dir', '-L',
+        type=str,
+        default=None,
+        help='Directory to write lc.log and dask.log into (default: <workdir>/logs)',
+    )
     subparsers = parser.add_subparsers(
         title='utilities',
         dest='mode',
         required=True,
         help='Launchcontainers functionalities',
     )
+
     # ------------------------
     # lc prepare
     # ------------------------
@@ -159,6 +168,7 @@ def get_parser():
     zip_configs.set_defaults(func=lambda args: do_zip_configs())
 
     # Other optional arguements for lc
+
     parser.add_argument(
         '--quiet',
         action='store_true',
@@ -189,7 +199,16 @@ def get_parser():
 
 def main():
     parse_namespace, parse_dict = get_parser()
+    quiet = parse_namespace.quiet
+    verbose = parse_namespace.verbose
+    debug = parse_namespace.debug
+    logging_dir = parse_namespace.log_dir
 
+    # get the dir and fpath for launchcontainer logger
+    timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    logging_fname = f'lc_logger_{timestamp}'
+    # set up the logger for prepare mode
+    config_logger.setup_logger(quiet, verbose, debug, logging_dir, logging_fname)
     if parse_namespace.mode == 'prepare':
         print('\n....running prepare mode\n')
         do_prepare.main(parse_namespace)
@@ -197,13 +216,12 @@ def main():
     if parse_namespace.mode == 'run':
         print('\n....running run mode\n')
         do_launch.main(parse_namespace)
-        pass
+
     if parse_namespace.mode == 'create_bids':
         create_bids.main()
-        pass
+
     if parse_namespace.mode == 'copy_configs':
         copy_configs.main()
-        pass
 
     if parse_namespace.mode == 'zip_configs':
         # launch the zip config function

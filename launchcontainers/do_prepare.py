@@ -19,11 +19,9 @@ from __future__ import annotations
 import logging
 import os
 import os.path as op
-from datetime import datetime
 
 from bids import BIDSLayout
 
-from launchcontainers import config_logger
 from launchcontainers import utils as do
 from launchcontainers.prepare import prepare_dwi as prep_dwi
 # import lc package utilities
@@ -121,9 +119,6 @@ def setup_analysis_folder(parse_namespace):
 def main(parse_namespace):
     # read the yaml to get input info
     lc_config_fpath = parse_namespace.lc_config
-    quiet = parse_namespace.quiet
-    verbose = parse_namespace.verbose
-    debug = parse_namespace.debug
     # read LC config yml
     lc_config = do.read_yaml(lc_config_fpath)
     print('\n cli.main() reading lc config yaml')
@@ -137,17 +132,7 @@ def main(parse_namespace):
         basedir, bidsdir_name, 'derivatives',
         f'{container}_{version}', f'analysis-{analysis_name}',
     )
-    # get the dir and fpath for launchcontainer logger
-    timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    logging_dir = lc_config['general']['logging_dir']
-    logging_fname = lc_config['general']['logging_fname']
 
-    if logging_dir == 'analysis_dir':
-        logging_dir = analysis_dir
-
-    logging_fname = f'prepare_mode_{logging_fname}_{timestamp}'
-    # set up the logger for prepare mode
-    config_logger.setup_logger(quiet, verbose, debug, logging_dir, logging_fname)
     lc_config_fpath = parse_namespace.lc_config
     # read LC config yml
     lc_config = lc_config = do.read_yaml(lc_config_fpath)
