@@ -57,6 +57,7 @@ def initiate_cluster(jobqueue_config, n_job, dask_logdir):
             cores=jobqueue_config['cores'],
             memory=jobqueue_config['memory'],
             walltime=jobqueue_config['walltime'],
+            processes=1,
             log_directory=dask_logdir,
             job_script_prologue=envextra,
         )
@@ -71,6 +72,7 @@ def initiate_cluster(jobqueue_config, n_job, dask_logdir):
         cluster_by_config = SLURMCluster(
             cores=jobqueue_config['cores'],
             memory=jobqueue_config['memory'],
+            processes=1,
             log_directory=dask_logdir,
             queue=jobqueue_config['queue'],
             job_extra_directives=['--export=ALL'] + jobqueue_config['job_extra_directives'],
