@@ -17,9 +17,42 @@ import pandas as pd
 import typer
 
 
+def generate_tract_path_list(analysis_dir, tract_prefix, df_subses, output_dir):
+    tract = f'MNI_{tract_prefix}_clean_fa_bin.nii.gz'
+    print(tract)
+    paths = []
+    missing = []
+    for row in df_subses.itertuples(index=True):
+        sub = row.sub
+        ses = row.ses
+        RUN = row.RUN
+        if str(RUN).lower() == 'true':
+            tract_fpath = os.path.join(
+                analysis_dir,
+                f'sub-{sub}',
+                f'ses-{ses}',
+                'MNI_tract',
+                tract,
+            )
+            # print(tract_fpath)
+            if os.path.exists(tract_fpath):
+                paths.append(tract_fpath)
+            else:
+                print(f'missing : sub-{sub} ses-{ses}')
+                missing.append({'sub': sub, 'ses': ses})
+
+
+def find_subseslist(analysis_dir):
+    for dirpath, dirnames, filenames in os.walk(analysis_dir):
+        for fname in filenames:
+            if fname.lower() == 'subseslist.txt':
+                return os.path.join(dirpath, fname)
+    raise FileNotFoundError(f'No subseslist.txt found under {analysis_dir}')
+
+
 def check_rtp2_pipeline_logs(analysis_dir):
-    path_to_subse = os.path.join(analysis_dir, 'subseslist.txt')
-    df_subSes = pd.read_csv(path_to_subse, sep=',', dtype=str)
+    path_to_subses = find_subseslist(analysis_dir)
+    df_subSes = pd.read_csv(path_to_subses, sep=',', dtype=str)
     for row in df_subSes.itertuples(index=True, name='Pandas'):
         sub = row.sub
         ses = row.ses
@@ -36,8 +69,8 @@ def check_rtp2_pipeline_logs(analysis_dir):
             if os.path.isfile(log_file):
                 with open(log_file) as f:
                     lines = f.readlines()
-                    print(f'*****for sub-{sub}_ses-{ses}')
-                    print(lines[-1] + '###')
+                    # print(f'*****for sub-{sub}_ses-{ses}')
+                    # print(lines[-1] + '###')
                     if lines[-1].strip() != 'Sending exit(0) signal.':
                         print(f'!!!Issue with sub-{sub}, ses-{ses}*****\n')
             else:

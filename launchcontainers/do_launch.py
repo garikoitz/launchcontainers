@@ -34,7 +34,7 @@ logger = logging.getLogger('Launchcontainers')
 def show_first_tree(analysis_dir, sub, ses):
 
     # Build the path to that subject/session folder
-    path = os.path.join(analysis_dir, f'sub-{sub}', f'ses-{ses}')
+    path = os.path.join(analysis_dir, f'sub-{sub}', f'ses-{ses}', 'input')
 
     # Call “tree -C <path>” and let it print directly to your terminal
     sp.run(['tree', '-C', '-L', '3' , path], check=True)
@@ -63,8 +63,8 @@ def print_option_for_review(
     logger.critical(
         '\n'
         + '#####################################################\n'
-        + f'SubsesList is read, there are * {num_of_true_run} * jobs '
-        + f'Host is {host}'
+        + f'SubsesList is read, there are * {num_of_true_run} * jobs \n '
+        + f'Host is {host} \n'
         + f'Basedir is: {basedir} \n'
         + f'Container is:  {container_sif_name}\n'
         + f'singularity image dir is {containerdir} \n'
