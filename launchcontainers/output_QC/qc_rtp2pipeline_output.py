@@ -17,7 +17,7 @@ import pandas as pd
 
 
 def check_rtp_logs(analysis_dir):
-    path_to_subse = os.path.join(analysis_dir, 'subSesList.txt')
+    path_to_subse = os.path.join(analysis_dir, 'subseslist.txt')
     df_subSes = pd.read_csv(path_to_subse, sep=',', dtype=str)
     for row in df_subSes.itertuples(index=True, name='Pandas'):
         sub = row.sub

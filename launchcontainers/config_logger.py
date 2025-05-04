@@ -82,6 +82,7 @@ def setup_logger(quiet, verbose=False, debug=False, log_dir=None, log_filename=N
 
         file_handler_info.setLevel(logging.INFO)
         file_handler_error.setLevel(logging.ERROR)
+
         logger.addHandler(file_handler_info)
         logger.addHandler(file_handler_error)
 
