@@ -1,13 +1,13 @@
 # """
 # MIT License
-# Copyright (c) 2024-2025 Yongning Lei
+# Copyright (c) 2022-2025 Yongning Lei
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software
-# and associated documentation files (the "Software"), to deal in the Software without restriction,
-# including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,
-# subject to the following conditions:
-# The above copyright notice and this permission notice shall be included in all copies or substantial
-# portions of the Software.
+# and associated documentation files (the "Software"), to deal in the Software without
+# restriction, including without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to permit persons to
+# whom the Software is furnished to do so, subject to the following conditions:
+# The above copyright notice and this permission notice shall be included in all copies or
+# substantial portions of the Software.
 # """
 from __future__ import annotations
 
@@ -42,7 +42,8 @@ target_file = load_img(target_filename)
 # slope, intercept, r_value, p_value, std_err = stats.linregress(src_file, target_file)
 # compare T1 3D, just simply reshape
 slope, intercept, r_value, p_value, std_err = stats.linregress(
-    src_file.get_fdata().reshape(224 * 240 * 256), target_file.get_fdata().reshape(224 * 240 * 256),
+    src_file.get_fdata().reshape(224 * 240 * 256),
+    target_file.get_fdata().reshape(224 * 240 * 256),
 )
 if r_value**2 < 0.9999:
     print(f'Attention the result r square is {r_value**2}')

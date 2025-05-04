@@ -144,14 +144,14 @@ def link_vistadisplog(sourcedata, sub, ses, force, task='ret'):
             if 'tr-2' in stimName:
                 linkName = path.join(
                     path.dirname(matFile),
-                    f'sub-{sub}_ses-{ses}_task-retfixRW_run-0{CB}_params.mat',
+                    f'sub-{sub}_ses-{ses}_task-retRW_run-0{fixRW}_params.mat',
                 )
                 fixRW += 1
         if 'fixFF_' in stimName:
             if 'tr-2' in stimName:
                 linkName = path.join(
                     path.dirname(matFile),
-                    f'sub-{sub}_ses-{ses}_task-retfixFF_run-0{FF}_params.mat',
+                    f'sub-{sub}_ses-{ses}_task-retFF_run-0{fixFF}_params.mat',
                 )
                 fixFF += 1
         if 'fixRWblock01_' in stimName:
@@ -159,7 +159,7 @@ def link_vistadisplog(sourcedata, sub, ses, force, task='ret'):
                 linkName = path.join(
                     path.dirname(
                         matFile,
-                    ), f'sub-{sub}_ses-{ses}_task-retfixRWblock01_run-0{RW}_params.mat',
+                    ), f'sub-{sub}_ses-{ses}_task-retCB_run-0{fixRWblock01}_params.mat',
                 )
                 fixRWblock01 += 1
         if 'fixRWblock02_' in stimName:
@@ -167,7 +167,7 @@ def link_vistadisplog(sourcedata, sub, ses, force, task='ret'):
                 linkName = path.join(
                     path.dirname(
                         matFile,
-                    ), f'sub-{sub}_ses-{ses}_task-retfixRWblock02_run-0{RW}_params.mat',
+                    ), f'sub-{sub}_ses-{ses}_task-retCB_run-0{fixRWblock02}_params.mat',
                 )
                 fixRWblock02 += 1
 
@@ -176,7 +176,7 @@ def link_vistadisplog(sourcedata, sub, ses, force, task='ret'):
                 linkName = path.join(
                     path.dirname(
                         matFile,
-                    ), f'sub-{sub}_ses-{ses}_task-retfixRWblock_run-0{RW}_params.mat',
+                    ), f'sub-{sub}_ses-{ses}_task-retCB_run-0{fixRWblock}_params.mat',
                 )
                 fixRWblock += 1
         if path.islink(linkName) and force:
@@ -193,6 +193,7 @@ def link_vistadisplog(sourcedata, sub, ses, force, task='ret'):
 def check_params_and_bids(layout, sub, ses):
     # need to check if params and bids task name match,
     # they might not match because I put fixRWblock as CB
+
     return
 
 
@@ -200,7 +201,7 @@ def main():
     # for bcbl /bcbl/home/public/Gari/VOTCLOC/main_exp
     # for dipc it is /scratch/tlei/VOTCLOC
     basedir = '/bcbl/home/public/Gari/VOTCLOC/main_exp'
-    subseslist_fpath = path.join(basedir, 'code', 'subseslist_fmriprep.txt')
+    subseslist_fpath = path.join(basedir, 'code', 'subseslist_prfnormal.txt')
     subseslist = pd.read_csv(subseslist_fpath, sep=',', header=0, dtype='str')
     bids_folder_name = 'BIDS'
     force = True

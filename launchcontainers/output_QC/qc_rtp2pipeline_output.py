@@ -1,22 +1,23 @@
 # """
 # MIT License
-# Copyright (c) 2024-2025 Yongning Lei
+# Copyright (c) 2022-2025 Yongning Lei
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software
-# and associated documentation files (the "Software"), to deal in the Software without restriction,
-# including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,
-# subject to the following conditions:
-# The above copyright notice and this permission notice shall be included in all copies or substantial
-# portions of the Software.
+# and associated documentation files (the "Software"), to deal in the Software without
+# restriction, including without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to permit persons to
+# whom the Software is furnished to do so, subject to the following conditions:
+# The above copyright notice and this permission notice shall be included in all copies or
+# substantial portions of the Software.
 # """
 from __future__ import annotations
 
 import os
 
 import pandas as pd
+import typer
 
 
-def check_rtp_logs(analysis_dir):
+def check_rtp2_pipeline_logs(analysis_dir):
     path_to_subse = os.path.join(analysis_dir, 'subseslist.txt')
     df_subSes = pd.read_csv(path_to_subse, sep=',', dtype=str)
     for row in df_subSes.itertuples(index=True, name='Pandas'):
@@ -27,8 +28,8 @@ def check_rtp_logs(analysis_dir):
         if RUN == 'True' and dwi == 'True':
             log_file = os.path.join(
                 analysis_dir,
-                'sub-' + sub,
-                'ses-' + ses,
+                f'sub-{sub}',
+                f'ses-{ses}',
                 'output', 'log', 'RTP_log.txt',
             )
 
@@ -43,7 +44,5 @@ def check_rtp_logs(analysis_dir):
                 print(f'Log file missing for sub-{sub}, ses-{ses}')
 
 
-# Example usage:
-check_rtp_logs(
-    '/bcbl/home/public/DB/devtrajtract/DATA/MINI/nifti/derivatives/rtp2-pipeline_0.2.1_3.0.4rc2/analysis-dipc_paper_dv-60subj',
-)
+if __name__ == '__main__':
+    typer.run(check_rtp2_pipeline_logs)
