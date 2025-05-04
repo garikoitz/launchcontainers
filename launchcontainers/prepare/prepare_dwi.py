@@ -398,11 +398,14 @@ def prepare_dwi(parser_namespace, df_subses, layout):
                 'ses-' + ses,
                 'output', 'tmp',
             )
+            # Tiger: for now, the log dir for container is under output folder,
+            # mainly bc RTP will wrote RTP.txt to output/log
+            # don't change this
             container_logdir = op.join(
                 analysis_dir,
                 'sub-' + sub,
                 'ses-' + ses,
-                'log',
+                'output', 'log',
             )
             # For all the container, create ses-/log and ses-/output/tmp
             # if we will use 1 session anatrois/freesurferator as ref,

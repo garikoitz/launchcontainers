@@ -25,6 +25,7 @@ from datetime import datetime
 from launchcontainers import config_logger
 from launchcontainers import do_launch
 from launchcontainers import do_prepare
+from launchcontainers import do_qc
 from launchcontainers.other_cli_tool import copy_configs
 from launchcontainers.other_cli_tool import create_bids
 from launchcontainers.other_cli_tool.zip_example_config import do_zip_configs
@@ -123,6 +124,20 @@ def get_parser():
         'if you specify run_lc, it will launch the jobs',
     )
     # ------------------------
+    # lc check
+    # ------------------------
+    qc = subparsers.add_parser(
+        'qc',
+        help='Validate the output of finished analysis, generate an QC report under analysis dir',
+    )
+    qc.add_argument(
+        '-w',
+        '--workdir',
+        required=True,
+        type=str,
+        help='Root of finished analysis folders',
+    )
+    # ------------------------
     # lc create_bids
     # ------------------------
     create_bids = subparsers.add_parser(
@@ -209,15 +224,16 @@ def main():
     timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     logging_fname = f'lc_logger_{timestamp}'
     # set up the logger for prepare mode
-    logger = config_logger.setup_logger(quiet, verbose, debug, logging_dir, logging_fname)
+    config_logger.setup_logger(quiet, verbose, debug, logging_dir, logging_fname)
     if parse_namespace.mode == 'prepare':
         print('\n....running prepare mode\n')
         do_prepare.main(parse_namespace)
-
     if parse_namespace.mode == 'run':
         print('\n....running run mode\n')
         do_launch.main(parse_namespace)
-
+    if parse_namespace.mode == 'qc':
+        print('\n....running quality check mode\n')
+        do_qc.main(parse_namespace)
     if parse_namespace.mode == 'create_bids':
         create_bids.main()
 

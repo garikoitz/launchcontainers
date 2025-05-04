@@ -33,8 +33,8 @@ def setup_logger(quiet, verbose=False, debug=False, log_dir=None, log_filename=N
     verbose: bool, optional
     debug: bool, optional
     log_dir: str, optional
-        if no input, there will have nothing to be saved \
-            in log file but only the command line output
+        if no input, there will have nothing to be saved in log file
+        but only the command line output
 
     log_filename: str, optional
         the name of your log_file.
