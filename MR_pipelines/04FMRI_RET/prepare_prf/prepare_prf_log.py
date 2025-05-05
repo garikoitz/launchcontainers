@@ -205,8 +205,8 @@ def check_params_and_bids(layout, sub, ses):
 def main():
     # for bcbl /bcbl/home/public/Gari/VOTCLOC/main_exp
     # for dipc it is /scratch/tlei/VOTCLOC
-    basedir = '/bcbl/home/public/Gari/VOTCLOC/main_exp'
-    subseslist_fpath = path.join(basedir, 'code', 'subseslist_prfnormal.txt')
+    basedir = '/scratch/tlei/VOTCLOC'
+    subseslist_fpath = path.join(basedir, 'code', 'subseslist_may04.txt')
     subseslist = pd.read_csv(subseslist_fpath, sep=',', header=0, dtype='str')
     bids_folder_name = 'BIDS'
     force = True
