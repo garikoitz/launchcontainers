@@ -60,6 +60,7 @@ coverage-conditional-plugin = "^0.7.0"
 requests = "<3.0,>=2.26"
 heudiconv = ">=1.3.2"
 setuptools = "^67.0.0"
+typer = ">=0.15.3" 
 
 [tool.poetry.dev-dependencies]
 nox-poetry = "*"

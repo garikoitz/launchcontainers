@@ -185,7 +185,7 @@ def launch_jobs(
 
     use_dask = lc_config['general']['use_dask']
     if use_dask:
-        daskworker_logdir = os.path.join(analysis_dir, 'launch_log')
+        daskworker_logdir = os.path.join(analysis_dir, 'daskworker_log')
 
     else:
         print('Not implement yet')

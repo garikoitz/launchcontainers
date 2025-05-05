@@ -46,7 +46,7 @@ def initiate_cluster(jobqueue_config, n_job, dask_logdir):
     config.set(scheduler='single-threaded')
     config.set({'distributed.scheduler.allowed-failures': 50})
     config.set(admin__tick__limit='3h')
-
+    logger.critical(f"\n $$$$$ dask number of jobs scaled is {n_job}")
     if 'sge' in jobqueue_config['manager']:
         # envextra is needed for launch jobs on SGE and SLURM
         envextra = [
@@ -65,7 +65,7 @@ def initiate_cluster(jobqueue_config, n_job, dask_logdir):
 
     elif 'slurm' in jobqueue_config['manager']:
         envextra = [
-            f"module load {jobqueue_config['apptainer']} "
+            f"module load {jobqueue_config['apptainer']} ",
             f"export SINGULARITYENV_TMPDIR={jobqueue_config['tmpdir']}",
             "export SINGULARITY_BIND=''",
         ]
