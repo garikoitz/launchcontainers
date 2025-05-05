@@ -25,22 +25,23 @@ license_path="$baseP/BIDS/.license"
 
 ##### For each container
 #####
-step="prfprepare"
-version="1.5.0"
-qos="regular" # or test or regular
-mem="8G"
-cpus="6"
-time="00:10:00"
-task="all"
+# step="prfprepare"
+# version="1.5.0"
+# qos="regular" # or test or regular
+# mem="16G"
+# cpus="6"
+# time="00:20:00"
+# task="all"
 
 # # # for prfanalyze-vista:
-# step="prfanalyze-vista"
-# version='2.2.1'
-# qos="regular" # regular or test
-# mem="32G"
-# cpus="20"
-# time="10:00:00" #time="00:10:00" 10:00:00
-# task="retFF" # retCB retRW retFF
+step="prfanalyze-vista"
+version='2.2.1'
+qos="regular" # regular or test
+mem="32G"
+cpus="20"
+time="10:00:00" #time="00:10:00" 10:00:00
+task="retfixRWblock02" # retCB retRW retFF 
+# retfixRW retfixFF retfixRwblock01 retfixRWblock02
 
 
 # # # for prfresult:
@@ -55,13 +56,13 @@ task="all"
 # json input
 json_dir="$baseP/code/${step}_jsons"
 # subseslist dir:
-script_dir="/scratch/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/04b_prf"
-code_dir=$baseP/code/04b_prf
-subses_list_dir=$code_dir/subseslist_prfnormal.txt
+script_dir="/scratch/tlei/soft/launchcontainers/MR_pipelines/04FMRI_RET"
+code_dir=$baseP/code
+subses_list_dir=$code_dir/subseslist_may04.txt
 sif_path="/scratch/tlei/containers/${step}_${version}.sif"
 
 # log dir
-LOG_DIR="$baseP/dipc_${step}_logs/edr25ses_$(date +"%Y-%m-%d")"
+LOG_DIR="$baseP/dipc_${step}_logs/hyperion_8ses_$(date +"%Y-%m-%d")"
 # Ensure directories exist
 mkdir -p "$LOG_DIR"
 mkdir -p "$HOME_DIR"
