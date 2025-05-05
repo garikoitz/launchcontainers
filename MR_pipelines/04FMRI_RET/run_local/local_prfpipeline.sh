@@ -52,9 +52,9 @@ task="all" # retCB retRW retFF
 # json input
 json_dir="$baseP/code/${step}_jsons"
 # subseslist dir:
-script_dir="/export/home/tlei/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/04b_prf"
-code_dir=$baseP/code/04b_prf
-subses_list_dir=$code_dir/subseslist_votcloc.txt
+script_dir="/export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/04FMRI_RET"
+code_dir=$baseP/code
+subses_list_dir=$code_dir/subseslist_may04.txt
 sif_path="/bcbl/home/public/Gari/singularity_images/${step}_${version}.sif"
 
 # log dir
@@ -65,7 +65,7 @@ mkdir -p "$HOME_DIR"
 
 line_num=1
 # Read subseslist.txt (Skipping header line)
-tail -n +2 "$subses_list_dir" | while read sub ses; do
+tail -n +2 $subses_list_dir | while IFS=',' read -r sub ses _; do
     ((line_num++))
 
     now=$(date +"%H-%M")
