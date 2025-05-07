@@ -1,3 +1,4 @@
+#!/bin/bash
 # """
 # MIT License
 
@@ -12,23 +13,20 @@
 # The above copyright notice and this permission notice shall be included in all copies or substantial
 # portions of the Software.
 
-#!/bin/bash
-#
-#SBATCH --time=02:00:00
-#SBATCH -n 1  # this stands for number of task
+#SBATCH --time=02:30:00
+#SBATCH -n 1  # this stands for number of task/ or number of nodes being used
 #SBATCH --cpus-per-task=20    #6
 #SBATCH --mem=62000
 #SBATCH --partition=general  # Queue names you can submit to
 #SBATCH --qos=regular       #<regular,serial,test,long or xlong>
 
-# #SBATCH -J s0709test
 # if you want to syn the logs to the analysis folder,
 # need to create the log folder first
 # the sublist is shared across launch.sh and the slurm
 
 basedir="/scratch/tlei/VOTCLOC"
 BIDS_DIR="/scratch/tlei/VOTCLOC/BIDS"
-
+CODE_DIR="${basedir}/code"
 OUTPUT_DIR=derivatives/fmriprep-${analysis_name}
 LOG_DIR=$BIDS_DIR/$OUTPUT_DIR/logs
 
@@ -64,9 +62,10 @@ export SINGULARITYENV_TEMPLATEFLOW_HOME="/templateflow"
 #                  -B /scratch/glerma:/scratch/glerma \
 SINGULARITY_CMD="unset PYTHONPATH && singularity run --cleanenv --no-home --writable-tmpfs\
                  -B $BIDS_DIR:/base \
+                 -B $CODE_DIR:/code \
                  -B ${TEMPLATEFLOW_HOST_HOME}:${SINGULARITYENV_TEMPLATEFLOW_HOME}\
                  -B ${FMRIPREP_HOST_CACHE}:/work \
-                 /scratch/tlei/containers/fmriprep_unstable.sif "
+                 /scratch/tlei/containers/fmriprep_25.0.0.sif "
 
                  # If you already have FS run, add this line to find it
                  # -B ${LOCAL_FREESURFER_DIR}:/fsdir \
@@ -75,11 +74,16 @@ SINGULARITY_CMD="unset PYTHONPATH && singularity run --cleanenv --no-home --writ
 
 # Parse the participants.tsv file and extract one subject ID from the
 # line corresponding to this SLURM task.
+# this is getting the sub from \t operator
+# subject=$(
+#   sed -n -E "$((${SLURM_ARRAY_TASK_ID} + 1))s/^([0-9]+)[[:space:]]+([0-9]+)$/\1/p" \
+#   ${basedir}/code/${sublist}
+# )
+# this is get the sub from , operator
 subject=$(
-  sed -n -E "$((${SLURM_ARRAY_TASK_ID} + 1))s/^([0-9]+)[[:space:]]+([0-9]+)$/\1/p" \
-  ${basedir}/code/${sublist}
+  sed -n -E "$((${SLURM_ARRAY_TASK_ID} + 1))s/^([^,]+),.*$/\1/p" \
+    "${basedir}/code/${sublist}"
 )
-
 # Compose the command line
 cmd="module load Apptainer/1.2.4 &&  \
      ${SINGULARITY_CMD} \
@@ -93,6 +97,7 @@ cmd="module load Apptainer/1.2.4 &&  \
       --skip-bids-validation \
       --fs-subjects-dir /base/derivatives/freesurfer \
       --stop-on-first-crash \
+      --bids-filter-file /code/fmriprep/bids_filter_sub_${subject}.json \
       --output-spaces T1w func MNI152NLin2009cAsym fsnative fsaverage "
 
 # Add these two lines if you had freesurfer run already

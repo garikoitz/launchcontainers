@@ -17,9 +17,10 @@ unset sublist
 unset slurm_log_dir
 
 STUDY="/scratch/tlei/VOTCLOC"
-code_dir="/scratch/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/03_fmriprep"
+code_dir="/scratch/tlei/soft/launchcontainers/MR_pipelines/03FMRI_fmriprep"
 sublist="subseslist.txt"
-analysis_name='beforeMar05_US'
+analysis_name='afterMay'
+job_name="run0105"
 
 slurm_log_dir=$STUDY/dipc_fmriprep/$analysis_name_$(date +"%Y-%m-%d")
 mkdir -p ${slurm_log_dir}
@@ -39,7 +40,7 @@ now=$(date +"%H-%M")
 cmd="sbatch
     --export=ALL,analysis_name="${analysis_name}",slurm_log_dir="${slurm_log_dir}",sublist="${sublist}"\
     --array=1-${DATA_LINES} \
-    -J "run0709test"
+    -J "${job_name}"
     -o "$slurm_log_dir/%J_%x-%A-%a_${now}.o" \
     -e "$slurm_log_dir/%J_%x-%A-%a_${now}.e" \
     ${code_dir}/run_dipc/fmriprep.slurm "
