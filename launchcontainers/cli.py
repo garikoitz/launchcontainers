@@ -28,6 +28,7 @@ from launchcontainers import do_prepare
 from launchcontainers import do_qc
 from launchcontainers.other_cli_tool import copy_configs
 from launchcontainers.other_cli_tool import create_bids
+from launchcontainers.other_cli_tool import gen_subses
 from launchcontainers.other_cli_tool.zip_example_config import do_zip_configs
 logger = logging.getLogger('Launchcontainers')
 
@@ -183,6 +184,32 @@ def get_parser():
 
     zip_configs.set_defaults(func=lambda args: do_zip_configs())
 
+    # ------------------------
+    # lc gen_subseslist
+    # ------------------------
+    gen_subses = subparsers.add_parser(
+        'gen_subses',
+        help='generate subseslist on a given directory',
+    )
+    gen_subses.add_argument(
+        '-b',
+        '--basedir',
+        type=str,
+        help='Path to work, the directory contains sub and ses',
+    )
+    gen_subses.add_argument(
+        '-n',
+        '--name',
+        type=str,
+        help='output filename',
+    )    
+    gen_subses.add_argument(
+        '-o',
+        '--output_dir',
+        type=str,
+        default='',
+        help='Path to output the subses list, default is equal to basedir',
+    )
     # Other optional arguements for lc
 
     parser.add_argument(
@@ -225,6 +252,7 @@ def main():
     logging_fname = f'lc_logger_{timestamp}'
     # set up the logger for prepare mode
     config_logger.setup_logger(quiet, verbose, debug, logging_dir, logging_fname)
+    
     if parse_namespace.mode == 'prepare':
         print('\n....running prepare mode\n')
         do_prepare.main(parse_namespace)
@@ -240,6 +268,8 @@ def main():
     if parse_namespace.mode == 'copy_configs':
         copy_configs.main()
 
+    if parse_namespace.mode == 'gen_subses':
+        gen_subses.main()
     if parse_namespace.mode == 'zip_configs':
         # launch the zip config function
         parse_namespace.func(parse_namespace)
