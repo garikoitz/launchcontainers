@@ -27,6 +27,7 @@
 basedir="/scratch/tlei/VOTCLOC"
 BIDS_DIR="/scratch/tlei/VOTCLOC/BIDS"
 CODE_DIR="${basedir}/code"
+echo $CODE_DIR
 OUTPUT_DIR=derivatives/fmriprep-${analysis_name}
 LOG_DIR=$BIDS_DIR/$OUTPUT_DIR/logs
 
@@ -97,7 +98,7 @@ cmd="module load Apptainer/1.2.4 &&  \
       --skip-bids-validation \
       --fs-subjects-dir /base/derivatives/freesurfer \
       --stop-on-first-crash \
-      --bids-filter-file /code/fmriprep/bids_filter_sub_${subject}.json \
+      --bids-filter-file /code/fmriprep/bids_filter_sub-${subject}.json \
       --output-spaces T1w func MNI152NLin2009cAsym fsnative fsaverage "
 
 # Add these two lines if you had freesurfer run already
