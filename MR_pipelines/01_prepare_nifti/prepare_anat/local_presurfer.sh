@@ -16,6 +16,8 @@ step=presurfer
 basedir=/bcbl/home/public/Gari/VOTCLOC/main_exp
 bids_dirname=BIDS
 
+# toolbox path that stores all the matlab toolboxes
+tbPath=/export/home/tlei/tlei/toolboxes
 src_dir=$basedir/raw_nifti
 analysis_name=check_sub0709
 outputdir=${basedir}/${bids_dirname}
@@ -53,6 +55,7 @@ do
     log_file="${logdir}/presurfer_${sub}_${ses}_${now}.o"
     error_file="${logdir}/presurfer_${sub}_${ses}_${now}.e"
 	# Export variables for use in the called script
+    export tbPath
     export src_dir
     export outputdir
     export sub
