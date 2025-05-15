@@ -16,14 +16,16 @@ step=presurfer
 basedir=/bcbl/home/public/Gari/VOTCLOC/main_exp
 bids_dirname=BIDS
 
+# toolbox path that stores all the matlab toolboxes
+tbPath=/export/home/tlei/tlei/toolboxes
 src_dir=$basedir/raw_nifti
-analysis_name=check_sub0709
+analysis_name=run_S0110S0504
 outputdir=${basedir}/${bids_dirname}
 force=false # if overwrite exsting file
 
 codedir=$basedir/code/01_prepare_nifti
 subseslist_path=$codedir/subseslist_presurfer.txt
-script_dir=/export/home/tlei/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/01_prepare_nifti/prepare_anat
+script_dir=/export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/01_prepare_nifti/prepare_anat
 logdir=${outputdir}/log_${step}/${analysis_name}_$(date +"%Y-%m-%d")
 echo "The logdir is $logdir"
 echo "The outputdir is $outputdir"
@@ -34,7 +36,7 @@ echo "reading the subses"
 # Initialize a line counter
 line_number=0
 # Read the file line by line
-while IFS=$'\t' read -r sub ses
+while IFS=',' read -r sub ses
 do
     echo "line number is $line_number sub is $sub ses is $ses"
     # Increment line counter
@@ -45,14 +47,12 @@ do
         continue
     fi
 
-	echo this is line number $line_number
-	echo "### CONVERTING TO NIFTI OF SUBJECT: $sub $ses SESSION ###"
-
     # Define the name of logs
     now=$(date +"%H;%M")
     log_file="${logdir}/presurfer_${sub}_${ses}_${now}.o"
     error_file="${logdir}/presurfer_${sub}_${ses}_${now}.e"
 	# Export variables for use in the called script
+    export tbPath
     export src_dir
     export outputdir
     export sub

@@ -1,4 +1,4 @@
-function nordic_fmri(src_dir, output_dir, sub, ses, nordic_scans_end, doNORDIC, dotsnr, force)
+function nordic_fmri(tbPath, src_dir, output_dir, sub, ses, nordic_scans_end, doNORDIC, dotsnr, force)
 % MIT License
 
 % Copyright (c) 2024-2025 Yongning Lei
@@ -16,7 +16,7 @@ function nordic_fmri(src_dir, output_dir, sub, ses, nordic_scans_end, doNORDIC, 
     % module load fsl
     % module load afni
     % then do
-    tbUse BCBLViennaSoft;
+    % tbUse BCBLViennaSoft;
     % this step is to add pressurfer and NORDIC_RAW into the path so that you
     % can use it
 
@@ -38,7 +38,9 @@ function nordic_fmri(src_dir, output_dir, sub, ses, nordic_scans_end, doNORDIC, 
     %{
     %%%%%%%%%% Note to run the code currently only on BCBL local
         %%%%%%%%%% copy below to the MATLAB command line
-    %%%%%%%%%% remember to edi the src dir and subseslist
+    %%%%%%%%%% remember to edit the src dir and subseslist
+    # toolbox path that stores all the matlab toolboxes
+    tbPath=fullfile('/export/home/tlei/tlei/toolboxes');
     src_dir = fullfile('/bcbl/home/public/Gari/VOTCLOC/main_exp','raw_nifti');
     output_dir = fullfile('/bcbl/home/public/Gari/VOTCLOC/main_exp','BIDS');
     if ~exist(output_dir, 'dir')
@@ -63,7 +65,7 @@ function nordic_fmri(src_dir, output_dir, sub, ses, nordic_scans_end, doNORDIC, 
         ses=sprintf('%02d',ses);
      end
 
-     nordic_fmri(src_dir, output_dir, sub, ses, nordic_scans_end, doNORDIC, dotsnr, force);
+     nordic_fmri(tbPath, src_dir, output_dir, sub, ses, nordic_scans_end, doNORDIC, dotsnr, force);
     end
     %}
     disp('################### \n')
@@ -76,8 +78,6 @@ function nordic_fmri(src_dir, output_dir, sub, ses, nordic_scans_end, doNORDIC, 
     if ~exist(output_dir, 'dir')
        mkdir(output_dir)
     end
-
-    tbPath = fullfile(bvRP,'..');
     spm12Path = fullfile(tbPath, 'spm12');
     bidsmatlab_path=fullfile(tbPath,'bids-matlab');
     addpath(bidsmatlab_path);

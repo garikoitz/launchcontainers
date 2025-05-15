@@ -1,5 +1,5 @@
 % MP2RAGE presurfer
-function  presurferT1(src_dir, output_dir, sub, ses, force)
+function  presurferT1(tbPath,src_dir, output_dir, sub, ses, force)
 % MIT License
 
 % Copyright (c) 2024-2025 Yongning Lei
@@ -28,7 +28,6 @@ function  presurferT1(src_dir, output_dir, sub, ses, force)
     end
     %}
     %% general loading process
-    tbPath = fullfile(bvRP,'..');
     spm12Path = fullfile(tbPath, 'spm12');
     bidsmatlab_path=fullfile(tbPath,'bids-matlab');
     addpath(bidsmatlab_path);

@@ -42,11 +42,12 @@ module load matlab/R2021B
     echo "Doing PRESURFER for sub: ${sub}, and ses: ${ses}"
     matlab -nosplash -nodesktop -r "tbUse BCBLViennaSoft; \
     addpath('$codedir'); \
+    tbPath='$tbPath'; \
     src_dir='$src_dir'; \
     outputdir='$outputdir'; \
     sub='$sub'; \
     ses='$ses'; \
     force=$force; \
-    presurferT1(src_dir, outputdir, sub, ses, force); exit"
+    presurferT1(tbPath, src_dir, outputdir, sub, ses, force); exit"
 
 # done done

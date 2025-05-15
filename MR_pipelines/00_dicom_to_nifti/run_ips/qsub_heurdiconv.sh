@@ -12,21 +12,21 @@
 # The above copyright notice and this permission notice shall be included in all copies or substantial
 # portions of the Software.
 # """
-project=paperdv
-basedir=/bcbl/home/public/Gari/MINI/paper_dv
-outputdir=$basedir/BIDS
+project=votcloc
+basedir=/bcbl/home/public/Gari/VOTCLOC/main_exp
+outputdir=$basedir/raw_nifti
 dicom_dirname=dicom
 
 #### below are not going to be changed
 codedir=$basedir/code
 unset step
 step=$1 # step1 or step2
-script_dir=/export/home/tlei/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/00_dicom_to_nifti
+script_dir=/export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/00_dicom_to_nifti
 subseslist_path=$codedir/00_heudiconv/subseslist_heudiconv.txt
 heuristicfile=$codedir/00_heudiconv/heuristic_${project}.py
 sing_path=/bcbl/home/public/Gari/singularity_images/heudiconv_1.3.2.sif
 
-analysis_name=check_sub0709
+analysis_name=may_launch_25ses
 logdir=${outputdir}/log_heudiconv/${analysis_name}_$(date +"%Y-%m-%d")/${step}
 echo "The logdir is $logdir"
 echo "The outputdir is $outputdir"
@@ -36,7 +36,7 @@ echo "reading the subses"
 # Initialize a line counter
 line_number=0
 # Read the file line by line
-while IFS=$'\t' read -r sub ses; do
+while IFS=, read -r sub ses; do
     echo "line number is $line_number sub is $sub ses is $ses"
     # Increment line counter
     ((line_number++))
