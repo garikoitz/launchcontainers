@@ -18,7 +18,10 @@ unset slurm_log_dir
 
 STUDY="/scratch/tlei/VOTCLOC"
 code_dir="/scratch/tlei/soft/launchcontainers/MR_pipelines/03FMRI_fmriprep"
-sublist="subseslist.txt"
+# the subseslist here is just a subseslist name, it will look for 
+# subseslist under basedir/code/subseslist
+sublist_name="subseslist.txt"
+sublist="${STUDY}/code/$sublist_name"
 analysis_name='afterMay'
 job_name="run0105"
 
@@ -29,7 +32,7 @@ export analysis_name
 export sublist
 export slurm_log_dir
 
-TOTAL_LINES=$(wc -l < "${STUDY}/code/$sublist")
+TOTAL_LINES=$(wc -l < "$sublist")
 
 echo "Total lines is $TOTAL_LINES"
 

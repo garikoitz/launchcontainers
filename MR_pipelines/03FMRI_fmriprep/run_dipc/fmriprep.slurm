@@ -83,7 +83,7 @@ SINGULARITY_CMD="unset PYTHONPATH && singularity run --cleanenv --no-home --writ
 # this is get the sub from , operator
 subject=$(
   sed -n -E "$((${SLURM_ARRAY_TASK_ID} + 1))s/^([^,]+),.*$/\1/p" \
-    "${basedir}/code/${sublist}"
+    "${sublist}"
 )
 # Compose the command line
 cmd="module load Apptainer/1.2.4 &&  \
