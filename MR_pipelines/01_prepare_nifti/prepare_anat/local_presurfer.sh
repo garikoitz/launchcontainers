@@ -11,7 +11,6 @@
 
 # The above copyright notice and this permission notice shall be included in all copies or substantial
 # portions of the Software.
-
 step=presurfer
 basedir=/bcbl/home/public/Gari/VOTCLOC/main_exp
 bids_dirname=BIDS
@@ -24,7 +23,7 @@ outputdir=${basedir}/${bids_dirname}
 force=false # if overwrite exsting file
 
 codedir=$basedir/code/01_prepare_nifti
-subseslist_path=$codedir/subseslist_presurfer.txt
+subseslist_path=$codedir/subseslist_presurfer_23sub_may07.txt
 script_dir=/export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/01_prepare_nifti/prepare_anat
 logdir=${outputdir}/log_${step}/${analysis_name}_$(date +"%Y-%m-%d")
 echo "The logdir is $logdir"
