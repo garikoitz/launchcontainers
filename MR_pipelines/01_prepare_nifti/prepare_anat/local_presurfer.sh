@@ -18,12 +18,13 @@ bids_dirname=BIDS
 # toolbox path that stores all the matlab toolboxes
 tbPath=/export/home/tlei/tlei/toolboxes
 src_dir=$basedir/raw_nifti
-analysis_name=run_S0110S0504
+analysis_name=run_S0810
 outputdir=${basedir}/${bids_dirname}
 force=false # if overwrite exsting file
 
-codedir=$basedir/code/01_prepare_nifti
-subseslist_path=$codedir/subseslist_presurfer_23sub_may07.txt
+codedir=$basedir/code
+subseslist_name=$1
+subseslist_path=$codedir/$subseslist_name
 script_dir=/export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/01_prepare_nifti/prepare_anat
 logdir=${outputdir}/log_${step}/${analysis_name}_$(date +"%Y-%m-%d")
 echo "The logdir is $logdir"

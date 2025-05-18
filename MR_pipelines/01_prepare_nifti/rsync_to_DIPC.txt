@@ -1,0 +1,1 @@
+rsync -avzP -h /home/tlei/public/Gari/VOTCLOC/main_exp/BIDS/sub-0* tlei@hyperion-01.sw.ehu.es:/scratch/tlei/VOTCLOC/BIDS

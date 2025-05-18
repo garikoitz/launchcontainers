@@ -13,10 +13,9 @@
 # portions of the Software.
 # """
 #### user customize
-
-project=paperdv
-basedir=/bcbl/home/public/Gari/MINI/paper_dv
-outputdir=$basedir/BIDS
+project=votcloc
+basedir=/bcbl/home/public/Gari/VOTCLOC/main_exp
+outputdir=$basedir/raw_nifti
 dicom_dirname=dicom
 
 #### below are not going to be changed
@@ -24,16 +23,16 @@ codedir=$basedir/code
 unset step
 step=$1 # step1 or step2
 script_dir=/export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/00_dicom_to_nifti
-subseslist_path=$codedir/00_heudiconv/subseslist_heudiconv.txt
-heuristicfile=$codedir/00_heudiconv/heuristic_${project}.py
+subseslist_name=$2 #$codedir/00_heudiconv/subseslist_heudiconv.txt
+subseslist_path=$codedir/$2
+heuristicfile=$script_dir/heuristic/heuristic_${project}.py
 sing_path=/bcbl/home/public/Gari/singularity_images/heudiconv_1.3.2.sif
 
-analysis_name=test_1sub_paperdv
+analysis_name=$3 #may_launch_25ses
 logdir=${outputdir}/log_heudiconv/${analysis_name}_$(date +"%Y-%m-%d")/${step}
 echo "The logdir is $logdir"
 echo "The outputdir is $outputdir"
 mkdir -p $logdir
-
 
 echo "reading the subses"
 # Initialize a line counter
@@ -69,7 +68,9 @@ while IFS=',' read -r sub ses; do
     # Run the command in the background
     echo $cmd
     eval $cmd > ${log_file} 2> ${error_file}
-
+	#when finish should copy the subseslist into the analysis dir
+	#echo "Coping the log files to the subsesdir"
+	#rsync -av $subseslist_path $outputdir/sub-${sub}/ses-${ses}
 done < "$subseslist_path"
 
 cp "$0" "$logdir"

@@ -54,7 +54,8 @@ json_dir="$baseP/code/${step}_jsons"
 # subseslist dir:
 script_dir="/export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/04FMRI_RET"
 code_dir=$baseP/code
-subses_list_dir=$code_dir/subseslist_may04.txt
+subseslist_name=$1 #$codedir/00_heudiconv/subseslist_heudiconv.txt
+subseslist_path=$code_dir/$1
 sif_path="/bcbl/home/public/Gari/singularity_images/${step}_${version}.sif"
 
 # log dir
@@ -65,7 +66,7 @@ mkdir -p "$HOME_DIR"
 
 line_num=1
 # Read subseslist.txt (Skipping header line)
-tail -n +2 $subses_list_dir | while IFS=',' read -r sub ses _; do
+tail -n +2 $subseslist_path | while IFS=',' read -r sub ses _; do
     ((line_num++))
 
     now=$(date +"%H-%M")
@@ -91,4 +92,9 @@ tail -n +2 $subses_list_dir | while IFS=',' read -r sub ses _; do
     cmd="bash $script_dir/run_local/${step}_local.sh" >"$log_file" 2>"$error_file"
     echo "###***#*#*#*##*$cmd"
     eval $cmd
+
 done
+
+# #when finish should copy the subseslist into the analysis dir
+# echo "Coping the log files to the logdir"
+# rsync -av $subseslist_path $LOG_DIR

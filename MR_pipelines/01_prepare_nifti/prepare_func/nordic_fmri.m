@@ -11,64 +11,7 @@ function nordic_fmri(tbPath, src_dir, output_dir, sub, ses, nordic_scans_end, do
 
 % The above copyright notice and this permission notice shall be included in all copies or substantial
 % portions of the Software.
-
-    % ADD FSL TO THE PATH BEFORE LAUNCHING MATLAB
-    % module load fsl
-    % module load afni
-    % then do
-    % tbUse BCBLViennaSoft;
-    % this step is to add pressurfer and NORDIC_RAW into the path so that you
-    % can use it
-
-
-    %if system('fslroi')==127
-    %    error("didn't load fsl");
-    %end
-
-    %if system('3dTstat')==127
-    %    error("didn't load afni");
-    %end
-    %%%%%%%%%% EDIT THIS %%%%%%%%%%
-    %clc;
-    %clear all;
-    % VIENNA
-    % baseP = '/ceph/mri.meduniwien.ac.at/projects/physics/fmri/data/bcblvie22/BIDS';
-
-    % BCBL
-    %{
-    %%%%%%%%%% Note to run the code currently only on BCBL local
-        %%%%%%%%%% copy below to the MATLAB command line
-    %%%%%%%%%% remember to edit the src dir and subseslist
-    # toolbox path that stores all the matlab toolboxes
-    tbPath=fullfile('/export/home/tlei/tlei/toolboxes');
-    src_dir = fullfile('/bcbl/home/public/Gari/VOTCLOC/main_exp','raw_nifti');
-    output_dir = fullfile('/bcbl/home/public/Gari/VOTCLOC/main_exp','BIDS');
-    if ~exist(output_dir, 'dir')
-       mkdir(output_dir)
-    end
-
-    nordic_scans_end = 1;
-    force = false;
-    doNORDIC = true;
-    dotsnr = false;
-    %to run it
-    code_dir='/bcbl/home/public/Gari/VOTCLOC/main_exp/code/01_prepare_nifti';
-    subses=importdata(fullfile(code_dir,'subseslist_nordic.txt'));
-
-    for I=1:length(subses.data)
-     sub=subses.data(I,1);
-     ses=subses.data(I,2);
-     if ~ isa(sub,'str')
-        sub=sprintf('%02d',sub);
-     end
-     if ~ isa(ses,'str')
-        ses=sprintf('%02d',ses);
-     end
-
-     nordic_fmri(tbPath, src_dir, output_dir, sub, ses, nordic_scans_end, doNORDIC, dotsnr, force);
-    end
-    %}
-    disp('################### \n')
+    disp('################### \n');
     fprintf('this is sub, %s \n', sub);
     fprintf('this is ses, %s \n', ses);
     fprintf('%s \n',class(sub));
@@ -97,7 +40,6 @@ function nordic_fmri(tbPath, src_dir, output_dir, sub, ses, nordic_scans_end, do
     out_sesP = fullfile(output_dir, sub, ses, 'func');
     % change permission to src_sesP, output_dir all and out_sesP
     system(['chmod -R 777 ', src_sesP]);
-    system(['chmod -R 777 ', out_sesP]);
     fprintf('The input dir is: %s, and the output dir is %s \n', src_sesP, out_sesP);
     if ~exist(out_sesP, 'dir')
        mkdir(out_sesP);
