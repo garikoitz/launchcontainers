@@ -13,10 +13,10 @@
 # The above copyright notice and this permission notice shall be included in all copies or substantial
 # portions of the Software.
 
-#SBATCH --time=02:30:00
+#SBATCH --time=09:30:00
 #SBATCH -n 1  # this stands for number of task/ or number of nodes being used
 #SBATCH --cpus-per-task=20    #6
-#SBATCH --mem=62000
+#SBATCH --mem=72000
 #SBATCH --partition=general  # Queue names you can submit to
 #SBATCH --qos=regular       #<regular,serial,test,long or xlong>
 
@@ -94,7 +94,7 @@ cmd="module load Apptainer/1.2.4 &&  \
       --participant-label $subject \
       -w /work/ -vv \
       --fs-license-file /base/.license \
-      --omp-nthreads 20 --nthreads 20 --mem_mb 60000 \
+      --omp-nthreads 20 --nthreads 20 --mem_mb 50000 \
       --skip-bids-validation \
       --fs-subjects-dir /base/derivatives/freesurfer \
       --stop-on-first-crash \
