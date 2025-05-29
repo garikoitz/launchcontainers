@@ -1,33 +1,37 @@
-# """
-# MIT License
+# # MIT License
 
-# Copyright (c) 2024-2025 Yongning Lei
+# Copyright (c) 2020-2023 Garikoitz Lerma-Usabiaga
+# Copyright (c) 2022-2023 Yongning Lei
+# Copyright (c) 2023 David Linhardt
 
-# Permission is hereby granted, free of charge, to any person obtaining a copy of this software
-# and associated documentation files (the "Software"), to deal in the Software without restriction,
-# including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,
-# subject to the following conditions:
+# Permission is hereby granted, free of charge,
+# to any person obtaining a copy of this software and associated documentation files
+# (the "Software"), to deal in the Software without restriction,
+# including without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to permit
+# persons to whom the Software is furnished to do so, subject to the following conditions:
 
-# The above copyright notice and this permission notice shall be included in all copies or substantial
-# portions of the Software.
+# The above copyright notice and this permission notice shall be included in all copies
+# or substantial portions of the Software.
 basedir="/bcbl/home/public/Gari/VOTCLOC/main_exp"
-analysis_name="new_sing_and_fmriprep_options"
+analysis_name="sub10"
+CODE_DIR="${basedir}/code"
 BIDS_DIR="${basedir}/BIDS"
-DERIVS_DIR="${basedir}/BIDS/derivatives/fmriprep/analysis-${analysis_name}"
+OUTPUT_DIR=derivatives/fmriprep-${analysis_name}
+DERIVS_DIR="${BIDS_DIR}/$OUTPUT_DIR"
 
-# if BIDS is BIDS. then HOMES=$basedir
-# otherwise, it is HOMES=$BIDS_DIR
-export HOMES=$basedir
+# if BIDS is BIDS. then cache_dir=$basedir
+# otherwise, it is cache_dir=$BIDS_DIR
+export cache_dir=$basedir/fmriprep_tmps_$analysis_name
 LOG_DIR=$DERIVS_DIR/logs
 
 
 #LOCAL_FREESURFER_DIR="/dipc/tlei/.license"
 
 # Prepare some writeable bind-mount points.
-TEMPLATEFLOW_HOST_HOME=$HOMES/.cache/templateflow
-FMRIPREP_HOST_CACHE=$HOMES/.cache/fmriprep
-FMRIPREP_WORK_DIR=$HOMES/.work/fmriprep
+TEMPLATEFLOW_HOST_HOME=$cache_dir/.cache/templateflow
+FMRIPREP_HOST_CACHE=$cache_dir/.cache/fmriprep
+FMRIPREP_WORK_DIR=$cache_dir/.work/fmriprep
 mkdir -p ${TEMPLATEFLOW_HOST_HOME}
 mkdir -p ${FMRIPREP_HOST_CACHE}
 mkdir -p ${FMRIPREP_WORK_DIR}
@@ -53,10 +57,11 @@ SINGULARITY_CMD="unset PYTHONPATH && singularity run --cleanenv --no-home \
                      --containall --writable-tmpfs \
                  -B /bcbl:/bcbl \
                  -B /export:/export \
-                 -B $basedir:/base \
+                 -B $BIDS_DIR:/base \
+                 -B $CODE_DIR:/code \
                  -B ${TEMPLATEFLOW_HOST_HOME}:${SINGULARITYENV_TEMPLATEFLOW_HOME}\
                  -B ${FMRIPREP_HOST_CACHE}:/work \
-                 /bcbl/home/public/Gari/containers/fmriprep_24.1.1.sif"
+                 /bcbl/home/public/Gari/containers/fmriprep_25.0.0.sif"
 
                  # If you already have FS run, add this line to find it
                  # -B ${LOCAL_FREESURFER_DIR}:/fsdir \
@@ -68,22 +73,20 @@ subject=$1
 now=$(date +"%Y-%m-%dT%H:%M")
 cmd="module load apptainer/latest &&  \
      ${SINGULARITY_CMD} \
-     ${BIDS_DIR} \
-     ${DERIVS_DIR} \
+     /base \
+     /base/${OUTPUT_DIR} \
      participant --participant-label $subject \
      -w /work/ -vv \
      --fs-license-file ${SINGULARITYENV_FS_LICENSE} \
-     --omp-nthreads 10 --nthreads 20 --mem_mb 60000 \
+     --omp-nthreads 10 --nthreads 30 --mem_mb 80000 \
      --skip-bids-validation \
      --output-spaces T1w func MNI152NLin2009cAsym fsnative fsaverage \
      --notrack \
-     --bids-filter-file /base/code/bids_filter.json \
-     --force-no-bbr \
-     --level minimal \
      --stop-on-first-crash \
-     --fs-subjects-dir /base/BIDS/derivatives/fmriprep/analysis-beforeFebST05/sourcedata/freesurfer \
+
      > ${LOG_DIR}/${analysis_name}_sub-${subject}_${now}.o 2> ${LOG_DIR}/${analysis_name}_sub-${subject}_${now}.e "
 
+#     --bids-filter-file /base/code/bids_filter.json \
      #--fs-subjects-dir /base/BIDS/derivatives/freesurfer/analysis-${analysis_name} "
 # Add these two lines if you had freesurfer run already
 #  --bids-filter-file /base/code/bids_filter_okazaki.json \
@@ -94,8 +97,9 @@ cmd="module load apptainer/latest &&  \
 #     --project-goodvoxels \
 #     --notrack \
 #     --dummy-scans 6 \
+# --fs-subjects-dir /base/BIDS/derivatives/fmriprep/analysis-beforeFebST05/sourcedata/freesurfer \
 # --fs-subjects-dir /base/derivatives/fmriprep/analysis-okazaki_correctfmap/sourcedata/freesurfer
 # Setup done, run the command
 echo Running subject ${subject}
 echo Commandline: $cmd
-#eval $cmd
+eval $cmd

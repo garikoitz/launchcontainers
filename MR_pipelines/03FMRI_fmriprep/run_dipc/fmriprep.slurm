@@ -31,15 +31,15 @@ echo $CODE_DIR
 OUTPUT_DIR=derivatives/fmriprep-${analysis_name}
 LOG_DIR=$BIDS_DIR/$OUTPUT_DIR/logs
 
-export HOMES=/scratch/tlei/fmriprep_tmps_$analysis_name
+export cache_dir=/scratch/tlei/fmriprep_tmps_$analysis_name
 mkdir -p ${LOG_DIR}
 
 #LOCAL_FREESURFER_DIR="/dipc/tlei/.license"
 
 # Prepare some writeable bind-mount points.
-TEMPLATEFLOW_HOST_HOME=$HOMES/.cache/templateflow
-FMRIPREP_HOST_CACHE=$HOMES/.cache/fmriprep
-FMRIPREP_WORK_DIR=$HOMES/.work/fmriprep
+TEMPLATEFLOW_HOST_HOME=$cache_dir/.cache/templateflow
+FMRIPREP_HOST_CACHE=$cache_dir/.cache/fmriprep
+FMRIPREP_WORK_DIR=$cache_dir/.work/fmriprep
 mkdir -p ${TEMPLATEFLOW_HOST_HOME}
 mkdir -p ${FMRIPREP_HOST_CACHE}
 mkdir -p ${FMRIPREP_WORK_DIR}
@@ -94,7 +94,7 @@ cmd="module load Apptainer/1.2.4 &&  \
       --participant-label $subject \
       -w /work/ -vv \
       --fs-license-file /base/.license \
-      --omp-nthreads 20 --nthreads 20 --mem_mb 50000 \
+      --omp-nthreads 10 --nthreads 20 --mem_mb 50000 \
       --skip-bids-validation \
       --fs-subjects-dir /base/derivatives/freesurfer \
       --stop-on-first-crash \

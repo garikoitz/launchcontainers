@@ -1,0 +1,10 @@
+for the nifti prepare,
+
+first we can run nordic
+
+after nordic we can run fmap
+
+in the same time run presurfer
+
+presurfer------}-----move data to dipc or run fmriprep
+nnordic-->fmap}
