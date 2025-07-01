@@ -206,13 +206,19 @@ def main():
     # for bcbl /bcbl/home/public/Gari/VOTCLOC/main_exp
     # for dipc it is /scratch/tlei/VOTCLOC
     basedir = '/scratch/tlei/VOTCLOC'
-    subseslist_fpath = path.join(basedir, 'code', 'subseslist_may04.txt')
+    subseslist_fpath = path.join(basedir, 'code', 'subseslist_jun16.txt')
     subseslist = pd.read_csv(subseslist_fpath, sep=',', header=0, dtype='str')
     bids_folder_name = 'BIDS'
     force = True
+    ### user note
+    # this code is used to 1. create the folder structure under BIDS
+    # for every new sub and session, we need to set copied_mat to False, so that it
+    # will create the BIDS/sourcedata/vitadisplog/sub-/ses- folder structure 
     # first, need to set copied_mat to False, to create the vistadisplog foler, \
     # the vistadisplog folder will point to sourcedata/sub/ses
-    # then set copied_mat to True, and then run link_vistadisplog
+    # When you have a complete BIDS/sourcedata/vitadisplog folder structure
+    # set copied_mat to True, the program will run link_vistadisplog
+
     copied_mat = True
     task = 'ret'
     sourcedata_dir = path.join(basedir, bids_folder_name , 'sourcedata')

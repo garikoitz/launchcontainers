@@ -36,7 +36,7 @@ def gen_batch_json(subseslist_path, template_json, output_dir, step, tasks, forc
                 config = template.copy()
                 config['subjects'] = f'{sub}'
                 config['sessions'] = f'{ses}'
-                config['tasks'] = ['retRW', 'retFF', 'retCB']
+                config['tasks'] = ['all']
                 # Save new JSON file
                 json_filename = f'{output_dir}/all_sub-{sub}_ses-{ses}.json'
                 with open(json_filename, 'w') as f:
@@ -90,12 +90,14 @@ if __name__ == '__main__':
     code_dir = os.path.join(basedir, 'code')
     # prfprepare #prfanalyze-vista #prfresult # 'prfprepare', 'prfanalyze-vista',
     steps = ['prfprepare', 'prfanalyze-vista', 'prfresult']
-    tasks = ['retRW', 'retFF', 'retCB'] # ['retfixRW', 'retfixFF', 'retfixRWblock01','retfixRWblock02']
+    # if the session is the word-center session, use the list with retfix
+    tasks = ['retRW', 'retFF', 'retCB', 'retfixRW', 'retfixFF', 'retfixRWblock', 'retfixRWblock01','retfixRWblock02'] 
+    #['retRW', 'retFF', 'retCB'] # ['retfixRW', 'retfixFF', 'retfixRWblock', 'retfixRWblock01','retfixRWblock02']
     force = True
 
     for step in steps:
 
-        subseslist_path = os.path.join(code_dir, 'subseslist_may04.txt')
+        subseslist_path = os.path.join(code_dir, 'subseslist_jun16.txt')
         output_dir = os.path.join(code_dir , f'{step}_jsons')
 
         if not os.path.exists(output_dir):

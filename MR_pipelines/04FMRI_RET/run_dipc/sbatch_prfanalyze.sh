@@ -25,44 +25,28 @@ license_path="$baseP/BIDS/.license"
 
 ##### For each container
 #####
-#step="prfprepare"
-#version="1.5.0"
-#qos="regular" # or test or regular
-#mem="16G"
-#cpus="6"
-#time="00:20:00"
-#task="all"
 
-# # # for prfanalyze-vista:
+### for prfanalyze-vista:
 step="prfanalyze-vista"
 version='2.2.1'
 qos="regular" # regular or test
 mem="32G"
 cpus="20"
-time="10:00:00" #time="00:10:00" 10:00:00
+time="12:00:00" #time="00:10:00" 10:00:00
 task="retFF" # retCB retRW retFF 
-# retfixRW retfixFF retfixRwblock01 retfixRWblock02
-
-
-# # # for prfresult:
-# step="prfresult"
-# version="0.1.1"
-# qos="test" # regular or test
-# mem="16G"
-# cpus="10"
-# time="00:10:00" #time="00:10:00" 10:00:00
-# task="all" # retCB retRW retFF
+# retfixRW retfixFF retfixRWblock01 retfixRWblock02
 
 # json input
 json_dir="$baseP/code/${step}_jsons"
 # subseslist dir:
 script_dir="/scratch/tlei/soft/launchcontainers/MR_pipelines/04FMRI_RET"
 code_dir=$baseP/code
-subses_list_dir=$code_dir/subseslist_jun16.txt
+analysis_name='missingFF'
+subses_list_dir=$code_dir/subseslist_${analysis_name}.txt
 sif_path="/scratch/tlei/containers/${step}_${version}.sif"
 
 # log dir
-LOG_DIR="$baseP/dipc_${step}_logs/hyperion_8ses_$(date +"%Y-%m-%d")"
+LOG_DIR="$baseP/dipc_${step}_logs/${analysis_name}_$(date +"%Y-%m-%d")"
 # Ensure directories exist
 mkdir -p "$LOG_DIR"
 mkdir -p "$HOME_DIR"

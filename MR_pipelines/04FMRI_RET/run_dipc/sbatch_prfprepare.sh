@@ -25,33 +25,13 @@ license_path="$baseP/BIDS/.license"
 
 ##### For each container
 #####
-#step="prfprepare"
-#version="1.5.0"
-#qos="regular" # or test or regular
-#mem="16G"
-#cpus="6"
-#time="00:20:00"
-#task="all"
-
-# # # for prfanalyze-vista:
-step="prfanalyze-vista"
-version='2.2.1'
-qos="regular" # regular or test
-mem="32G"
-cpus="20"
-time="10:00:00" #time="00:10:00" 10:00:00
-task="retFF" # retCB retRW retFF 
-# retfixRW retfixFF retfixRwblock01 retfixRWblock02
-
-
-# # # for prfresult:
-# step="prfresult"
-# version="0.1.1"
-# qos="test" # regular or test
-# mem="16G"
-# cpus="10"
-# time="00:10:00" #time="00:10:00" 10:00:00
-# task="all" # retCB retRW retFF
+step="prfprepare"
+version="1.5.0"
+qos="regular" # or test or regular
+mem="16G"
+cpus="6"
+time="00:20:00"
+task="all"
 
 # json input
 json_dir="$baseP/code/${step}_jsons"
@@ -62,7 +42,7 @@ subses_list_dir=$code_dir/subseslist_jun16.txt
 sif_path="/scratch/tlei/containers/${step}_${version}.sif"
 
 # log dir
-LOG_DIR="$baseP/dipc_${step}_logs/hyperion_8ses_$(date +"%Y-%m-%d")"
+LOG_DIR="$baseP/dipc_${step}_logs/sub-02_2ses_$(date +"%Y-%m-%d")"
 # Ensure directories exist
 mkdir -p "$LOG_DIR"
 mkdir -p "$HOME_DIR"
