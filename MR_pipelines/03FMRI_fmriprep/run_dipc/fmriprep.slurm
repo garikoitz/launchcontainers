@@ -66,7 +66,7 @@ SINGULARITY_CMD="unset PYTHONPATH && singularity run --cleanenv --no-home --writ
                  -B $CODE_DIR:/code \
                  -B ${TEMPLATEFLOW_HOST_HOME}:${SINGULARITYENV_TEMPLATEFLOW_HOME}\
                  -B ${FMRIPREP_HOST_CACHE}:/work \
-                 /scratch/tlei/containers/fmriprep_25.0.0.sif "
+                 /scratch/tlei/containers/fmriprep_25.1.3.sif "
 
                  # If you already have FS run, add this line to find it
                  # -B ${LOCAL_FREESURFER_DIR}:/fsdir \
@@ -98,6 +98,7 @@ cmd="module load Apptainer/1.2.4 &&  \
       --skip-bids-validation \
       --fs-subjects-dir /base/derivatives/freesurfer \
       --stop-on-first-crash \
+      --dummy-scans 5 \
       --bids-filter-file /code/fmriprep/bids_filter_sub-${subject}.json \
       --output-spaces T1w func MNI152NLin2009cAsym fsnative fsaverage "
 

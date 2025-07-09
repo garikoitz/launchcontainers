@@ -2,9 +2,15 @@ fmriprep usually we run it on DIPC
 
 move the BIDS files there, as well as check if scans.tsv is there in the BIDS folder
 
-launch it on DIPC cluster
+launch it on DIPC cluster using run_dipc/launch_fmriprep_slurm.sh
 
-note: TODO: needs to put the code dir that stores subseslist into VOTCLOC/code/03_fmriprep
+Pass the correct subseslist there, it will be under base/code
+
+Prepare the bids_filter.json under base/code/fmriprep with subject id, so that you can select sessions
+
+note: if make the subseslist, there needs to have a new line of empty content so that it can 
+get all the lines with sub and ses info, needs to fix this
+
 
 note: the minimal is not working
 
