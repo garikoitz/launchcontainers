@@ -212,20 +212,20 @@ def main():
     force = True
     ### user note
     # this code is used to 1. create the folder structure under BIDS
-    # for every new sub and session, we need to set copied_mat to False, so that it
+    # for every new sub and session, we need to set start_linking to False, so that it
     # will create the BIDS/sourcedata/vitadisplog/sub-/ses- folder structure 
-    # first, need to set copied_mat to False, to create the vistadisplog foler, \
+    # first, need to set start_linking to False, to create the vistadisplog foler, \
     # the vistadisplog folder will point to sourcedata/sub/ses
     # When you have a complete BIDS/sourcedata/vitadisplog folder structure
-    # set copied_mat to True, the program will run link_vistadisplog
+    # set start_linking to True, the program will run link_vistadisplog
 
-    copied_mat = True
+    start_linking = True
     task = 'ret'
     sourcedata_dir = path.join(basedir, bids_folder_name , 'sourcedata')
     for idx, row in subseslist.iterrows():
         sub = row['sub']
         ses = row['ses']
-        if not copied_mat:
+        if not start_linking:
             prepare_prf(basedir, sub, ses, bids_folder_name, force)
         else:
             link_vistadisplog(sourcedata_dir, sub, ses, force, task)

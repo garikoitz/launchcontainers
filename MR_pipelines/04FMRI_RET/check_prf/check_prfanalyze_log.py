@@ -69,7 +69,7 @@ def check_prfanalyze_logs(folder_path):
                 print(f"\n{out_file} has {count} lines starting with 'Writing the estimates' (expected 6).")
 
 # Example usage:
-folder = '/scratch/tlei/VOTCLOC/dipc_prfprepare_logs/march29'
+folder = '/scratch/tlei/VOTCLOC/dipc_prfprepare_logs/sub110102_2025-07-09'
 
 check_prfprepare_logs(folder)
 

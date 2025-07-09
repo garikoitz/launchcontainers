@@ -33,7 +33,7 @@ qos="regular" # regular or test
 mem="32G"
 cpus="20"
 time="12:00:00" #time="00:10:00" 10:00:00
-task="retFF" # retCB retRW retFF 
+task="retfixRWblock01" # retCB retRW retFF 
 # retfixRW retfixFF retfixRWblock01 retfixRWblock02
 
 # json input
@@ -41,12 +41,11 @@ json_dir="$baseP/code/${step}_jsons"
 # subseslist dir:
 script_dir="/scratch/tlei/soft/launchcontainers/MR_pipelines/04FMRI_RET"
 code_dir=$baseP/code
-analysis_name='missingFF'
-subses_list_dir=$code_dir/subseslist_${analysis_name}.txt
 sif_path="/scratch/tlei/containers/${step}_${version}.sif"
-
+log_note=$1
+subses_list_dir=$code_dir/subseslist_jun16.txt
 # log dir
-LOG_DIR="$baseP/dipc_${step}_logs/${analysis_name}_$(date +"%Y-%m-%d")"
+LOG_DIR="$baseP/dipc_${step}_logs/${log_note}_$(date +"%Y-%m-%d")"
 # Ensure directories exist
 mkdir -p "$LOG_DIR"
 mkdir -p "$HOME_DIR"

@@ -58,11 +58,12 @@ json_dir="$baseP/code/${step}_jsons"
 # subseslist dir:
 script_dir="/scratch/tlei/soft/launchcontainers/MR_pipelines/04FMRI_RET"
 code_dir=$baseP/code
-subses_list_dir=$code_dir/subseslist_jun16.txt
 sif_path="/scratch/tlei/containers/${step}_${version}.sif"
 
+log_note=$1
+subses_list_dir=$code_dir/subseslist_jun16.txt
 # log dir
-LOG_DIR="$baseP/dipc_${step}_logs/hyperion_8ses_$(date +"%Y-%m-%d")"
+LOG_DIR="$baseP/dipc_${step}_logs/${log_note}_$(date +"%Y-%m-%d")"
 # Ensure directories exist
 mkdir -p "$LOG_DIR"
 mkdir -p "$HOME_DIR"
