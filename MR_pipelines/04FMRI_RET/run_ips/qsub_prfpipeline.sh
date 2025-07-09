@@ -56,7 +56,7 @@ task="all" # retCB retRW retFF
 json_dir="$baseP/code/${step}_jsons"
 
 # subseslist dir:
-script_dir="/export/home/tlei/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline/04b_prf"
+script_dir="/export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/04FMRI_RET"
 code_dir=$baseP/code
 subses_list_dir=$code_dir/04b_prf/subseslist_prfnormal.txt
 sif_path="/bcbl/home/public/Gari/singularity_images/${step}_${version}.sif"

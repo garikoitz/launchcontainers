@@ -52,6 +52,16 @@ def infotodict(seqinfo):
     )
 
     # func
+    finger_sbref = create_key(
+        'sub-{subject}/{session}/func/sub-{subject}_{session}_task-fingertap_run-{item:02d}_sbref',
+    )
+    finger_P = create_key(
+        'sub-{subject}/{session}/func/sub-{subject}_{session}_task-fingertap_run-{item:02d}_phase',
+    )
+    finger_M = create_key(
+        'sub-{subject}/{session}/func/sub-{subject}_{session}_task-fingertap_run-{item:02d}_magnitude',
+    )
+
     fLoc_sbref = create_key(
         'sub-{subject}/{session}/func/sub-{subject}_{session}_task-fLoc_run-{item:02d}_sbref',
     )
@@ -92,6 +102,64 @@ def infotodict(seqinfo):
         'sub-{subject}/{session}/func/sub-{subject}_{session}_task-retCB_run-{item:02d}_magnitude',
     )
 
+    ret_RWblock01_sbref = create_key(
+        'sub-{subject}/{session}/func/sub-{subject}_{session}_task-retRWblock01_run-{item:02d}_sbref',
+    )
+    ret_RWblock01_P = create_key(
+        'sub-{subject}/{session}/func/sub-{subject}_{session}_task-retRWblock01_run-{item:02d}_phase',
+    )
+    ret_RWblock01_M = create_key(
+        'sub-{subject}/{session}/func/sub-{subject}_{session}_task-retRWblock01_run-{item:02d}_magnitude',
+    )
+
+    ret_RWblock02_sbref = create_key(
+        'sub-{subject}/{session}/func/sub-{subject}_{session}_task-retRWblock02_run-{item:02d}_sbref',
+    )
+    ret_RWblock02_P = create_key(
+        'sub-{subject}/{session}/func/sub-{subject}_{session}_task-retRWblock02_run-{item:02d}_phase',
+    )
+    ret_RWblock02_M = create_key(
+        'sub-{subject}/{session}/func/sub-{subject}_{session}_task-retRWblock02_run-{item:02d}_magnitude',
+    )
+    ret_fixRW_sbref = create_key(
+        'sub-{subject}/{session}/func/sub-{subject}_{session}_task-retfixRW_run-{item:02d}_sbref',
+    )
+    ret_fixRW_P = create_key(
+        'sub-{subject}/{session}/func/sub-{subject}_{session}_task-retfixRW_run-{item:02d}_phase',
+    )
+    ret_fixRW_M = create_key(
+        'sub-{subject}/{session}/func/sub-{subject}_{session}_task-retfixRW_run-{item:02d}_magnitude',
+    )
+
+    ret_fixFF_sbref = create_key(
+        'sub-{subject}/{session}/func/sub-{subject}_{session}_task-retfixFF_run-{item:02d}_sbref',
+    )
+    ret_fixFF_P = create_key(
+        'sub-{subject}/{session}/func/sub-{subject}_{session}_task-retfixFF_run-{item:02d}_phase',
+    )
+    ret_fixFF_M = create_key(
+        'sub-{subject}/{session}/func/sub-{subject}_{session}_task-retfixFF_run-{item:02d}_magnitude',
+    )
+
+    ret_fixRWblock01_sbref = create_key(
+        'sub-{subject}/{session}/func/sub-{subject}_{session}_task-retfixRWblock01_run-{item:02d}_sbref',
+    )
+    ret_fixRWblock01_P = create_key(
+        'sub-{subject}/{session}/func/sub-{subject}_{session}_task-retfixRWblock01_run-{item:02d}_phase',
+    )
+    ret_fixRWblock01_M = create_key(
+        'sub-{subject}/{session}/func/sub-{subject}_{session}_task-retfixRWblock01_run-{item:02d}_magnitude',
+    )
+
+    ret_fixRWblock02_sbref = create_key(
+        'sub-{subject}/{session}/func/sub-{subject}_{session}_task-retfixRWblock02_run-{item:02d}_sbref',
+    )
+    ret_fixRWblock02_P = create_key(
+        'sub-{subject}/{session}/func/sub-{subject}_{session}_task-retfixRWblock02_run-{item:02d}_phase',
+    )
+    ret_fixRWblock02_M = create_key(
+        'sub-{subject}/{session}/func/sub-{subject}_{session}_task-retfixRWblock02_run-{item:02d}_magnitude',
+    )
     # dwi
     # nordic dwi
     dwi_floc1d5_rpe = create_key(
@@ -110,10 +178,13 @@ def infotodict(seqinfo):
     info = {
         t1_i1: [], t1_i2: [], t1_un: [], t1_w: [], t2_w: [],
         fmap_AP: [], fmap_PA: [],
+        finger_sbref: [], finger_P: [], finger_M: [],
         fLoc_sbref: [], fLoc_P: [], fLoc_M: [],
         ret_RW_sbref: [], ret_RW_P: [], ret_RW_M: [],
         ret_FF_sbref: [], ret_FF_P: [], ret_FF_M: [],
         ret_CB_sbref: [], ret_CB_P: [], ret_CB_M: [],
+        ret_RWblock01_sbref: [], ret_RWblock01_P: [], ret_RWblock01_M: [],
+        ret_RWblock02_sbref: [], ret_RWblock02_P: [], ret_RWblock02_M: [],
         dwi_floc1d5_rpe: [], dwi_floc1d5: [],
         dwi_floc1d5_rpe_pha: [], dwi_floc1d5_pha: [],
 
@@ -166,12 +237,14 @@ def infotodict(seqinfo):
                 if ('PA' in s.protocol_name) :
                     info[fmap_PA].append(s.series_id)
 
-        # TR not working for the XA30 func scan of pRFs
+        # TR nor working for the XA30 func scan of pRFs
 
         # functional SBref
         if (s.series_files == 1) and ('Pha' not in s.series_description):
             # pay attention to add a check for language in the s.protocol_name when in the scanner, otherwise the multiple language thing
             # will cause trouble
+            if ('Encoding' in s.protocol_name):
+                info[finger_sbref].append(s.series_id)
             if ('fLoc' in s.protocol_name) or ('floc' in s.protocol_name):
                 info[fLoc_sbref].append(s.series_id)
             if (('RW' in s.protocol_name) or ('word' in s.protocol_name)) and ('block' not in s.protocol_name):
@@ -180,7 +253,16 @@ def infotodict(seqinfo):
                 info[ret_FF_sbref].append(s.series_id)
             if ('CB' in s.protocol_name) :
                 info[ret_CB_sbref].append(s.series_id)
-
+            if (('RWblock01' in s.protocol_name) or ('RWblock_run01' in s.protocol_name)) :
+                info[ret_RWblock01_sbref].append(s.series_id)
+            if ('RWblock02' in s.protocol_name) :
+                info[ret_RWblock02_sbref].append(s.series_id)
+        if (s.dim1 == 130) and (s.dim3 == 104):
+            if (s.series_files == 306) :
+                if ('Pha' in s.series_description) :
+                    info[finger_P].append(s.series_id)
+                else:
+                    info[finger_M].append(s.series_id)
         if (s.dim1 == 92) and (s.dim3 == 80):
             if ((s.series_files == 160) or (s.series_files == 159)) and (('fLoc' in s.protocol_name) or ('floc' in s.protocol_name)) :
                 if ('Pha' in s.series_description) :
@@ -202,6 +284,18 @@ def infotodict(seqinfo):
                     info[ret_CB_P].append(s.series_id)
                 else:
                     info[ret_CB_M].append(s.series_id)
+
+            if ((s.series_files == 156) or (s.series_files == 155)) and (('RWblock01' in s.protocol_name) or ('RWblock_run01' in s.protocol_name)) :
+                if ('Pha' in s.series_description) :
+                    info[ret_RWblock01_P].append(s.series_id)
+                else:
+                    info[ret_RWblock01_M].append(s.series_id)
+
+            if ((s.series_files == 156) or (s.series_files == 155)) and ('RWblock02' in s.protocol_name):
+                if ('Pha' in s.series_description) :
+                    info[ret_RWblock02_P].append(s.series_id)
+                else:
+                    info[ret_RWblock02_M].append(s.series_id)
         # dwi
         # only take the mag
         if (('M' in s.image_type) or ('Pha' not in s.series_description)) and ('SBRef' not in s.series_description):

@@ -19,7 +19,7 @@ import typer
 def generate_subses_list(
     base_dir: str,
     output_path: str,
-    output_file: str = 'subseslist_Jan31.txt',
+    output_file: str = 'subseslist_July08.txt',
 
 ):
     """

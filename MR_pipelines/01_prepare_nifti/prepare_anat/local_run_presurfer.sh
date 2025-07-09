@@ -18,7 +18,7 @@ bids_dirname=BIDS
 # toolbox path that stores all the matlab toolboxes
 tbPath=/export/home/tlei/tlei/toolboxes
 src_dir=$basedir/raw_nifti
-analysis_name=run_S0810
+analysis_name=run_S110102
 outputdir=${basedir}/${bids_dirname}
 force=false # if overwrite exsting file
 
@@ -60,7 +60,7 @@ do
     export force
     export script_dir
     # Command to execute locally
-    cmd="bash $script_dir/run_${step}.sh "
+    cmd="bash $script_dir/src_${step}.sh "
 
     # Run the command in the background
     echo $cmd

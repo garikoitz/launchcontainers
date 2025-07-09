@@ -30,8 +30,8 @@ basedir = '/bcbl/home/public/Gari/VOTCLOC/main_exp'
 sourcedata_dir = f'{basedir}/BIDS/sourcedata'
 output_dir = f'{basedir}/BIDS'
 
-sub_list = ['08']  # ,'02','03','04','05','06','08']
-ses_list = ['01', '02', '03', '04', '05']  # ,'02','03','04','05','06','07','08','09','10']
+sub_list = ['02']  # ,'02','03','04','05','06','08']
+ses_list = ['07', '08', '09', '10']  # ,'02','03','04','05','06','07','08','09','10']
 
 runs = 10
 task = 'fLoc'

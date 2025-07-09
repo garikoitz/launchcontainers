@@ -2,7 +2,7 @@
 
 # Configuration /export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/01_prepare_nifti/prepare_func
 script_dir=/export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/01_prepare_nifti/prepare_func
-analysis_name='23ses_after-may05'
+analysis_name='sub110102'
 # variable pass to the matlab
 TB_PATH="/export/home/tlei/tlei/toolboxes"
 SRC_DIR="/bcbl/home/public/Gari/VOTCLOC/main_exp/raw_nifti"
@@ -44,7 +44,7 @@ do
     error_file="${logdir}/nordic_${sub}_${ses}_${now}.e"
     echo "=== Running sub-${sub} ses-${ses} ==="
     #echo "script dir defined is $script_dir"
-    cmd="bash $script_dir/run_nordic_fmri.sh ${TB_PATH} \
+    cmd="bash $script_dir/src_nordic_fmri.sh ${TB_PATH} \
     ${SRC_DIR} \
     ${OUTPUT_DIR} \
     ${sub} \

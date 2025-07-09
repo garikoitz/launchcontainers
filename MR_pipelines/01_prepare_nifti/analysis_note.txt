@@ -1,10 +1,17 @@
 for the nifti prepare,
 
-first we can run nordic
+first we run prepare_func, which will call local_nordic.sh
 
-after nordic we can run fmap
+In the meantime we can run prepare_anat, which we will call local_run_presurfer
 
-in the same time run presurfer
+When both of them finished, approx 1h for each session, we run prepare_fmap
 
-presurfer------}-----move data to dipc or run fmriprep
-nnordic-->fmap}
+first we will run python 01_prepare_fmap_folder.py, it will copy and create the sub-/ses-/fmap folder
+and copy the scans.tsv file
+
+then we run 02_auto_gen_intendedfor.py to populate the intended for fields in the fmap for fmriprep
+
+
+For this step, we only need to input subseslist name, i.e. subseslist_sub08.txt
+
+the file will be put under base/code

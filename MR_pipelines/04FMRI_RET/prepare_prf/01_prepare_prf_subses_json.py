@@ -85,19 +85,20 @@ if __name__ == '__main__':
 
     # for bcbl /bcbl/home/public/Gari/VOTCLOC/main_exp
     # for dipc it is /scratch/tlei/VOTCLOC
-    basedir = '/scratch/tlei/VOTCLOC'
+    basedir = '/bcbl/home/public/Gari/VOTCLOC/main_exp'
 
     code_dir = os.path.join(basedir, 'code')
     # prfprepare #prfanalyze-vista #prfresult # 'prfprepare', 'prfanalyze-vista',
-    steps = ['prfprepare', 'prfanalyze-vista', 'prfresult']
+    steps = ['prfresult']  # 'prfprepare', 'prfanalyze-vista',
     # if the session is the word-center session, use the list with retfix
-    tasks = ['retRW', 'retFF', 'retCB', 'retfixRW', 'retfixFF', 'retfixRWblock', 'retfixRWblock01','retfixRWblock02'] 
-    #['retRW', 'retFF', 'retCB'] # ['retfixRW', 'retfixFF', 'retfixRWblock', 'retfixRWblock01','retfixRWblock02']
+    # ['retRW', 'retFF', 'retCB', 'retfixRW', 'retfixFF', 'retfixRWblock', 'retfixRWblock01','retfixRWblock02']
+    tasks = ['all']
+    # ['retRW', 'retFF', 'retCB'] # ['retfixRW', 'retfixFF', 'retfixRWblock', 'retfixRWblock01','retfixRWblock02']
     force = True
 
     for step in steps:
 
-        subseslist_path = os.path.join(code_dir, 'subseslist_jun16.txt')
+        subseslist_path = os.path.join(code_dir, '04b_prf', 'subseslist_prfnormal.txt')
         output_dir = os.path.join(code_dir , f'{step}_jsons')
 
         if not os.path.exists(output_dir):
