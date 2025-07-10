@@ -1,0 +1,9 @@
+# External packages
+bids-validator>=1.8  # ensures valid BIDS structure
+pybids>=0.15.1  # for BIDSLayout
+PyYAML>=6.0
+nibabel>=5.1.0
+numpy>=1.24
+pandas>=2.0
+nilearn>=0.10.2
+scipy>=1.11

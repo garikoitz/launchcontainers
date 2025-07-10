@@ -1,0 +1,19 @@
+RWvsFF:
+  positive: ["RW"]
+  negative: ["FF"]
+
+RWvsNull:
+  positive: ["RW"]
+  negative: []
+
+FFvsNull:
+  positive: ["FF"]
+  negative: []
+
+RWvsbaseline:
+  positive: ["RW"]
+  negative: ["baseline"]
+
+FFvsbaseline:
+  positive: ["FF"]
+  negative: ["baseline"]
