@@ -17,3 +17,16 @@ note: the minimal is not working
 note: remember to change the sbatch name
 
 note: remeber to put 5 as the dummy-scans
+
+naming strategy:
+
+derivatives/
+    fmriprep-version-analysis_name/
+        sub-01/
+            ses-01/
+    fmriprep-version-analysis_name/
+
+derivatives/
+    fmriprep-version
+        analysis-analysis-name/
+

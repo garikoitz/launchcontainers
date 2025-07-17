@@ -179,7 +179,9 @@ def save_statmap_to_gifti(data, outname):
 
 
 # Function to replace prefix
-def replace_prefix(val):
+def replace_prefix_and_suffix(val):
+    if isinstance(val, str) and (val.endswith('1') or val.endswith('2')):
+        val=val[:-1]
     if isinstance(val, str) and (
         val.startswith('EU_') or val.startswith('ES_')
         or val.startswith('AT_') or val.startswith('EN_')
@@ -222,8 +224,7 @@ def glm_l1(
             contrast_objs[contrast_id] = []
 
         # Define a name template for output statistical maps (stat-X is replaced later on)
-        outname_base_run = f'sub-{subject}_ses-{session}\
-            _task-{task}_hemi-{hemi}_space-{space}_contrast-{contrast_id}_stat-X_statmap.func.gii'
+        outname_base_run = f'sub-{subject}_ses-{session}_task-{task}_hemi-{hemi}_space-{space}_contrast-{contrast_id}_stat-X_statmap.func.gii'
         if use_smoothed:
             outname_base_run = outname_base_run.replace(
                 '_statmap', f'_desc-smoothed{sm}_statmap',
@@ -271,11 +272,27 @@ def glm_l1(
 
 def prepare_glm_input(
         bids_dir, fmriprep_dir, label_dir, contrast_fpath,
-        subject, session, task, start_scans, hemi, space, slice_time_ref,
+        subject, session, output_name, task, start_scans, hemi, space, slice_time_ref,
         run_list,
         use_smoothed, sm, apply_label_as_mask: None,
 ):
+    '''
+    This function is looping for each run of the task to get:
+    1. the processed timeseries
+    2. events.tsv
+    3. the compounds
 
+    2+3 will help tp create design_matrix
+
+    to generate:
+    1. the processed timeseries
+    2. design_matrix
+    3. contrasts
+
+    In the end the calc_glm will need:
+    design_matrix
+    procesed timeseries
+    '''
     # Final output dictionary for GLM contrast results (to be combined across runslater)
     gii_allrun = []
     frame_time_allrun = []
@@ -354,12 +371,11 @@ def prepare_glm_input(
         events = l1[2][0][0]  # Dataframe of events information
         confounds = l1[3][0][0]  # Dataframe of confounds
         events.loc[:, 'onset'] = events['onset'] + idx * (n_scans) * t_r
-        events_allrun.append(events)
+        #events_allrun.append(events)
 
         # get rid of rest so that the setting would be the same as spm
-        # events_nobaseline = events[events.loc[:, 'trial_type'] != 'baseline']
-
-        # events_allrun.append(events_nobaseline)
+        events_nobaseline = events[events.loc[:, 'trial_type'] != 'baseline']
+        events_allrun.append(events_nobaseline)
         store_l1.append(l1)
         # From the confounds file, extract only those of interest
         # Start with the motion and acompcor regressors
@@ -402,8 +418,9 @@ def prepare_glm_input(
     conc_gii_data_std = np.concatenate(gii_allrun, axis=1)
     concat_frame_times = np.concatenate(frame_time_allrun, axis=0)
     concat_events = pd.concat(events_allrun, axis=0)
+
     # Applying the function to the entire DataFrame
-    concat_events = concat_events.applymap(replace_prefix)
+    concat_events = concat_events.applymap(replace_prefix_and_suffix)
     concat_confounds = pd.concat(confounds_allrun, axis=0)
     nonan_confounds = concat_confounds.dropna(axis=1, how='any')
     # Construct the design matrix
@@ -529,15 +546,14 @@ def process_run_list(
     print('Processing runs are : ', run_list)
     conc_gii_data_std, design_matrix_std, contrasts = prepare_glm_input(
         bids_dir, fmriprep_dir, label_dir, contrast_fpath,
-        subject, session, task, start_scans, hemi, space, slice_time_ref,
+        subject, session, output_name, task, start_scans, hemi, space, slice_time_ref,
         run_list, use_smoothed, sm, apply_label_as_mask,
     )
     print(f'Contrasts we are using is : {contrasts.keys()}')
 
     print(f'----------before going to the glm_l1, smooth is {use_smoothed}')
     # if apply_label_as_mask:
-    #     run_identifier=f"{run_identifier}_mask-\
-    # {apply_label_as_mask.spilt('.')[1]}-{apply_label_as_mask.spilt('.')[2]}"
+    #     run_identifier=f"{run_identifier}_mask-{apply_label_as_mask.spilt('.')[1]}-{apply_label_as_mask.spilt('.')[2]}"
     finished = glm_l1(
         conc_gii_data_std, design_matrix_std, contrasts,
         bids_dir, task, space, hemi, subject, session,
@@ -550,8 +566,8 @@ def main():
     '''
     subject='02'
     session='09'
-    task='WC'
-    start_scans=5
+    task='fLoc'
+    start_scans=6
     space='fsnative'
     basedir='/bcbl/home/public/Gari/VOTCLOC/main_exp'
     input_dirname='BIDS'
@@ -614,17 +630,17 @@ def main():
     )
 
     label_dir = f'{fsdir}/sub-{subject}/label'
-
-    # hemis = ['L']  # , "R"]  # L for left, R for right
-    hemi = 'L'
-
     layout = BIDSLayout(bids_dir, validate=False)
     run_list = generate_run_groups(layout, subject, session, task, selected_runs)
 
-    finished = process_run_list(
-        bids_dir, fmriprep_dir, label_dir, contrast_fpath,
-        subject, session, output_name, task, start_scans , hemi, space, slice_time_ref,
-        run_list, use_smoothed, sm, apply_label_as_mask, )
+
+    hemis = ["L", "R"]  # L for left, R for right
+    for hemi in hemis: #hemi = 'L'
+
+        finished = process_run_list(
+            bids_dir, fmriprep_dir, label_dir, contrast_fpath,
+            subject, session, output_name, task, start_scans , hemi, space, slice_time_ref,
+            run_list, use_smoothed, sm, apply_label_as_mask)
 
     return
 

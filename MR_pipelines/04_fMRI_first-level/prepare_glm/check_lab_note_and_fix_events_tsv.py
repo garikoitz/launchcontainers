@@ -11,27 +11,37 @@ xlsx_file = '/bcbl/home/public/Gari/VOTCLOC/main_exp/BIDS/sourcedata/VOTCLOC_sub
 # 🔹 Load the Excel file
 xls = pd.ExcelFile(xlsx_file)
 
-
+sub='11'
+ses='02'
 # 🔹 Find all sheets that match "sub-xx"
 filtered_data = []
 for sheet_name in xls.sheet_names:
     if sheet_name.startswith('sub-'):  # Process sheets named sub-xx
         df = pd.read_excel(xls, sheet_name=sheet_name, header=0)
-        df = df.loc[:, ['sub', 'ses', 'protocol_name']]
-        df = df[df['ses'] > 0].reset_index(drop=True)
-        # Assuming df is already loaded
+        df = df.loc[:, ['sub', 'ses', 'protocol_name','quality_mark']]
+        df[['sub', 'ses']] = df[['sub', 'ses']].replace('', pd.NA)
+        # Drop rows where both 'sub' and 'ses' are NA
+        df = df.dropna(subset=['sub', 'ses'], how='any')
         df['sub'] = df['sub'].astype(int).astype(str).str.zfill(2)  # Convert 'sub' to string
-        df['ses'] = df['ses'].astype(int).astype(str).str.zfill(2)   # Convert 'ses' to string
-
+        # filter the df, so that if sub is 11, take it all, if not, will select the ses that greate than 0
+        if (df['sub'] == '11').all():
+            df=df[~df['ses'].astype(str).str.startswith('ME')]
+        else:
+            df=df[df['ses'] > 0]
+        try:
+            # Assuming df is already loaded
+            df['ses'] = df['ses'].astype(int).astype(str).str.zfill(2)   # Convert 'ses' to string
+        except:
+            print(f"the ses col maybe already a str for {sheet_name}")
         # Ensure necessary columns exist
-        if all(col in df.columns for col in ['sub', 'ses', 'protocol_name']):
+        if all(col in df.columns for col in ['sub', 'ses', 'protocol_name','quality_mark']):
             # 🔹 Filter rows where "protocol_name" contains "rerun" or "skip"
-            filtered_rows = df[df['protocol_name'].str.contains('rerun', case=False, na=False)]
+            filtered_rows = df[df['protocol_name'].str.contains('rerun', case=False, na=False) | df['quality_mark'].str.contains('failed', case=False, na=False)]
             filtered_data.append(filtered_rows)
 
 # 🔹 Combine all filtered results into one DataFrame
 final_df = pd.concat(filtered_data, ignore_index=True) if filtered_data else pd.DataFrame(
-    columns=['sub', 'ses', 'protocol_name'],
+    columns=['sub', 'ses', 'protocol_name','quality_mark'],
 )
 # Define subject-session pairs to drop
 drop_conditions = (

@@ -23,7 +23,7 @@ def gen_batch_json(subseslist_path, template_json, output_dir, step, tasks, forc
     # Read subject-session pairs from the text file
     with open(subseslist_path) as f:
         lines = f.readlines()[1:]  # skip the first line
-
+        print(lines)
     if not os.listdir(output_dir) or force:
         # if the pipeline is prfprepare or prfresult
         if step in ['prfprepare']:
@@ -85,23 +85,24 @@ if __name__ == '__main__':
 
     # for bcbl /bcbl/home/public/Gari/VOTCLOC/main_exp
     # for dipc it is /scratch/tlei/VOTCLOC
-    basedir = '/scratch/tlei/VOTCLOC'
+    basedir = '/bcbl/home/public/Gari/VOTCLOC/main_exp'
 
     code_dir = os.path.join(basedir, 'code')
-    # prfprepare #prfanalyze-vista #prfresult # 'prfprepare', 'prfanalyze-vista',
-    steps = ['prfanalyze-vista']  # 'prfprepare', 'prfanalyze-vista',
+    # example: prfprepare prfanalyze-vista prfresult 
+    steps = ['prfresult'] 
     # if the session is the word-center session, use the list with retfix
-    # ['retRW', 'retFF', 'retCB', 'retfixRW', 'retfixFF', 'retfixRWblock', 'retfixRWblock01','retfixRWblock02']
-    tasks = [
-        'retRW', 'retFF', 'retCB', 'retfixRW', 'retfixFF',
-        'retfixRWblock', 'retfixRWblock01', 'retfixRWblock02',
-    ]  # ['all']
-    # ['retRW', 'retFF', 'retCB'] # ['retfixRW', 'retfixFF', 'retfixRWblock', 'retfixRWblock01','retfixRWblock02']
+    tasks = ['all']
+    # [
+    #     'retRW', 'retFF', 'retCB', 'retfixRW', 'retfixFF',
+    #     'retfixRWblock', 'retfixRWblock01', 'retfixRWblock02',
+    # ]  
+    # ['all']
+    
     force = True
 
     for step in steps:
 
-        subseslist_path = os.path.join(code_dir, 'subseslist_jun16.txt')
+        subseslist_path = os.path.join(code_dir, 'subseslist_sub11.txt')
         output_dir = os.path.join(code_dir , f'{step}_jsons')
 
         if not os.path.exists(output_dir):

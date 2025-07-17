@@ -18,17 +18,21 @@ basedir=/bcbl/home/public/Gari/VOTCLOC/main_exp
 bids_dir_name=BIDS
 
 # directory stores the run_glm.py code
-codedir=/export/home/tlei/tlei/soft/VOTCLOC/MR_analysis/04_surface_glm
-
+codedir=/export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/04_fMRI_first-level
 # analysis name of fmriprep #'beforeMar05_US' there is only one analysis now
 fp_name=beforeMar05_US
+# task
+task=fLoc
+# start_scans: number of scans started:
+start_scans=6
+# space
+space=fsnative
 # output analysis name
-out_name=test_general_glm
+out_name=run_all_fLoc
 # path to contrast yaml, you can define any kind of yaml under any place
-glm_yaml_path=${codedir}/contrast_lexper.yaml
+glm_yaml_path=${codedir}/contrast_votcloc_all.yaml
 # slice timing ref, default is 0.5 can change
 slice_timing=(0.5)
-
 use_smoothed=False
 
 # log dir
@@ -49,7 +53,7 @@ qsub_log_err="${LOG_DIR}/f${factor}_s${sub}_t${ses}_${current_time}.e"
 
 echo "### Runing SURFACE_glm on SUBJECT: $sub $ses SESSION ###"
 cmd="qsub -q short.q \
-	-N run${factor}-${sub}T${ses} \
+	-N S-${sub}_T-${ses} \
 	-o $qsub_log_out \
 	-e $qsub_log_err \
 	-l mem_free=20G \
@@ -57,11 +61,14 @@ cmd="qsub -q short.q \
 	-v sub=${sub} \
 	-v ses=${ses} \
 	-v fp_name=${fp_name} \
-	-v glm_yaml_path=${glm_yaml_path} \
+	-v task=${task} \
+	-v start_scans=${start_scans} \
+	-v space=${space} \
 	-v out_name=${out_name} \
+	-v glm_yaml_path=${glm_yaml_path} \
 	-v slice_timing=${slice_timing} \
 	-v codedir=$codedir \
-	$codedir/cli_glm_qsub_api.sh "
+	$codedir/run_qsub/cli_glm_qsub_api.sh "
 
 echo $cmd
 eval $cmd

@@ -19,10 +19,10 @@ basedir=/bcbl/home/public/Gari/VOTCLOC/main_exp
 bids_dir_name=BIDS
 
 # directory stores the run_glm.py code
-codedir=/export/home/tlei/tlei/soft/VOTCLOC/MR_analysis/04_surface_glm
+codedir=/export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/04_fMRI_first-level
 
 # analysis name of fmriprep #'beforeMar05_US' there is only one analysis now
-fp_name=beforeMar05_US
+fp_name=afterJuly09
 
 # path to contrast yaml, you can define any kind of yaml under any place
 glm_yaml_path=${codedir}/contrast_wordcenter.yaml
@@ -40,6 +40,7 @@ start_scans=$4
 # output analysis name
 out_name=$5
 
+space=fsnative
 # log dir
 LOG_DIR=$basedir/l1_surfaces_log/analysis-${out_name}
 mkdir -p "$LOG_DIR"
@@ -57,6 +58,7 @@ echo "the smoothing on bold is ${sm} fwhm"
 echo "Task we are running are: ${task}"
 echo "get the codedir": ${codedir}
 echo "Start scans is ": ${start_scans}
+echo "output name is ${out_name}"
 source ~/tlei/soft/miniconda3/etc/profile.d/conda.sh
 conda activate votcloc
 echo "going to run python"
@@ -64,11 +66,11 @@ echo "going to run python"
 
 cmd_nosmooth="python ${codedir}/run_glm.py \
 -base ${basedir} -sub ${sub} -ses ${ses} -fp_ana_name ${fp_name} \
--task ${task} -start_scans ${start_scans} -space fsnative -contrast ${glm_yaml_path} \
+-task ${task} -start_scans ${start_scans} -space ${space} -contrast ${glm_yaml_path} \
 -output_name ${out_name} \
--selected_runs 5 6 \
+-selected_runs 1 2 3 4 \
 -slice_time_ref ${slice_timing} "
-
+# -selected_runs 5 6 \
 echo $cmd_nosmooth
 read -p "Do you want to run this command? (y/n): " answer
 case "$answer" in

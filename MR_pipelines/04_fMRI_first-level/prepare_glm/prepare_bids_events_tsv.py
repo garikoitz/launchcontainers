@@ -31,7 +31,7 @@ sourcedata_dir = f'{basedir}/BIDS/sourcedata'
 output_dir = f'{basedir}/BIDS'
 
 sub_list = ['02']  # ,'02','03','04','05','06','08']
-ses_list = ['07', '08', '09', '10']  # ,'02','03','04','05','06','07','08','09','10']
+ses_list = ['01', '02','03','04','05','06','07','08','09','10']  # ,'02','03','04','05','06','07','08','09','10']
 
 runs = 10
 task = 'fLoc'
@@ -56,6 +56,8 @@ def get_onset_onset_dirname(onset_subses_dir, sub, ses):
     print(f'Onset_dirname_we got is {onset_dirname}')
     return onset_dirname
 
+## TODO:
+## get onset file under the onset_dirname, so that there will be no error
 
 for i in sub_list:
     for j in ses_list:

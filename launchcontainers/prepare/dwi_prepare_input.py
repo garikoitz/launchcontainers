@@ -32,7 +32,7 @@ import sys
 import nibabel as nib
 
 from launchcontainers.check import check_dwi_pipelines as check
-from launchcontainers.utils import read_df
+from launchcontainers.utils import read_df, force_symlink
 logger = logging.getLogger('Launchcontainers')
 
 

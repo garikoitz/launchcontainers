@@ -68,6 +68,8 @@ options:
 2. fp_name if you have new fmriprep analysis name or folder
 3. task, if the task is not fLoc, right now it was using fLoc
 
+4. attention: if you decided to run with specific runs, and you are running in on IPS
+please edit the cli_glm_qsub_api.sh and add the corresponding params there
 
 
 How the code works?

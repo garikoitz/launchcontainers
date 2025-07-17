@@ -21,6 +21,7 @@ import os
 import os.path as op
 import shutil
 import sys
+import errno
 
 import pandas as pd
 import yaml
@@ -125,3 +126,121 @@ def copy_configs(output_path, force=True):
         copy_file(src_file_fullpath, targ_file_fullpath, force)
 
     return
+
+def force_symlink(file1, file2, force):
+    """Creates symlinks making sure
+    Args:
+        file1 (str): path to the source file,
+        which is the output of the previous container
+        file2 (str): path to the destination file, which is the input of the current container
+        force (bool): specifies if existing files will be rewritten or not.
+        Set in the config.yaml file.
+
+    Raises:
+        n (OSError): Raised if input file does not exist when
+        trying to create a symlink between file1 and file2
+        e (OSError):
+        e: _description_
+    """
+    logger.info(
+        '\n'
+        + '-----------------------------------------------\n',
+    )
+    # If force is set to False (we do not want to overwrite)
+    if not force:
+        try:
+            # Try the command, if the files are correct and the symlink does not exist, create one
+            logger.info(
+                '\n'
+                + f'---creating symlink for source file: {file1} and destination file: {file2}\n',
+            )
+            os.symlink(file1, file2)
+            logger.info(
+                '\n'
+                + f'--- force is {force}, \
+                -----------------creating success -----------------------\n',
+            )
+        # If raise [erron 2]: file does not exist, print the error and pass
+        except OSError as n:
+            if n.errno == 2:
+                logger.error(
+                    '\n'
+                    + 'Input files are missing, please check \n',
+                )
+                pass
+            # If raise [errno 17] the symlink exist,
+            # we don't force and print that we keep the original one
+            elif n.errno == errno.EEXIST:
+                logger.warning(
+                    '\n'
+                    + f'--- force is {force}, symlink exist, remain old \n',
+                )
+            else:
+                logger.error('\n' + 'Unknown error, break the program')
+                raise n
+
+    # If we set force to True (we want to overwrite)
+    if force:
+        try:
+            # Try the command, if the file are correct and symlink not exist, it will create one
+            os.symlink(file1, file2)
+            logger.info(
+                '\n'
+                + f'--- force is {force}, symlink empty, new link created successfully\n ',
+            )
+        # If the symlink exists, OSError will be raised
+        except OSError as e:
+            if e.errno == errno.EEXIST:
+                os.remove(file2)
+                logger.warning(
+                    '\n'
+                    + '--- overwriting the existing symlink',
+                )
+                os.symlink(file1, file2)
+                logger.info(
+                    '\n'
+                    + '----------------- Overwrite success -----------------------\n',
+                )
+            elif e.errno == 2:
+                logger.error(
+                    '\n'
+                    + '***input files are missing, please check that they exist\n',
+                )
+                raise e
+            else:
+                logger.error(
+                    '\n'
+                    + '***ERROR***\n'
+                    + 'We do not know what happened\n',
+                )
+                raise e
+    check_symlink(file2)
+    logger.info(
+        '\n'
+        + '-----------------------------------------------\n',
+    )
+    return
+
+def check_symlink(path: str) -> None:
+    """
+    Function to check if a symlink is a link and also if it is being pointed to correct place
+
+    if not point to a real place, the prepare mode will fail
+
+    """
+    if op.islink(path):
+        if op.exists(path):
+            logger.info(
+                ' √ Symlink %r is valid and points to %r',
+                path, op.realpath(path),
+            )
+        else:
+            target = os.readlink(path)
+            logger.error(
+                'X Symlink %r is broken (target %r not found)',
+                path, target,
+            )
+            raise FileNotFoundError(f'Broken symlink: {path!r} → {target!r}')
+
+    else:
+        logger.info(' %r is not a symlink', path)

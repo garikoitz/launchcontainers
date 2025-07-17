@@ -7,6 +7,7 @@ from bids import BIDSLayout
 
 # Define the fMRIPrep derivatives directory
 bids_dir = '/bcbl/home/public/Gari/VOTCLOC/main_exp/BIDS'
+basedir= '/bcbl/home/public/Gari/VOTCLOC/main_exp'
 fp_ana_name = 'beforeMar05_US'
 fmriprep_dir = os.path.join(
     bids_dir, 'derivatives',
@@ -31,5 +32,5 @@ for sub in subjects:
 
 # Convert to DataFrame
 df_fmriprep = pd.DataFrame(sub_ses_pairs, columns=['sub', 'ses'])
-output_txt = os.path.join(bids_dir, 'code', f'subseslist_{fp_ana_name}.txt')
+output_txt = os.path.join(basedir, 'code', f'subseslist_fp_{fp_ana_name}.txt')
 df_fmriprep.to_csv(output_txt, sep='\t', index=False)

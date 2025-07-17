@@ -35,3 +35,5 @@ df_mismatch = pd.DataFrame(
     list(bold_without_events),
     columns=['sub', 'ses', 'run'],
 )
+
+print(df_mismatch)

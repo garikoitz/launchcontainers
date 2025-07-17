@@ -19,32 +19,34 @@ basedir=/bcbl/home/public/Gari/VOTCLOC/main_exp
 bids_dir_name=BIDS
 
 # directory stores the run_glm.py code
-codedir=/export/home/tlei/tlei/soft/VOTCLOC/MR_analysis/04_surface_glm
-
+codedir=/export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/04_fMRI_first-level
 # analysis name of fmriprep #'beforeMar05_US' there is only one analysis now
 fp_name=beforeMar05_US
+# task
+task=fLoc
+# start_scans: number of scans started:
+start_scans=6
+# space
+space=fsnative
 # output analysis name
-out_name=test_general_glm
+out_name=fp_beforeJuly09
 # path to contrast yaml, you can define any kind of yaml under any place
-glm_yaml_path=${codedir}/contrast_lexper.yaml
+glm_yaml_path=${codedir}/contrast_votcloc_all.yaml
 # slice timing ref, default is 0.5 can change
 slice_timing=(0.5)
 use_smoothed=False
 # log dir
 LOG_DIR=$basedir/l1_surfaces_log/analysis-${out_name}
 
-analysis=$out_name
-#subseslist_path=$codedir/subseslist.tsv
-subseslist_path=$basedir/$bids_dir_name/code/subseslist_${analysis}.txt
+subseslist_name=$1
+subseslist_path=$basedir/code/$subseslist_name
+
 
 
 mkdir -p "$LOG_DIR"
 # Initialize a line counter
 line_number=0
 
-
-for factor in "${factors[@]}";
-do
 # Read the file line by line
 while IFS=$',' read -r sub ses
 do
@@ -58,12 +60,12 @@ do
 	current_time=$(date +"%Y-%m-%d_%H-%M-%S")
 
     # Define log paths
-    qsub_log_out="${LOG_DIR}/qsub_sub-${sub}_ses-${ses}_${current_time}.o"
-    qsub_log_err="${LOG_DIR}/qsub_sub-${sub}_ses-${ses}_${current_time}.e"
+    qsub_log_out="${LOG_DIR}/sub-${sub}_ses-${ses}_${current_time}.o"
+    qsub_log_err="${LOG_DIR}/sub-${sub}_ses-${ses}_${current_time}.e"
 
 	echo "### Runing SURFACE_glm on SUBJECT: $sub $ses SESSION ###"
 	cmd="qsub -q short.q \
-		-N run${factor}-${sub}_s-${ses} \
+		-N S-${sub}_T-${ses} \
 		-o $qsub_log_out \
     	-e $qsub_log_err \
 		-l mem_free=20G \
@@ -71,13 +73,16 @@ do
 		-v sub=${sub} \
 		-v ses=${ses} \
 		-v fp_name=${fp_name} \
+		-v task=${task} \
+		-v start_scans=${start_scans} \
+		-v space=${space} \
 		-v out_name=${out_name} \
 		-v glm_yaml_path=${glm_yaml_path} \
 		-v slice_timing=${slice_timing} \
 		-v codedir=$codedir \
-		$codedir/cli_glm_qsub_api.sh "
+		$codedir/run_qsub/cli_glm_qsub_api.sh "
 
 	echo $cmd
 	eval $cmd
 done < "$subseslist_path"
-done
+

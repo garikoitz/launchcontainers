@@ -56,13 +56,13 @@ task="all" # retCB retRW retFF
 json_dir="$baseP/code/${step}_jsons"
 
 # subseslist dir:
-script_dir="/export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/04FMRI_RET"
+script_dir="/export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/04_fMRI_ret"
 code_dir=$baseP/code
-subses_list_dir=$code_dir/04b_prf/subseslist_prfnormal.txt
+subses_list_dir=$code_dir/subseslist_sub11.txt
 sif_path="/bcbl/home/public/Gari/singularity_images/${step}_${version}.sif"
 
 # log dir
-LOG_DIR="$baseP/ips_${step}_logs/make_freesurfer_$(date +"%Y-%m-%d")"
+LOG_DIR="$baseP/ips_${step}_logs/sub11_2ses_$(date +"%Y-%m-%d")"
 # Ensure directories exist
 mkdir -p "$LOG_DIR"
 mkdir -p "$HOME_DIR"

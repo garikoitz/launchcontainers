@@ -28,31 +28,6 @@ import zipfile
 logger = logging.getLogger('Launchcontainers')
 
 
-def check_symlink(path: str) -> None:
-    """
-    Function to check if a symlink is a link and also if it is being pointed to correct place
-
-    if not point to a real place, the prepare mode will fail
-
-    """
-    if op.islink(path):
-        if op.exists(path):
-            logger.info(
-                ' √ Symlink %r is valid and points to %r',
-                path, op.realpath(path),
-            )
-        else:
-            target = os.readlink(path)
-            logger.error(
-                'X Symlink %r is broken (target %r not found)',
-                path, target,
-            )
-            raise FileNotFoundError(f'Broken symlink: {path!r} → {target!r}')
-
-    else:
-        logger.info(' %r is not a symlink', path)
-
-
 def check_tractparam(lc_config, sub, ses, tractparam_df):
     """Checks the correctness of the given parameters.
 
