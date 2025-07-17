@@ -28,7 +28,7 @@ basedir="/scratch/tlei/VOTCLOC"
 BIDS_DIR="/scratch/tlei/VOTCLOC/BIDS"
 CODE_DIR="${basedir}/code"
 echo $CODE_DIR
-OUTPUT_DIR=derivatives/fmriprep-${analysis_name}
+OUTPUT_DIR=derivatives/fmriprep-${analysis_name}-${fp_version}
 LOG_DIR=$BIDS_DIR/$OUTPUT_DIR/logs
 
 export cache_dir=/scratch/tlei/fmriprep_tmps_$analysis_name
@@ -66,7 +66,7 @@ SINGULARITY_CMD="unset PYTHONPATH && singularity run --cleanenv --no-home --writ
                  -B $CODE_DIR:/code \
                  -B ${TEMPLATEFLOW_HOST_HOME}:${SINGULARITYENV_TEMPLATEFLOW_HOME}\
                  -B ${FMRIPREP_HOST_CACHE}:/work \
-                 /scratch/tlei/containers/fmriprep_25.1.3.sif "
+                 /scratch/tlei/containers/fmriprep_${fp_version}.sif "
 
                  # If you already have FS run, add this line to find it
                  # -B ${LOCAL_FREESURFER_DIR}:/fsdir \
@@ -96,13 +96,13 @@ cmd="module load Apptainer/1.2.4 &&  \
       --fs-license-file /base/.license \
       --omp-nthreads 10 --nthreads 20 --mem_mb 50000 \
       --skip-bids-validation \
-      --fs-subjects-dir /base/derivatives/freesurfer \
       --stop-on-first-crash \
       --dummy-scans 5 \
-      --bids-filter-file /code/fmriprep/bids_filter_sub-${subject}.json \
       --output-spaces T1w func MNI152NLin2009cAsym fsnative fsaverage "
 
 # Add these two lines if you had freesurfer run already
+#       --bids-filter-file /code/fmriprep/bids_filter_sub-${subject}.json \
+#       --fs-subjects-dir /base/derivatives/freesurfer \
 #  --bids-filter-file /base/bids_filter.json \
 #  --use-syn-sdc \
 #  --fs-subjects-dir /base/derivatives/fmriprep/analysis-okazaki_correctfmap/sourcedata/freesurfer

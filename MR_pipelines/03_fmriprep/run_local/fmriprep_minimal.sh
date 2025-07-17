@@ -16,6 +16,7 @@
 subject=$1
 basedir="/bcbl/home/public/Gari/VOTCLOC/main_exp"
 analysis_name="forcebbr"
+fp_version=25.1.3
 BIDS_DIR="${basedir}/BIDS"
 OUTPUT_DIR="${basedir}/BIDS/derivatives/fmriprep/analysis-${analysis_name}_minimal"
 # if BIDS is BIDS. then HOMES=$basedir
@@ -59,7 +60,7 @@ SINGULARITY_CMD="unset PYTHONPATH && apptainer run --cleanenv --no-home \
                  -B $basedir:/base \
                  -B ${TEMPLATEFLOW_HOST_HOME}:${SINGULARITYENV_TEMPLATEFLOW_HOME}\
                  -B ${FMRIPREP_HOST_CACHE}:/work \
-                 /bcbl/home/public/Gari/containers/fmriprep_24.1.1.sif"
+                 /bcbl/home/public/Gari/containers/fmriprep_${fp_version}.sif"
 
                  # If you already have FS run, add this line to find it
                  # -B ${LOCAL_FREESURFER_DIR}:/fsdir \

@@ -15,9 +15,10 @@
 # or substantial portions of the Software.
 basedir="/bcbl/home/public/Gari/VOTCLOC/main_exp"
 analysis_name="sub10"
+fp_version=25.1.3
 CODE_DIR="${basedir}/code"
 BIDS_DIR="${basedir}/BIDS"
-OUTPUT_DIR=derivatives/fmriprep-${analysis_name}
+OUTPUT_DIR=derivatives/fmriprep-${analysis_name}-${fp_version}
 DERIVS_DIR="${BIDS_DIR}/$OUTPUT_DIR"
 
 # if BIDS is BIDS. then cache_dir=$basedir
@@ -61,7 +62,7 @@ SINGULARITY_CMD="unset PYTHONPATH && singularity run --cleanenv --no-home \
                  -B $CODE_DIR:/code \
                  -B ${TEMPLATEFLOW_HOST_HOME}:${SINGULARITYENV_TEMPLATEFLOW_HOME}\
                  -B ${FMRIPREP_HOST_CACHE}:/work \
-                 /bcbl/home/public/Gari/containers/fmriprep_25.0.0.sif"
+                 /bcbl/home/public/Gari/containers/fmriprep_${fp_version}.sif"
 
                  # If you already have FS run, add this line to find it
                  # -B ${LOCAL_FREESURFER_DIR}:/fsdir \
