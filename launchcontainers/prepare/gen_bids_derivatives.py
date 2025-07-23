@@ -1,15 +1,15 @@
 '''
-This code is used to generate BIDS-valid derivatives folder to make it able to index by pybids
+Already use heudiconv to generate empty dataset_descriptions
 
-right now it will put a dataset_description.json under the derivatives/pipeline/
+Maybe it's time to use this to write and note down the corresponding containers
 
-
+This one is WIP
 '''
 import os
 import json
 import pandas as pd
 import logging
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('Launchcontainers')
 
 def gen_dataset_desc_json(output_dir):
     os.makedirs(output_dir, exist_ok=True)  # Create directory if it doesn't exist

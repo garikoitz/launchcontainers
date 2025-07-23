@@ -11,20 +11,27 @@ general:
   basedir: /scratch/tlei/paper_dv
   # Name of bids directory, 1 level under basedir, must contain dataset_description
   bidsdir_name: BIDS
+  # Derivatives layout,valid options: BIDS or legacy TODO:
+  # there are 2 types of derivatives folder layout implemented:
+  # 1. the old layout for prf and DWI pipeline which we use different configs on the same batch of subject
+  # the layout will look like:
+  # BIDS/derivatives/pipeline_version/analysis-analysis_name
+  # 2. the new layout can be query by pybids
+  # it will look like:
+  # BIDS/derivatives/pipeline-version_analysis_name 
+  deriv_layout: legacy 
   # Directory contains singularity images
   containerdir: /scratch/tlei/containers
   # Name of the container
   # VALID OPTIONS:
   # Convert dcm to nifti: heudiconv
-  # preprocessing: presurfer and nordic
+  # image denoising: presurfer and nordic
   # fMRIprep
   # DWI pipelines:
   ## freesurferator, rtp2-preproc, rtp2-pipeline (RTP2)
   ## anatrois, rtppreproc, rtp-pipeline (RTP_old)
   # prf pipelines:
   ## prfprepare, prfanalyze-vista, prfresult
-  # glm :
-  ## l1_glm
   container: rtppreproc
   # Name of analysis folder; if input 01, need to add quote ""
   analysis_name: paper_dv-main
