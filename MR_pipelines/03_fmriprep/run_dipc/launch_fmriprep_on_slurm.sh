@@ -18,16 +18,16 @@ unset sublist
 unset slurm_log_dir
 
 STUDY="/scratch/tlei/VOTCLOC"
-code_dir="/scratch/tlei/soft/launchcontainers/MR_pipelines/03FMRI_fmriprep"
+code_dir="/scratch/tlei/soft/launchcontainers/MR_pipelines/03_fmriprep"
 # the subseslist here is just a subseslist name, it will look for
 # subseslist under basedir/code/subseslist
 sublist_name=$1
 sublist="${STUDY}/code/$sublist_name"
-analysis_name='avgT1_dummyscans5'
+analysis_name='one_ses_T1_and_T2_dummyscans5'
 fp_version=25.1.3
-job_name=sub-0103060708
+job_name=sub0102_all
 
-slurm_log_dir=$STUDY/dipc_fmriprep/$analysis_name_$(date +"%Y-%m-%d")
+slurm_log_dir=$STUDY/dipc_fmriprep/${analysis_name}_$(date +"%Y-%m-%d")
 mkdir -p ${slurm_log_dir}
 
 export analysis_name
@@ -49,7 +49,7 @@ cmd="sbatch \
     -J "${job_name}"
     -o "$slurm_log_dir/%J_%x-%A-%a_${now}.o" \
     -e "$slurm_log_dir/%J_%x-%A-%a_${now}.e" \
-    ${code_dir}/run_dipc/fmriprep.slurm "
+    ${code_dir}/run_dipc/src_fmriprep.slurm "
 
 ## Attention! the sublist needs to be subject only, and all the session will be processed in the same time
 ## if want to specify session, then specify the bids_filter.json file,

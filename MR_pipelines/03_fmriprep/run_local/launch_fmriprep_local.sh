@@ -13,29 +13,26 @@
 
 # The above copyright notice and this permission notice shall be included in all copies
 # or substantial portions of the Software.
-
-subject=$1
-# step can be minimal or final, if it is min, then will launch the other code,
-# if it is ifinal it will launch this code
 basedir="/bcbl/home/public/Gari/VOTCLOC/main_exp"
 analysis_name="sub10"
 fp_version=25.1.3
+CODE_DIR="${basedir}/code"
 BIDS_DIR="${basedir}/BIDS"
-DERIVS_DIR="${basedir}/BIDS/derivatives/fmriprep/analysis-${analysis_name}_minimal"
-OUTPUT_DIR="${basedir}/BIDS/derivatives/fmriprep/analysis-${analysis_name}_final"
+OUTPUT_DIR=derivatives/fmriprep-${fp_version}_${analysis_name}
+DERIVS_DIR="${BIDS_DIR}/$OUTPUT_DIR"
 
-# if BIDS is BIDS. then HOMES=$basedir
-# otherwise, it is HOMES=$BIDS_DIR
-export HOMES=$basedir
-LOG_DIR=$OUTPUT_DIR/logs
+# if BIDS is BIDS. then cache_dir=$basedir
+# otherwise, it is cache_dir=$BIDS_DIR
+export cache_dir=$basedir/fmriprep_tmps_$analysis_name
+LOG_DIR=$DERIVS_DIR/logs
 
 
 #LOCAL_FREESURFER_DIR="/dipc/tlei/.license"
 
 # Prepare some writeable bind-mount points.
-TEMPLATEFLOW_HOST_HOME=$OUTPUT_DIR/.cache/templateflow
-FMRIPREP_HOST_CACHE=$OUTPUT_DIR/.cache/fmriprep
-FMRIPREP_WORK_DIR=$OUTPUT_DIR/.work/fmriprep
+TEMPLATEFLOW_HOST_HOME=$cache_dir/.cache/templateflow
+FMRIPREP_HOST_CACHE=$cache_dir/.cache/fmriprep
+FMRIPREP_WORK_DIR=$cache_dir/.work/fmriprep
 mkdir -p ${TEMPLATEFLOW_HOST_HOME}
 mkdir -p ${FMRIPREP_HOST_CACHE}
 mkdir -p ${FMRIPREP_WORK_DIR}
@@ -55,14 +52,14 @@ export SINGULARITYENV_FS_LICENSE=/export/home/tlei/tlei/linux_settings/license.t
 
 # Designate a templateflow bind-mount point
 export SINGULARITYENV_TEMPLATEFLOW_HOME="/templateflow"
-
 # SINGULARITY_CMD="unset PYTHONPATH && singularity run --cleanenv --home /scratch/glerma \
 #                  -B /scratch/glerma:/scratch/glerma \
-SINGULARITY_CMD="unset PYTHONPATH && apptainer run --cleanenv --no-home \
+SINGULARITY_CMD="unset PYTHONPATH && singularity run --cleanenv --no-home \
                      --containall --writable-tmpfs \
                  -B /bcbl:/bcbl \
                  -B /export:/export \
-                 -B $basedir:/base \
+                 -B $BIDS_DIR:/base \
+                 -B $CODE_DIR:/code \
                  -B ${TEMPLATEFLOW_HOST_HOME}:${SINGULARITYENV_TEMPLATEFLOW_HOME}\
                  -B ${FMRIPREP_HOST_CACHE}:/work \
                  /bcbl/home/public/Gari/containers/fmriprep_${fp_version}.sif"
@@ -72,28 +69,25 @@ SINGULARITY_CMD="unset PYTHONPATH && apptainer run --cleanenv --no-home \
 # Remove IsRunning files from FreeSurfer
 # find ${LOCAL_FREESURFER_DIR}/sub-$subject/ -name "*IsRunning*" -type f -delete
 
-
+subject=$1
 # Compose the command line
 now=$(date +"%Y-%m-%dT%H:%M")
 cmd="module load apptainer/latest &&  \
      ${SINGULARITY_CMD} \
-     ${BIDS_DIR} \
-     ${OUTPUT_DIR} \
-     participant \
-          -d fmriprep=${DERIVS_DIR} \
-          --participant-label $subject \
-          -w /work/ -vv \
-          --fs-license-file ${SINGULARITYENV_FS_LICENSE} \
-          --omp-nthreads 10 --nthreads 20 --mem_mb 80000 \
-          --skip-bids-validation \
-          --output-spaces T1w func MNI152NLin2009cAsym fsnative fsaverage \
-          --notrack \
-          --bids-filter-file /base/code/bids_filter.json \
-          --force-bbr \
-          --stop-on-first-crash \
-          --fs-subjects-dir /base/BIDS/derivatives/fmriprep/analysis-beforeFebST05/sourcedata/freesurfer \
-     > ${LOG_DIR}/${analysis_name}_final_sub-${subject}_${now}.o 2> ${LOG_DIR}/${analysis_name}_final_sub-${subject}_${now}.e "
+     /base \
+     /base/${OUTPUT_DIR} \
+     participant --participant-label $subject \
+     -w /work/ -vv \
+     --fs-license-file ${SINGULARITYENV_FS_LICENSE} \
+     --omp-nthreads 10 --nthreads 30 --mem_mb 80000 \
+     --skip-bids-validation \
+     --output-spaces T1w func MNI152NLin2009cAsym fsnative fsaverage \
+     --notrack \
+     --stop-on-first-crash \
 
+     > ${LOG_DIR}/${analysis_name}_sub-${subject}_${now}.o 2> ${LOG_DIR}/${analysis_name}_sub-${subject}_${now}.e "
+
+#     --bids-filter-file /base/code/bids_filter.json \
      #--fs-subjects-dir /base/BIDS/derivatives/freesurfer/analysis-${analysis_name} "
 # Add these two lines if you had freesurfer run already
 #  --bids-filter-file /base/code/bids_filter_okazaki.json \
@@ -104,6 +98,7 @@ cmd="module load apptainer/latest &&  \
 #     --project-goodvoxels \
 #     --notrack \
 #     --dummy-scans 6 \
+# --fs-subjects-dir /base/BIDS/derivatives/fmriprep/analysis-beforeFebST05/sourcedata/freesurfer \
 # --fs-subjects-dir /base/derivatives/fmriprep/analysis-okazaki_correctfmap/sourcedata/freesurfer
 # Setup done, run the command
 echo Running subject ${subject}

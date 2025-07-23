@@ -13,7 +13,7 @@
 # The above copyright notice and this permission notice shall be included in all copies or substantial
 # portions of the Software.
 
-#SBATCH --time=09:30:00
+#SBATCH --time=24:00:00
 #SBATCH -n 1  # this stands for number of task/ or number of nodes being used
 #SBATCH --cpus-per-task=20    #6
 #SBATCH --mem=72000
@@ -28,7 +28,7 @@ basedir="/scratch/tlei/VOTCLOC"
 BIDS_DIR="/scratch/tlei/VOTCLOC/BIDS"
 CODE_DIR="${basedir}/code"
 echo $CODE_DIR
-OUTPUT_DIR=derivatives/fmriprep-${analysis_name}-${fp_version}
+OUTPUT_DIR=derivatives/fmriprep-${fp_version}_${analysis_name}
 LOG_DIR=$BIDS_DIR/$OUTPUT_DIR/logs
 
 export cache_dir=/scratch/tlei/fmriprep_tmps_$analysis_name
@@ -98,6 +98,7 @@ cmd="module load Apptainer/1.2.4 &&  \
       --skip-bids-validation \
       --stop-on-first-crash \
       --dummy-scans 5 \
+      --bids-filter-file /code/fmriprep/bids_filter_sub-${subject}.json \
       --output-spaces T1w func MNI152NLin2009cAsym fsnative fsaverage "
 
 # Add these two lines if you had freesurfer run already
