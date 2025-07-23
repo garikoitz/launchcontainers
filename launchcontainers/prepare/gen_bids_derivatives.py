@@ -8,7 +8,8 @@ right now it will put a dataset_description.json under the derivatives/pipeline/
 import os
 import json
 import pandas as pd
-logger = logging.getLogger('Launchcontainers')
+import logging
+logger = logging.getLogger(__name__)
 
 def gen_dataset_desc_json(output_dir):
     os.makedirs(output_dir, exist_ok=True)  # Create directory if it doesn't exist
