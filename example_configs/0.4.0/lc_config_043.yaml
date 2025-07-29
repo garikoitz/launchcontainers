@@ -185,6 +185,7 @@ host_options:
       system: scratch
       tmpdir: /scratch/tlei/tmp
       mount_options: ['/scratch']
+      job_name: retest_paperdv
       # config the machine
       cores: 20
       memory: 32G
