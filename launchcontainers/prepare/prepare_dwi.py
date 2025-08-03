@@ -70,7 +70,7 @@ def copy_configs(container, extra_config_fpath, analysis_dir, force, option=None
     return config_fname
 
 
-def gen_config_dict_and_copy(parser_namespace):
+def gen_config_dict_and_copy(parser_namespace,analysis_dir):
     '''
     This function is used to copy other config files to the analysis folder
 
@@ -81,19 +81,10 @@ def gen_config_dict_and_copy(parser_namespace):
     lc_config = lc_config = do.read_yaml(lc_config_fpath)
     logger.info('\n prepare_dwi_extra_configs reading lc config yaml')
     # read parameters from lc_config
-    basedir = lc_config['general']['basedir']
     container = lc_config['general']['container']
     force = lc_config['general']['force']
-    analysis_name = lc_config['general']['analysis_name']
-    version = lc_config['container_specific'][container]['version']
-    bidsdir_name = lc_config['general']['bidsdir_name']
-    container_folder = op.join(
-        basedir,
-        bidsdir_name,
-        'derivatives',
-        f'{container}_{version}',
-    )
-    analysis_dir = op.join(container_folder, f'analysis-{analysis_name}')
+
+
     container_configs_fname = f'{container}.json'
     json_under_analysis_dir = op.join(analysis_dir, container_configs_fname)
     # set up dict to get extra config infomation
@@ -274,7 +265,7 @@ def write_json(extra_field_config_json, json_path, force):
     return True
 
 
-def copy_and_edit_config_json(parser_namespace):
+def copy_and_edit_config_json(parser_namespace,analysis_dir):
     '''
     This function is used to automatically read config.yaml
     and get the input file info and put them in the config.json
@@ -282,7 +273,7 @@ def copy_and_edit_config_json(parser_namespace):
     '''
 
     # get the config json dict and copy the extra configs
-    config_json_dict = gen_config_dict_and_copy(parser_namespace)
+    config_json_dict = gen_config_dict_and_copy(parser_namespace,analysis_dir)
 
     # read the yaml to get input info
     lc_config_fpath = parser_namespace.lc_config
@@ -306,7 +297,7 @@ def copy_and_edit_config_json(parser_namespace):
     return config_json_dict
 
 
-def prepare_dwi(parser_namespace, df_subses, layout):
+def prepare_dwi(parser_namespace, analysis_dir ,df_subses, layout):
     """
     This is the major function for doing the preparation, it is doing the work
     1. write the config.json (analysis level)
@@ -334,19 +325,9 @@ def prepare_dwi(parser_namespace, df_subses, layout):
     version = lc_config['container_specific'][container]['version']
 
     # read parameters from lc_config
-    basedir = lc_config['general']['basedir']
     container = lc_config['general']['container']
     force = lc_config['general']['force']
-    analysis_name = lc_config['general']['analysis_name']
     version = lc_config['container_specific'][container]['version']
-    bidsdir_name = lc_config['general']['bidsdir_name']
-    container_folder = op.join(
-        basedir,
-        bidsdir_name,
-        'derivatives',
-        f'{container}_{version}',
-    )
-    analysis_dir = op.join(container_folder, f'analysis-{analysis_name}')
 
     logger.info(
         '#####################################################\n'
@@ -354,7 +335,7 @@ def prepare_dwi(parser_namespace, df_subses, layout):
     )
 
     # copy and edit config json and extra config files
-    config_json_dict = copy_and_edit_config_json(parser_namespace)
+    config_json_dict = copy_and_edit_config_json(parser_namespace,analysis_dir)
 
     if config_json_dict:
         logger.info(
@@ -384,10 +365,10 @@ def prepare_dwi(parser_namespace, df_subses, layout):
         RUN = row.RUN
         dwi = row.dwi
 
-        logger.info(
+        logger.critical(
             '\n'
             + 'The current ses is: \n'
-            + f'{sub}_{ses}_{container}_{version}\n',
+            + f'sub-{sub}_ses-{ses}_{container}_{version}\n',
         )
 
         if RUN == 'True' and dwi == 'True':

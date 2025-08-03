@@ -72,10 +72,10 @@ def setup_logger(quiet, verbose=False, debug=False, log_dir=None, log_filename=N
             makedirs(log_dir)
 
         file_handler_info = (
-            logging.FileHandler(op.join(log_dir, f'{log_filename}_info.log'), mode='a')
+            logging.FileHandler(op.join(log_dir, f'{log_filename}_.log'), mode='a')
         )
         file_handler_error = (
-            logging.FileHandler(op.join(log_dir, f'{log_filename}_error.log'), mode='a')
+            logging.FileHandler(op.join(log_dir, f'{log_filename}_.err'), mode='a')
         )
         file_handler_info.setFormatter(log_formatter)
         file_handler_error.setFormatter(log_formatter)

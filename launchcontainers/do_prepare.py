@@ -28,7 +28,7 @@ from launchcontainers.prepare import prepare_dwi as prep_dwi
 logger = logging.getLogger('Launchcontainers')
 
 
-def setup_analysis_folder(parse_namespace):
+def prepare_analysis_dir(parse_namespace, analysis_dir):
     '''
     Description: create analysis folder based on your container and your analysis.
 
@@ -42,41 +42,15 @@ def setup_analysis_folder(parse_namespace):
     '''
     # read the yaml to get input info
     lc_config_fpath = parse_namespace.lc_config
-    lc_config = lc_config = do.read_yaml(lc_config_fpath)
-    logger.info('\n setup_analysis_folder reading lc config yaml')
+    lc_config = do.read_yaml(lc_config_fpath)
+    logger.info('\n prepare_analysis_dir reading lc config yaml')
     # read parameters from lc_config
-    basedir = lc_config['general']['basedir']
+    # the pipeline we are going to run
     container = lc_config['general']['container']
+    # if force overwrite
     force = lc_config['general']['force']
-    analysis_name = lc_config['general']['analysis_name']
-    version = lc_config['container_specific'][container]['version']
-    bidsdir_name = lc_config['general']['bidsdir_name']
+    # if use dask to do the parallel, will abandon it in the future release
     use_dask = lc_config['general']['use_dask']
-
-    # 1 create container dir and analysis dir
-    if container in [
-        'anatrois',
-        'rtppreproc',
-        'rtp-pipeline',
-        'freesurferator',
-        'rtp2-preproc',
-        'rtp2-pipeline',
-    ]:
-
-        container_folder = op.join(
-            basedir,
-            bidsdir_name,
-            'derivatives',
-            f'{container}_{version}',
-        )
-        # make dirs
-        os.makedirs(container_folder, exist_ok=True)
-        # 2 create analysis dir
-
-        analysis_dir = op.join(
-            container_folder, f'analysis-{analysis_name}', )
-        if not op.isdir(analysis_dir):
-            os.makedirs(analysis_dir)
 
     # 2 create logdir for dask if use dask to launch
     if use_dask:
@@ -94,6 +68,7 @@ def setup_analysis_folder(parse_namespace):
 
     # 3 Copy the configs
     # define the potential exist config files
+    # TODO: shall I add the time stamp to the file name?
     ana_dir_lcc = op.join(analysis_dir, 'lc_config.yaml')
     ana_dir_ssl = op.join(analysis_dir, 'subseslist.txt')
     container_configs_fname = f'{container}.json'
@@ -107,7 +82,9 @@ def setup_analysis_folder(parse_namespace):
         ana_dir_cc, force,
     )
 
-    logger.debug(
+    # create a tmp dir to store all the launch script for SLURM and SGE
+    
+    logger.info(
         f'\n The analysis folder: {analysis_dir} successfully created,'
         'all the configs has been copied',
     )
@@ -116,7 +93,7 @@ def setup_analysis_folder(parse_namespace):
     return success
 
 
-def main(parse_namespace):
+def main(parse_namespace, analysis_dir):
     # read the yaml to get input info
     lc_config_fpath = parse_namespace.lc_config
     # read LC config yml
@@ -126,14 +103,8 @@ def main(parse_namespace):
     basedir = lc_config['general']['basedir']
     bidsdir_name = lc_config['general']['bidsdir_name']
     container = lc_config['general']['container']
-    analysis_name = lc_config['general']['analysis_name']
-    version = lc_config['container_specific'][container]['version']
-    analysis_dir = op.join(
-        basedir, bidsdir_name, 'derivatives',
-        f'{container}_{version}', f'analysis-{analysis_name}',
-    )
-
     lc_config_fpath = parse_namespace.lc_config
+
     # read LC config yml
     lc_config = lc_config = do.read_yaml(lc_config_fpath)
     print('\n do_prepare reading lc config yaml')
@@ -147,14 +118,14 @@ def main(parse_namespace):
 
     # the prepare code
     # 1. setup analysis folder
-    prepare_step1 = setup_analysis_folder(parse_namespace)
+    prepare_step1 = prepare_analysis_dir(parse_namespace, analysis_dir)
 
     # 2. do container specific preparation
     #   a. for DWI, prepare the container specific json
     #   b. create symbolic links
     logger.info('Reading the BIDS layout...')
     bids_dname = os.path.join(basedir, bidsdir_name)
-    layout = BIDSLayout(bids_dname)
+    layout = BIDSLayout(bids_dname, validate=False)
     logger.info('finished reading the BIDS layout.')
     if container in [
         'anatrois',
@@ -166,7 +137,7 @@ def main(parse_namespace):
     ]:
         logger.debug(f'{container} is in the list')
 
-        prepare_step2 = prep_dwi.prepare_dwi(parse_namespace, df_subses, layout)
+        prepare_step2 = prep_dwi.prepare_dwi(parse_namespace, analysis_dir, df_subses, layout)
     else:
         logger.error(f'{container} is not in the list')
 

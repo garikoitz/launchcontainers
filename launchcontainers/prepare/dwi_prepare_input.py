@@ -136,8 +136,8 @@ def anatrois(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout):
             )
             if len(src_path_anat_lst) == 0:
                 raise FileNotFoundError(
-                    f'the T1w.nii.gz you are specifying for sub-{sub}_ses-{ses} \
-                        does NOT exist or the folder is not BIDS format, please check',
+                    f'the T1w.nii.gz you are specifying for sub-{sub}_ses-{ses} '+
+                    f'does NOT exist or the folder is not BIDS format, please check',
                 )
             else:
                 src_path_anat = src_path_anat_lst[0]

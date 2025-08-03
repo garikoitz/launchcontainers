@@ -256,7 +256,15 @@ def main(parse_namespace):
     container = lc_config['general']['container']
 
     # 2. do a independent check to see if everything is in place
-    check.check_dwi_analysis_folder(parse_namespace, container)
+    if container in [
+        'anatrois',
+        'rtppreproc',
+        'rtp-pipeline',
+        'freesurferator',
+        'rtp2-preproc',
+        'rtp2-pipeline',
+    ]:
+        check.check_dwi_analysis_folder(parse_namespace, container)
 
     # get stuff from subseslist for future jobs scheduling
     sub_ses_list_path = op.join(analysis_dir, 'subseslist.txt')
