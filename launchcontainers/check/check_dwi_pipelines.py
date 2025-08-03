@@ -22,10 +22,11 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import os.path as op
 import zipfile
+
 logger = logging.getLogger('Launchcontainers')
+
 
 
 def check_tractparam(lc_config, sub, ses, tractparam_df):

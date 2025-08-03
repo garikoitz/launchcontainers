@@ -24,97 +24,11 @@ import sys
 from datetime import datetime
 
 from launchcontainers import utils as do
-from launchcontainers.check import check_dwi_pipelines as check
+from launchcontainers.check import check_dwi_pipelines, general_checks
 from launchcontainers.clusters import dask_scheduler as daskq
 from launchcontainers.gen_launch_cmd import gen_sub_ses_cmd
 
 logger = logging.getLogger('Launchcontainers')
-
-
-def show_first_tree(analysis_dir, sub, ses):
-
-    # Build the path to that subject/session folder
-    path = os.path.join(analysis_dir, f'sub-{sub}', f'ses-{ses}', 'input')
-
-    # Call “tree -C <path>” and let it print directly to your terminal
-    sp.run(['tree', '-C', '-L', '3' , path], check=True)
-
-
-def print_option_for_review(
-    num_of_true_run,
-    lc_config,
-    container,
-    bidsdir_name,
-):
-
-    basedir = lc_config['general']['basedir']
-    host = lc_config['general']['host']
-    bids_dname = os.path.join(basedir, bidsdir_name)
-    containerdir = lc_config['general']['containerdir']
-    version = lc_config['container_specific'][container]['version']
-    analysis_name = lc_config['general']['analysis_name']
-    all_containers = os.listdir(containerdir)
-    # add a check to see if container is there
-    container_sif_name = f'{container}_{version}.sif'
-    container_in_place = container_sif_name in all_containers
-    if not container_in_place :
-        raise FileNotFoundError(f'No such file : {container_sif_name} \n under {containerdir} ')
-    # output the options here for the user to review:
-    logger.critical(
-        '\n'
-        + '#####################################################\n'
-        + f'SubsesList is read, there are * {num_of_true_run} * jobs \n '
-        + f'Host is {host} \n'
-        + f'Basedir is: {basedir} \n'
-        + f'Container is:  {container_sif_name}\n'
-        + f'singularity image dir is {containerdir} \n'
-        + f'analysis name is: {analysis_name} \n'
-        + '##################################################### \n',
-    )
-
-    if container in ['freesurferator', 'anatrois']:
-        src_dir = bids_dname
-        logger.critical(f'\n### The source dir is: {src_dir}')
-    if container in ['rtppreproc', 'rtp2-preproc']:
-        precontainer_anat = lc_config['container_specific'][container]['precontainer_anat']
-        anat_analysis_name = lc_config['container_specific'][container]['anat_analysis_name']
-        pre_anatrois_dir = op.join(
-            basedir,
-            bidsdir_name,
-            'derivatives',
-            f'{precontainer_anat}',
-            'analysis-' + anat_analysis_name,
-        )
-
-        logger.critical(f'\n ### The source FSMASK and T1w dir: {pre_anatrois_dir}')
-    if container in ['rtp-pipeline', 'rtp2-pipeline']:
-        # rtppipeline specefic variables
-        precontainer_anat = lc_config['container_specific'][container]['precontainer_anat']
-        anat_analysis_name = lc_config['container_specific'][container]['anat_analysis_name']
-        precontainer_preproc = lc_config['container_specific'][container]['precontainer_preproc']
-        preproc_analysis_num = lc_config['container_specific'][container]['preproc_analysis_name']
-        # define the pre containers
-        pre_anatrois_dir = op.join(
-            basedir,
-            bidsdir_name,
-            'derivatives',
-            f'{precontainer_anat}',
-            'analysis-' + anat_analysis_name,
-        )
-
-        pre_preproc_dir = op.join(
-            basedir,
-            bidsdir_name,
-            'derivatives',
-            precontainer_preproc,
-            'analysis-' + preproc_analysis_num,
-        )
-
-        logger.critical(
-            f'\n### The source FSMASK and ROI dir is: {pre_anatrois_dir} \n'
-            + f'The source DWI preprocessing dir is: {pre_preproc_dir} \n',
-        )
-    return
 
 
 def print_job_script(host, jobqueue_config , n_jobs, daskworker_logdir):
@@ -264,7 +178,7 @@ def main(parse_namespace):
         'rtp2-preproc',
         'rtp2-pipeline',
     ]:
-        check.check_dwi_analysis_folder(parse_namespace, container)
+        check_dwi_pipelines.check_dwi_analysis_folder(parse_namespace, container)
 
     # get stuff from subseslist for future jobs scheduling
     sub_ses_list_path = op.join(analysis_dir, 'subseslist.txt')
@@ -281,10 +195,10 @@ def main(parse_namespace):
     sub = first_row['sub']
     ses = first_row['ses']
     logger.critical('\n### output example subject folder structure \n')
-    show_first_tree(analysis_dir, sub, ses)
+    general_checks.cli_show_folder_struc(analysis_dir, sub, ses)
 
     # 4. ask for user input about folder structure and example command
-    print_option_for_review(
+    general_checks.print_option_for_review(
         num_of_true_run,
         lc_config,
         container,
@@ -293,40 +207,13 @@ def main(parse_namespace):
 
     # 5. generate the job script
     # 6. generate command for sample subject
-
     launch_jobs(
         parse_namespace,
         df_subses,
         num_of_true_run,
         False,
     )
-
-    # host = lc_config['general']['host']
-    # # logger the settings
-    # if host == 'local':
-    #     njobs = lc_config['host_options'][host]['njobs']
-    #     if njobs == '' or njobs is None:
-    #         njobs = 2
-    #     launch_mode = lc_config['host_options']['local']['launch_mode']
-    #     valid_options = ['serial', 'parallel', 'dask_worker']
-    #     if launch_mode in valid_options:
-    #         host_str = (
-    #             f'{host}, \n and commands will be launched in {launch_mode} mode \n'
-    #             f'every {njobs} jobs. '
-    #             f'Serial is safe but it will take longer. '
-    #             f'If you launch in parallel be aware that some of the '
-    #             f'processes might be killed if the limit (usually memory) '
-    #             f'of the machine is reached. '
-    #         )
-    #     else:
-    #         do.die(
-    #             f'local:launch_mode {launch_mode} was passed, valid options are {valid_options}',
-    #         )
-    # else:
-    #     host_str = f' host is {host}'
-
     # === Ask user to confirm before launching anything ===
-
     ans = input(
         'You are about to launch jobs, please review the'
         "previous session's info. Continue? [y / N]: ",
@@ -344,7 +231,8 @@ def main(parse_namespace):
         num_of_true_run,
         run_lc,
     )
-
+    timestamp_finish = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    logger.critical(f'\n##### The finishing time is {timestamp_finish}')
     # when finished launch QC to read the log and check if everything is there
     return
 
