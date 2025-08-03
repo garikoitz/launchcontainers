@@ -24,29 +24,47 @@ logger = logging.getLogger('Launchcontainers')
 
 
 def host_specific_cmd_prefix(lc_config):
+    '''
+    This functions is used to mimic the module load or conda activate command before the singularity run
+    BCBL local:
+    need module load
+
+    Okazaki local:
+    no need module load
+
+    BCBL SGE:
+    need module load
+
+    DIPC SLURM:
+    need module load
+
+    but, if use dask, the module load will be put seperatly under envextra, we will not hard coded module load in the script
+
+    '''
     host = lc_config['general']['host']
     jobqueue_config = lc_config['host_options'][host]
     use_module = jobqueue_config['use_module']
     mount_options = jobqueue_config['mount_options']
-    env_cmd = ''
-    if host == 'local':
+    use_dask = lc_config['general']['use_dask']
+    # dask job script module load is not working, need to put under envextra
+    if use_dask:
+        env_cmd = ''
+    else:
         if use_module:
             env_cmd = f"module load {jobqueue_config['apptainer']} &&"
-    # dask not working, need to put under envextra
-    # else:
-    #     env_cmd = f"module load {jobqueue_config['apptainer']} &&"
+    # define the mount cmd
     path_mount_cmd = ''
     for mount in mount_options:
         path_mount_cmd += f'--bind {mount}:{mount} '
 
     cmd_prefix = (
-        f'{env_cmd} apptainer run '  # -e --no-home '
+        f'{env_cmd} unset PYTHONPATH; apptainer run '  # -e --no-home '
         f'--containall --pwd /flywheel/v0 {path_mount_cmd}'
     )
     return cmd_prefix
 
 
-def gen_sub_ses_cmd(
+def gen_RTP2_cmd(
     lc_config, sub, ses, analysis_dir,
 ):
     """Puts together the command to send to the container.
@@ -210,5 +228,48 @@ def gen_sub_ses_cmd(
             'the DWI PIPELINE command is not assigned, please check your config.yaml[general][host] session\n',
         )
         raise ValueError('Launch command is not defined, aborting')
+
+    return cmd
+
+
+
+
+def gen_PRF_cmd(lc_config, sub, ses, analysis_dir) -> str:
+    """
+    Generate singularity command for a specific subject/session.
+    Mimics the functionality of prfanalyze-vista_dipc.sh
+
+    Args:
+
+    Returns:
+        Complete singularity command string
+    """
+    # Define paths based on your script structure
+
+    HOME_DIR = f'{baseP}/singularity_home'
+    license_path = f'{baseP}/BIDS/.license'
+    json_dir = f'{baseP}/code/{step}_jsons'
+    sif_path = f'/scratch/tlei/containers/{step}_{version}.sif'
+    json_path = f'{json_dir}/{task}_sub-{sub}_ses-{ses}.json'
+
+    # Build the singularity command (mimicking prfanalyze-vista_dipc.sh)
+    cmd_parts = [
+        'unset PYTHONPATH;',
+        'module load Apptainer/1.2.4;',
+        'singularity run',
+        '-B /scratch:/scratch',
+        '-B /data:/data',
+        f'-H {HOME_DIR}',
+        f'-B {baseP}:/flywheel/v0/input',
+        f'-B {baseP}:/flywheel/v0/output',
+        f'-B {json_path}:/flywheel/v0/input/config.json',
+        '--cleanenv',
+        sif_path,
+        '--verbose;',
+        'module unload Apptainer',
+    ]
+
+    # Join command parts
+    cmd = ' \\\n\t'.join(cmd_parts[:-1]) + '; ' + cmd_parts[-1]
 
     return cmd

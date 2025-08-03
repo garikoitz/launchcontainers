@@ -19,66 +19,16 @@ from __future__ import annotations
 import logging
 import os
 import os.path as op
-import subprocess as sp
 import sys
 from datetime import datetime
 
 from launchcontainers import utils as do
-from launchcontainers.check import check_dwi_pipelines, general_checks
-from launchcontainers.clusters import dask_scheduler as daskq
+from launchcontainers.check import check_dwi_pipelines
+from launchcontainers.check import general_checks
+from launchcontainers.clusters import dask_scheduler as dask_launch
 from launchcontainers.gen_launch_cmd import gen_sub_ses_cmd
 
 logger = logging.getLogger('Launchcontainers')
-
-
-def print_job_script(host, jobqueue_config , n_jobs, daskworker_logdir):
-    if host == 'local':
-        launch_mode = jobqueue_config['launch_mode']
-    # If the host is not local, print the job script to be launched in the cluster.
-    if host != 'local' or (host == 'local' and launch_mode == 'dask_worker'):
-        _, cluster = daskq.dask_scheduler(jobqueue_config, n_jobs, daskworker_logdir)
-        if host != 'local':
-            logger.critical(
-                f'Cluster job script for this command is:\n'
-                f'{cluster.job_script()}',  # type: ignore
-            )
-        elif host == 'local' and launch_mode == 'dask_worker':
-            logger.critical(
-                f'Local job script by dask is:\n'
-                f'{cluster}',
-            )
-        else:
-            logger.critical(
-                'Job launched on local, no job script',
-            )
-    return
-
-
-def run_cmd(cmd: str):
-    return sp.run(cmd, shell=True).returncode
-
-
-def launch_with_dask(jobqueue_config, n_jobs, daskworker_logdir, cmds):
-
-    client, cluster = daskq.dask_scheduler(jobqueue_config, n_jobs, daskworker_logdir)
-    logger.info(
-        '---this is the cluster and client\n' + f'{client} \n cluster: {cluster} \n',
-    )
-
-    # Compose the command to run in the cluster
-    futures = client.map(  # type: ignore
-        run_cmd,
-        cmds,
-    )
-    results = client.gather(futures)  # type: ignore
-    logger.info(results)
-    logger.info('###########')
-    # Close the connection with the client and the cluster, and inform about it
-    client.close()  # type: ignore
-    cluster.close()  # type: ignore
-
-    logger.critical('\n' + 'launchcontainer finished, all the jobs are done')
-    return
 
 
 def launch_jobs(
@@ -91,24 +41,26 @@ def launch_jobs(
     """
     # read LC config yml from analysis dir
     analysis_dir = parse_namespace.workdir
-
     lc_config_fpath = op.join(analysis_dir, 'lc_config.yaml')
     lc_config = do.read_yaml(lc_config_fpath)
     host = lc_config['general']['host']
     jobqueue_config = lc_config['host_options'][host]
-
+    container = lc_config['general']['container']
+    # if use dask, then we will use dask and dask jobqueue
+    # if not, we will create tmp files and launch them using sbatch/qsub
     use_dask = lc_config['general']['use_dask']
     if use_dask:
         daskworker_logdir = os.path.join(analysis_dir, 'daskworker_log')
 
     else:
-        print('Not implement yet')
-        # launch_logdir = os.path.join(analysis_dir, 'launch_log')
-        # timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-        # dot_o = os.path.join(launch_logdir, f'launch_log_{timestamp}.log')
-        # dot_e = os.path.join(launch_logdir, f'launch_log_{timestamp}.err')
+        # the log file path will go to sp.run returns
+        launch_logdir = os.path.join(analysis_dir, f'launch_{container}_log')
+        timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        lc_launch_log = os.path.join(launch_logdir, f'launch_log_{timestamp}.log')
+        lc_launch_err = os.path.join(launch_logdir, f'launch_log_{timestamp}.err')
 
     n_jobs = num_of_true_run
+
     # Iterate over the provided subject list
     commands = []
     lc_configs = []
@@ -136,13 +88,15 @@ def launch_jobs(
 
     if not run_lc:
         logger.critical('\n### No launching, here is the command line command')
-        print_job_script(host, jobqueue_config , n_jobs, daskworker_logdir)
-        logger.critical(f'\n### Example launch command is: {commands[0]}')
-
+        if use_dask:
+            dask_launch.print_job_script(host, jobqueue_config , n_jobs, daskworker_logdir)
+            logger.critical(f'\n### Example launch command is: {commands[0]}')
+        else:
+            print(commands)
     # RUN mode
     else:
         if use_dask:
-            launch_with_dask(
+            dask_launch.launch_with_dask(
                 jobqueue_config,
                 n_jobs,
                 daskworker_logdir,
@@ -150,6 +104,8 @@ def launch_jobs(
             )
 
         else:
+            # TODO:
+            # create tmp file useing sge.py, generate the job array from the subseslist
             pass
 
     return

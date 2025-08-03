@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import logging
+import subprocess as sp
 
 from dask import config
 from dask.distributed import Client
@@ -46,7 +47,7 @@ def initiate_cluster(jobqueue_config, n_job, dask_logdir):
     config.set(scheduler='single-threaded')
     config.set({'distributed.scheduler.allowed-failures': 50})
     config.set(admin__tick__limit='3h')
-    logger.critical(f"\n $$$$$ dask number of jobs scaled is {n_job}")
+    logger.critical(f'\n $$$$$ dask number of jobs scaled is {n_job}')
     if 'sge' in jobqueue_config['manager']:
         # envextra is needed for launch jobs on SGE and SLURM
         envextra = [
@@ -121,3 +122,51 @@ def dask_scheduler(jobqueue_config, n_job, dask_logdir):
     client = None if cluster is None else Client(cluster)
 
     return client, cluster
+
+
+def print_job_script(host, jobqueue_config , n_jobs, daskworker_logdir):
+    if host == 'local':
+        launch_mode = jobqueue_config['launch_mode']
+    # If the host is not local, print the job script to be launched in the cluster.
+    if host != 'local' or (host == 'local' and launch_mode == 'dask_worker'):
+        _, cluster = dask_scheduler(jobqueue_config, n_jobs, daskworker_logdir)
+        if host != 'local':
+            logger.critical(
+                f'Cluster job script for this command is:\n'
+                f'{cluster.job_script()}',  # type: ignore
+            )
+        elif host == 'local' and launch_mode == 'dask_worker':
+            logger.critical(
+                f'Local job script by dask is:\n'
+                f'{cluster}',
+            )
+        else:
+            logger.critical(
+                'Job launched on local, no job script',
+            )
+    return
+
+
+def launch_with_dask(jobqueue_config, n_jobs, daskworker_logdir, cmds):
+    def run_cmd(cmd: str):
+        return sp.run(cmd, shell=True).returncode
+
+    client, cluster = dask_scheduler(jobqueue_config, n_jobs, daskworker_logdir)
+    logger.info(
+        '---this is the cluster and client\n' + f'{client} \n cluster: {cluster} \n',
+    )
+
+    # Compose the command to run in the cluster
+    futures = client.map(  # type: ignore
+        run_cmd,
+        cmds,
+    )
+    results = client.gather(futures)  # type: ignore
+    logger.info(results)
+    logger.info('###########')
+    # Close the connection with the client and the cluster, and inform about it
+    client.close()  # type: ignore
+    cluster.close()  # type: ignore
+
+    logger.critical('\n' + 'launchcontainer finished, all the jobs are done')
+    return
