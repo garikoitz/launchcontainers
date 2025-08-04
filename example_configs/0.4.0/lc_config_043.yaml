@@ -195,8 +195,9 @@ host_options:
       #--partition=general \
       #--qos=${qos} \ # qos can be : regular test long xlong serial
       queue: general
+      partition: general
       qos: regular
-      job_extra_directives: [--qos=regular]
+      job_extra_directives:
       walltime: '10:00:00'
 
 

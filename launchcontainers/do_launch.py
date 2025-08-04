@@ -26,7 +26,7 @@ from launchcontainers import utils as do
 from launchcontainers.check import check_dwi_pipelines
 from launchcontainers.check import general_checks
 from launchcontainers.clusters import dask_scheduler as dask_launch
-from launchcontainers.gen_launch_cmd import gen_sub_ses_cmd
+from launchcontainers.gen_launch_cmd import gen_RTP2_cmd
 
 logger = logging.getLogger('Launchcontainers')
 
@@ -34,7 +34,7 @@ logger = logging.getLogger('Launchcontainers')
 def launch_jobs(
     parse_namespace,
     df_subses,
-    num_of_true_run,
+    num_of_jobs,
     run_lc,
 ):
     """
@@ -59,7 +59,7 @@ def launch_jobs(
         lc_launch_log = os.path.join(launch_logdir, f'launch_log_{timestamp}.log')
         lc_launch_err = os.path.join(launch_logdir, f'launch_log_{timestamp}.err')
 
-    n_jobs = num_of_true_run
+    n_jobs = num_of_jobs
 
     # Iterate over the provided subject list
     commands = []
@@ -71,20 +71,16 @@ def launch_jobs(
     for row in df_subses.itertuples(index=True, name='Pandas'):
         sub = row.sub
         ses = row.ses
-        RUN = row.RUN
-        dwi = row.dwi
         # needs to implement dwi, func etc to control for the other containers
-
-        if RUN == 'True' and dwi == 'True':
-            # This cmd is only for print the command
-            command = gen_sub_ses_cmd(
-                lc_config, sub, ses, analysis_dir,
-            )
-            commands.append(command)
-            lc_configs.append(lc_config)
-            subs.append(sub)
-            sess.append(ses)
-            dir_analysiss.append(analysis_dir)
+        # This cmd is only for print the command
+        command = gen_RTP2_cmd(
+            lc_config, sub, ses, analysis_dir,
+        )
+        commands.append(command)
+        lc_configs.append(lc_config)
+        subs.append(sub)
+        sess.append(ses)
+        dir_analysiss.append(analysis_dir)
 
     if not run_lc:
         logger.critical('\n### No launching, here is the command line command')
@@ -138,15 +134,23 @@ def main(parse_namespace):
 
     # get stuff from subseslist for future jobs scheduling
     sub_ses_list_path = op.join(analysis_dir, 'subseslist.txt')
-    df_subses, num_of_true_run = do.read_df(sub_ses_list_path)
-
+    df_subses, num_of_jobs = do.read_df(sub_ses_list_path)
+    if container in [
+        'anatrois',
+        'rtppreproc',
+        'rtp-pipeline',
+        'freesurferator',
+        'rtp2-preproc',
+        'rtp2-pipeline',
+    ]:
+        mask = (df_subses['RUN'] == 'True') & (df_subses['dwi'] == 'True')
+    else:
+        mask = df_subses['RUN'] == 'True'
+    df_subses = df_subses.loc[mask]
+    num_of_jobs = len(df_subses)
     # 3. tree sub-/ses- structure for checking
-    # get the first valid sub and ses using tree to show the data structure
-    mask = (df_subses['RUN'] == 'True') & (df_subses['dwi'] == 'True')
-
     # select the first row matching that mask
-    first_row = df_subses.loc[mask].iloc[0]
-
+    first_row = df_subses.iloc[0]
     # extract sub and ses
     sub = first_row['sub']
     ses = first_row['ses']
@@ -155,18 +159,26 @@ def main(parse_namespace):
 
     # 4. ask for user input about folder structure and example command
     general_checks.print_option_for_review(
-        num_of_true_run,
+        num_of_jobs,
         lc_config,
         container,
         bidsdir_name,
     )
 
     # 5. generate the job script
+    check here if the log dir and singularity home dir is being put under proper place
+# Setup directories
+log_dir = f"{baseP}/dipc_{step}_logs/{log_note}_{datetime.now().strftime('%Y-%m-%d')}"
+home_dir = f"{baseP}/singularity_home"
+
+os.makedirs(log_dir, exist_ok=True)
+os.makedirs(home_dir, exist_ok=True)
+
     # 6. generate command for sample subject
     launch_jobs(
         parse_namespace,
         df_subses,
-        num_of_true_run,
+        num_of_jobs,
         False,
     )
     # === Ask user to confirm before launching anything ===
@@ -184,7 +196,7 @@ def main(parse_namespace):
     launch_jobs(
         parse_namespace,
         df_subses,
-        num_of_true_run,
+        num_of_jobs,
         run_lc,
     )
     timestamp_finish = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')

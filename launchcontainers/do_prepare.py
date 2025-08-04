@@ -114,7 +114,19 @@ def main(parse_namespace, analysis_dir):
     # setup the subseslist read it into dataframe
     # get stuff from subseslist for future jobs scheduling
     sub_ses_list_path = parse_namespace.sub_ses_list
-    df_subses, num_of_true_run = do.read_df(sub_ses_list_path)
+    df_subses, _ = do.read_df(sub_ses_list_path)
+    if container in [
+        'anatrois',
+        'rtppreproc',
+        'rtp-pipeline',
+        'freesurferator',
+        'rtp2-preproc',
+        'rtp2-pipeline',
+    ]:
+        mask = (df_subses['RUN'] == 'True') & (df_subses['dwi'] == 'True')
+    else:
+        mask = df_subses['RUN'] == 'True'
+    df_subses = df_subses.loc[mask]
 
     # the prepare code
     # 1. setup analysis folder

@@ -23,7 +23,7 @@ from datetime import datetime
 logger = logging.getLogger('Launchcontainers')
 
 
-def host_specific_cmd_prefix(lc_config):
+def gen_cmd_prefix(lc_config):
     '''
     This functions is used to mimic the module load or conda activate command before the singularity run
     BCBL local:
@@ -39,7 +39,8 @@ def host_specific_cmd_prefix(lc_config):
     need module load
 
     but, if use dask, the module load will be put seperatly under envextra, we will not hard coded module load in the script
-
+    
+    # f'{env_cmd} apptainer run --containall --pwd /flywheel/v0 {path_mount_cmd}'
     '''
     host = lc_config['general']['host']
     jobqueue_config = lc_config['host_options'][host]
@@ -56,18 +57,43 @@ def host_specific_cmd_prefix(lc_config):
     path_mount_cmd = ''
     for mount in mount_options:
         path_mount_cmd += f'--bind {mount}:{mount} '
-
+    # this prefix will give you:
+    # first module load apptainer
+    # then unset python path
+    # -e means cleanenv, no bash env variable is passed to the singularity shell
+    # --no-home means the $HOME directory are not bind int the singularity shell
+    # --pwd /flywheel/v0 means point the working directory to /flywheel/v0
+    # The prefix command we will use for all container for now, it is generic
     cmd_prefix = (
-        f'{env_cmd} unset PYTHONPATH; apptainer run '  # -e --no-home '
-        f'--containall --pwd /flywheel/v0 {path_mount_cmd}'
+        f'{env_cmd} unset PYTHONPATH; apptainer run '
+        f'-e --no-home --containall --pwd /flywheel/v0 {path_mount_cmd}'
     )
-    return cmd_prefix
 
+    return cmd_prefix
 
 def gen_RTP2_cmd(
     lc_config, sub, ses, analysis_dir,
 ):
-    """Puts together the command to send to the container.
+    """Puts together the subject specific command for each of the RTP2 container.
+    The final cmd will mimic something like:
+    module load Apptainer/1.2.4 --> this is getting by the gen_cmd_prefix
+    
+    cmd="unset PYTHONPATH; singularity run \
+        -B /scratch:/scratch
+        -B /data:/data
+        -H $baseP/singularity_home \
+        -B $baseP/BIDS/derivatives:/flywheel/v0/data/derivatives \
+        -B $baseP/BIDS:/flywheel/v0/BIDS  \
+        -B $json_path:/flywheel/v0/config.json \
+        --cleanenv ${sif_path} \
+        --verbose "
+
+    echo "This is the command running :$cmd"
+    echo "start running ####################"
+    eval $cmd
+
+    module unload Apptainer
+
 
     Args:
         lc_config (str): _description_
@@ -89,6 +115,7 @@ def gen_RTP2_cmd(
 
     # Location of the Singularity Image File (.sif)
     container_name = os.path.join(containerdir, f'{container}_{version}.sif')
+
     # Define the directory and the file name to output the log of each subject
     container_logdir = os.path.join(
         analysis_dir, 'sub-' + sub, 'ses-' + ses,
@@ -97,26 +124,25 @@ def gen_RTP2_cmd(
     # get timestamp for output log
     timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     logfilename = f'{container_logdir}/{container}-sub-{sub}_ses-{ses}_{timestamp}'
-    subses_direvatives_dname = os.path.join(analysis_dir, f'sub-{sub}', f'ses-{ses}')
+    deriv_subses_dir = os.path.join(analysis_dir, f'sub-{sub}', f'ses-{ses}')
     # get the cmd prefix
-    cmd_prefix = host_specific_cmd_prefix(lc_config)
+    cmd_prefix = gen_cmd_prefix(lc_config)
     if container in ['anatrois', 'rtppreproc', 'rtp-pipeline']:
         cmd = (
             f'{cmd_prefix} '
-            f'--bind {subses_direvatives_dname}/input:/flywheel/v0/input:ro '
-            f'--bind {subses_direvatives_dname}/output:/flywheel/v0/output '
-            f'--bind {subses_direvatives_dname}/output/log/config.json:/flywheel/v0/config.json '
+            f'--bind {deriv_subses_dir}/input:/flywheel/v0/input:ro '
+            f'--bind {deriv_subses_dir}/output:/flywheel/v0/output '
+            f'--bind {deriv_subses_dir}/output/log/config.json:/flywheel/v0/config.json '
             f'{container_name} 1>> {logfilename}.log 2>> {logfilename}.err  '
         )
 
     if container == 'freesurferator':
-        # prefix cmd= f'{env_cmd} apptainer run --containall --pwd /flywheel/v0 {path_mount_cmd}'
         cmd = (
             f'{cmd_prefix} '
-            f'--bind {subses_direvatives_dname}/input:/flywheel/v0/input:ro '
-            f'--bind {subses_direvatives_dname}/output:/flywheel/v0/output '
-            f'--bind {subses_direvatives_dname}/work:/flywheel/v0/work '
-            f'--bind {subses_direvatives_dname}/output/log/config.json:/flywheel/v0/config.json '
+            f'--bind {deriv_subses_dir}/input:/flywheel/v0/input:ro '
+            f'--bind {deriv_subses_dir}/output:/flywheel/v0/output '
+            f'--bind {deriv_subses_dir}/work:/flywheel/v0/work '
+            f'--bind {deriv_subses_dir}/output/log/config.json:/flywheel/v0/config.json '
             f'--env PATH=/opt/freesurfer/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/freesurfer/fsfast/bin:/opt/freesurfer/tktools:/opt/freesurfer/mni/bin:/sbin:/bin:/opt/ants/bin '
             f'--env LANG=C.UTF-8 '
             f'--env GPG_KEY=E3FF2839C048B25C084DEBE9B26995E310250568 '
@@ -155,12 +181,11 @@ def gen_RTP2_cmd(
         )
 
     if container == 'rtp2-preproc':
-        # f'{env_cmd} apptainer run --containall --pwd /flywheel/v0 {path_mount_cmd}'
         cmd = (
             f'{cmd_prefix} '
-            f'--bind {subses_direvatives_dname}/input:/flywheel/v0/input:ro '
-            f'--bind {subses_direvatives_dname}/output:/flywheel/v0/output '
-            f'--bind {subses_direvatives_dname}/output/log/config.json:/flywheel/v0/config.json '
+            f'--bind {deriv_subses_dir}/input:/flywheel/v0/input:ro '
+            f'--bind {deriv_subses_dir}/output:/flywheel/v0/output '
+            f'--bind {deriv_subses_dir}/output/log/config.json:/flywheel/v0/config.json '
             f'--env FLYWHEEL=/flywheel/v0 '
             f'--env LD_LIBRARY_PATH=/opt/fsl/lib:  '
             f'--env FSLWISH=/opt/fsl/bin/fslwish  '
@@ -188,12 +213,12 @@ def gen_RTP2_cmd(
         )
 
     if container == 'rtp2-pipeline':
-        # f'{env_cmd} apptainer run --containall --pwd /flywheel/v0 {path_mount_cmd}'
+
         cmd = (
             f'{cmd_prefix} '
-            f'--bind {subses_direvatives_dname}/input:/flywheel/v0/input:ro '
-            f'--bind {subses_direvatives_dname}/output:/flywheel/v0/output '
-            f'--bind {subses_direvatives_dname}/output/log/config.json:/flywheel/v0/config.json '
+            f'--bind {deriv_subses_dir}/input:/flywheel/v0/input:ro '
+            f'--bind {deriv_subses_dir}/output:/flywheel/v0/output '
+            f'--bind {deriv_subses_dir}/output/log/config.json:/flywheel/v0/config.json '
             f'--env PATH=/opt/mrtrix3/bin:/opt/ants/bin:/opt/art/bin:/opt/fsl/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin '
             f'--env LANG=C.UTF-8 '
             f'--env GPG_KEY=E3FF2839C048B25C084DEBE9B26995E310250568 '
@@ -231,45 +256,43 @@ def gen_RTP2_cmd(
 
     return cmd
 
+# PRF not implemented 
+# def gen_PRF_cmd(lc_config, sub, ses, analysis_dir):
+#     """
+#     Generate singularity command for a specific subject/session.
+#     Mimics the functionality of prfanalyze-vista_dipc.sh
 
+#     Args:
 
+#     Returns:
+#         Complete singularity command string
+#     """
+#     # Define paths based on your script structure
+#     lc_config = 
+#     HOME_DIR = f'{baseP}/singularity_home'
+#     license_path = f'{baseP}/BIDS/.license'
+#     json_dir = f'{baseP}/code/{step}_jsons'
+#     sif_path = f'/scratch/tlei/containers/{step}_{version}.sif'
+#     json_path = f'{json_dir}/{task}_sub-{sub}_ses-{ses}.json'
 
-def gen_PRF_cmd(lc_config, sub, ses, analysis_dir) -> str:
-    """
-    Generate singularity command for a specific subject/session.
-    Mimics the functionality of prfanalyze-vista_dipc.sh
+#     # Build the singularity command (mimicking prfanalyze-vista_dipc.sh)
+#     cmd_parts = [
+#         'unset PYTHONPATH;',
+#         'module load Apptainer/1.2.4;',
+#         'singularity run',
+#         '-B /scratch:/scratch',
+#         '-B /data:/data',
+#         f'-H {HOME_DIR}',
+#         f'-B {baseP}:/flywheel/v0/input',
+#         f'-B {baseP}:/flywheel/v0/output',
+#         f'-B {json_path}:/flywheel/v0/input/config.json',
+#         '--cleanenv',
+#         sif_path,
+#         '--verbose;',
+#         'module unload Apptainer',
+#     ]
 
-    Args:
+#     # Join command parts
+#     cmd = ' \\\n\t'.join(cmd_parts[:-1]) + '; ' + cmd_parts[-1]
 
-    Returns:
-        Complete singularity command string
-    """
-    # Define paths based on your script structure
-
-    HOME_DIR = f'{baseP}/singularity_home'
-    license_path = f'{baseP}/BIDS/.license'
-    json_dir = f'{baseP}/code/{step}_jsons'
-    sif_path = f'/scratch/tlei/containers/{step}_{version}.sif'
-    json_path = f'{json_dir}/{task}_sub-{sub}_ses-{ses}.json'
-
-    # Build the singularity command (mimicking prfanalyze-vista_dipc.sh)
-    cmd_parts = [
-        'unset PYTHONPATH;',
-        'module load Apptainer/1.2.4;',
-        'singularity run',
-        '-B /scratch:/scratch',
-        '-B /data:/data',
-        f'-H {HOME_DIR}',
-        f'-B {baseP}:/flywheel/v0/input',
-        f'-B {baseP}:/flywheel/v0/output',
-        f'-B {json_path}:/flywheel/v0/input/config.json',
-        '--cleanenv',
-        sif_path,
-        '--verbose;',
-        'module unload Apptainer',
-    ]
-
-    # Join command parts
-    cmd = ' \\\n\t'.join(cmd_parts[:-1]) + '; ' + cmd_parts[-1]
-
-    return cmd
+#     return cmd

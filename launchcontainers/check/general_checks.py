@@ -36,7 +36,7 @@ def cli_show_folder_struc(analysis_dir, sub, ses):
 
 
 def print_option_for_review(
-    num_of_true_run,
+    num_of_jobs,
     lc_config,
     container,
     bidsdir_name,
@@ -59,7 +59,7 @@ def print_option_for_review(
     logger.critical(
         '\n'
         + '#####################################################\n'
-        + f'SubsesList is read, there are * {num_of_true_run} * jobs \n '
+        + f'SubsesList is read, there are * {num_of_jobs} * jobs \n '
         + f'Host is {host} \n'
         + f'Basedir is: {basedir} \n'
         + f'Container is:  {container_sif_name}\n'
