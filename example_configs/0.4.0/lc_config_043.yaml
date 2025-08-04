@@ -38,7 +38,7 @@ general:
   # Place the computing will be held.
   # VALID OPTIONS: local, BCBL, DIPC.
   host: DIPC
-  # if use dask to launch jobs
+  # if use dask to launch jobs, for local it is always True, SGE and SLURM we don't use
   use_dask: False
   # Whether force to overwrite
   force: True
@@ -169,7 +169,7 @@ host_options:
       manager: sge
       mount_options: ['/bcbl', '/tmp','/scratch']
       envextra: []
-      # config the machine
+      # config the cluster
       # Total number of cores per job (it was core for BCBL)
       cores: 8
       # Total amount of memory per job (it was mem for BCBL)
@@ -187,8 +187,8 @@ host_options:
       system: scratch
       tmpdir: /scratch/tlei/tmp
       mount_options: ['/scratch']
+      # config the cluster
       job_name: retest_paperdv
-      # config the machine
       cores: 20
       memory: 32G
       # DIPC setting
@@ -197,7 +197,8 @@ host_options:
       queue: general
       partition: general
       qos: regular
-      job_extra_directives:
+      # this is particularly for dask job-queue
+      job_extra_directives: [--qos=regular]
       walltime: '10:00:00'
 
 

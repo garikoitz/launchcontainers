@@ -26,7 +26,9 @@ from launchcontainers import utils as do
 from launchcontainers.check import check_dwi_pipelines
 from launchcontainers.check import general_checks
 from launchcontainers.clusters import dask_scheduler as dask_launch
-from launchcontainers.gen_launch_cmd import gen_RTP2_cmd
+from launchcontainers.clusters import sge
+from launchcontainers.clusters import slurm
+from launchcontainers.gen_launch_cmd import gen_launch_cmd
 
 logger = logging.getLogger('Launchcontainers')
 
@@ -34,7 +36,8 @@ logger = logging.getLogger('Launchcontainers')
 def launch_jobs(
     parse_namespace,
     df_subses,
-    num_of_jobs,
+    container_log_dir,
+    batch_command_file,
     run_lc,
 ):
     """
@@ -45,50 +48,43 @@ def launch_jobs(
     lc_config = do.read_yaml(lc_config_fpath)
     host = lc_config['general']['host']
     jobqueue_config = lc_config['host_options'][host]
-    container = lc_config['general']['container']
     # if use dask, then we will use dask and dask jobqueue
     # if not, we will create tmp files and launch them using sbatch/qsub
     use_dask = lc_config['general']['use_dask']
     if use_dask:
-        daskworker_logdir = os.path.join(analysis_dir, 'daskworker_log')
-
-    else:
-        # the log file path will go to sp.run returns
-        launch_logdir = os.path.join(analysis_dir, f'launch_{container}_log')
-        timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-        lc_launch_log = os.path.join(launch_logdir, f'launch_log_{timestamp}.log')
-        lc_launch_err = os.path.join(launch_logdir, f'launch_log_{timestamp}.err')
-
-    n_jobs = num_of_jobs
-
-    # Iterate over the provided subject list
-    commands = []
-    lc_configs = []
-    subs = []
-    sess = []
-    dir_analysiss = []
-
-    for row in df_subses.itertuples(index=True, name='Pandas'):
-        sub = row.sub
-        ses = row.ses
-        # needs to implement dwi, func etc to control for the other containers
-        # This cmd is only for print the command
-        command = gen_RTP2_cmd(
-            lc_config, sub, ses, analysis_dir,
-        )
-        commands.append(command)
-        lc_configs.append(lc_config)
-        subs.append(sub)
-        sess.append(ses)
-        dir_analysiss.append(analysis_dir)
-
+        daskworker_logdir = os.path.join(analysis_dir, 'dask_log')
+        os.makedirs(daskworker_logdir, exist_ok=True)
+    # get number of jobs from subseslist
+    n_jobs = len(df_subses)
+    commands = gen_launch_cmd(parse_namespace, df_subses, batch_command_file)
+    array_id = 1
+    with open(batch_command_file) as f:
+        lines = f.readlines()
+    command = lines[array_id - 1].strip()
+    # if it is dry run mode
     if not run_lc:
-        logger.critical('\n### No launching, here is the command line command')
+        logger.critical('\n### No launching, here is the launching command')
         if use_dask:
+            # print the job_script generate by dask
             dask_launch.print_job_script(host, jobqueue_config , n_jobs, daskworker_logdir)
-            logger.critical(f'\n### Example launch command is: {commands[0]}')
         else:
-            print(commands)
+            if host == 'DIPC':
+                job_script = slurm.gen_slurm_array_job_script(
+                    parse_namespace,
+                    container_log_dir,
+                    n_jobs,
+                )
+                logger.critical(f'\n### SLURM job script is {job_script}')
+            elif host == 'BCBL':
+                job_script = sge.gen_sge_array_job_script(
+                    parse_namespace,
+                    container_log_dir,
+                    n_jobs,
+                )
+                logger.critical(f'\n### SGE job script is {job_script}')
+        # finally cat the from the command
+        logger.critical(f'\n### Example launch command is: {command}')
+
     # RUN mode
     else:
         if use_dask:
@@ -100,10 +96,22 @@ def launch_jobs(
             )
 
         else:
-            # TODO:
-            # create tmp file useing sge.py, generate the job array from the subseslist
-            pass
-
+            if host == 'DIPC':
+                batch_command = f"""$(sed -n "${{SLURM_ARRAY_TASK_ID}}p" {batch_command_file})"""
+                job_script = slurm.gen_slurm_array_job_script(
+                    parse_namespace,
+                    container_log_dir,
+                    n_jobs,
+                )
+                job_script.replace('your_command_here', batch_command)
+            elif host == 'BCBL':
+                batch_command = f"""$(sed -n "${{SGE_TASK_ID}}p" {batch_command_file})"""
+                job_script = sge.gen_sge_array_job_script(
+                    parse_namespace,
+                    container_log_dir,
+                    n_jobs,
+                )
+                job_script.replace('your_command_here', batch_command)
     return
 
 
@@ -120,7 +128,7 @@ def main(parse_namespace):
     # Get general information from the config.yaml file
     bidsdir_name = lc_config['general']['bidsdir_name']
     container = lc_config['general']['container']
-
+    analysis_name = lc_config['general']['analysis_name']
     # 2. do a independent check to see if everything is in place
     if container in [
         'anatrois',
@@ -166,25 +174,23 @@ def main(parse_namespace):
     )
 
     # 5. generate the job script
-    check here if the log dir and singularity home dir is being put under proper place
-# Setup directories
-log_dir = f"{baseP}/dipc_{step}_logs/{log_note}_{datetime.now().strftime('%Y-%m-%d')}"
-home_dir = f"{baseP}/singularity_home"
-
-os.makedirs(log_dir, exist_ok=True)
-os.makedirs(home_dir, exist_ok=True)
-
-    # 6. generate command for sample subject
-    launch_jobs(
-        parse_namespace,
-        df_subses,
-        num_of_jobs,
-        False,
+    # TODO: for different containers
+    # check here if the log dir and singularity home dir is being put under proper place
+    # Setup log dir, create command txt under log dir
+    container_log_dir = (
+        f'{analysis_dir}/container_logs/'
+        f"{analysis_name}_{datetime.now().strftime('%Y-%m-%d')}"
     )
+    os.makedirs(container_log_dir, exist_ok=True)
+    # Create batch command file to store
+    batch_command_file = op.join(container_log_dir, 'batch_commands.txt')
+
+    # 6. generate command to print
+
     # === Ask user to confirm before launching anything ===
     ans = input(
         'You are about to launch jobs, please review the'
-        "previous session's info. Continue? [y / N]: ",
+        'commandline info. Continue? [y / N]: ',
     )
     if ans.strip().lower() not in ('y', 'yes'):
         logger.info('Aborted by user.')
@@ -196,7 +202,8 @@ os.makedirs(home_dir, exist_ok=True)
     launch_jobs(
         parse_namespace,
         df_subses,
-        num_of_jobs,
+        container_log_dir,
+        batch_command_file,
         run_lc,
     )
     timestamp_finish = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')

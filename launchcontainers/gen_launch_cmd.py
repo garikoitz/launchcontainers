@@ -18,8 +18,10 @@ from __future__ import annotations
 
 import logging
 import os
+import os.path as op
 from datetime import datetime
 
+from launchcontainers import utils as do
 logger = logging.getLogger('Launchcontainers')
 
 
@@ -39,7 +41,7 @@ def gen_cmd_prefix(lc_config):
     need module load
 
     but, if use dask, the module load will be put seperatly under envextra, we will not hard coded module load in the script
-    
+
     # f'{env_cmd} apptainer run --containall --pwd /flywheel/v0 {path_mount_cmd}'
     '''
     host = lc_config['general']['host']
@@ -71,13 +73,14 @@ def gen_cmd_prefix(lc_config):
 
     return cmd_prefix
 
+
 def gen_RTP2_cmd(
     lc_config, sub, ses, analysis_dir,
 ):
     """Puts together the subject specific command for each of the RTP2 container.
     The final cmd will mimic something like:
     module load Apptainer/1.2.4 --> this is getting by the gen_cmd_prefix
-    
+
     cmd="unset PYTHONPATH; singularity run \
         -B /scratch:/scratch
         -B /data:/data
@@ -256,7 +259,52 @@ def gen_RTP2_cmd(
 
     return cmd
 
-# PRF not implemented 
+
+def gen_launch_cmd(
+    parse_namespace,
+    df_subses,
+    batch_command_file,
+):
+    """
+    """
+    # read LC config yml from analysis dir
+    analysis_dir = parse_namespace.workdir
+    lc_config_fpath = op.join(analysis_dir, 'lc_config.yaml')
+    lc_config = do.read_yaml(lc_config_fpath)
+    # if use dask, then we will use dask and dask jobqueue
+    # if not, we will create tmp files and launch them using sbatch/qsub
+    use_dask = lc_config['general']['use_dask']
+    if use_dask:
+        daskworker_logdir = os.path.join(analysis_dir, 'daskworker_log')
+        os.makedirs(daskworker_logdir, exist_ok=True)
+
+    # Iterate over the provided subject list
+    commands = []
+    lc_configs = []
+    subs = []
+    sess = []
+    dir_analysiss = []
+
+    for row in df_subses.itertuples(index=True, name='Pandas'):
+        sub = row.sub
+        ses = row.ses
+        # needs to implement dwi, func etc to control for the other containers
+        # This cmd is only for print the command
+        command = gen_RTP2_cmd(
+            lc_config, sub, ses, analysis_dir,
+        )
+        commands.append(command)
+        lc_configs.append(lc_config)
+        subs.append(sub)
+        sess.append(ses)
+        dir_analysiss.append(analysis_dir)
+    # write the command into a file to log, also use to launcht the jobs
+    with open(batch_command_file, 'w') as f:
+        for cmd in commands:
+            f.write(f'{cmd}\n')
+
+    return commands
+# PRF not implemented
 # def gen_PRF_cmd(lc_config, sub, ses, analysis_dir):
 #     """
 #     Generate singularity command for a specific subject/session.
@@ -268,7 +316,7 @@ def gen_RTP2_cmd(
 #         Complete singularity command string
 #     """
 #     # Define paths based on your script structure
-#     lc_config = 
+#     lc_config =
 #     HOME_DIR = f'{baseP}/singularity_home'
 #     license_path = f'{baseP}/BIDS/.license'
 #     json_dir = f'{baseP}/code/{step}_jsons'
