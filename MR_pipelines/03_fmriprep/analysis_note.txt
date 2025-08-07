@@ -30,3 +30,4 @@ derivatives/
     fmriprep-version
         analysis-analysis-name/
 
+# fmriprep will failed, if you input BIDS dataset nii.gz file is a symbolic link 
