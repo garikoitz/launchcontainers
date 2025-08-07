@@ -18,8 +18,8 @@ general:
   # BIDS/derivatives/pipeline_version/analysis-analysis_name
   # 2. the new layout can be query by pybids
   # it will look like:
-  # BIDS/derivatives/pipeline-version_analysis_name 
-  deriv_layout: legacy 
+  # BIDS/derivatives/pipeline-version_analysis_name
+  deriv_layout: legacy
   # Directory contains singularity images
   containerdir: /scratch/tlei/containers
   # Name of the container
@@ -38,7 +38,7 @@ general:
   # Place the computing will be held.
   # VALID OPTIONS: local, BCBL, DIPC.
   host: DIPC
-  # if use dask to launch jobs
+  # if use dask to launch jobs, for local it is always True, SGE and SLURM we don't use
   use_dask: False
   # Whether force to overwrite
   force: True
@@ -162,13 +162,14 @@ container_specific:
 # computing cluster host options
 host_options:
     BCBL:
-      # SGE manager
-      use_module: False
+     # For SGE, if use dask, use_module will be False
+     # if not use dask, use_module will be True
+      use_module: True
       apptainer: apptainer/latest
       manager: sge
       mount_options: ['/bcbl', '/tmp','/scratch']
       envextra: []
-      # config the machine
+      # config the cluster
       # Total number of cores per job (it was core for BCBL)
       cores: 8
       # Total amount of memory per job (it was mem for BCBL)
@@ -178,21 +179,25 @@ host_options:
       walltime: 25:30:00'
 
     DIPC:
-     # for SLURM, it is always False
-      use_module: False
+     # for SLURM, if use dask, use_module will be False
+     # if not use dask, use_module will be True
+      use_module: True
       apptainer: Apptainer
       manager: slurm
       system: scratch
       tmpdir: /scratch/tlei/tmp
       mount_options: ['/scratch']
-      # config the machine
+      # config the cluster
+      job_name: retest_paperdv
       cores: 20
       memory: 32G
       # DIPC setting
       #--partition=general \
       #--qos=${qos} \ # qos can be : regular test long xlong serial
       queue: general
+      partition: general
       qos: regular
+      # this is particularly for dask job-queue
       job_extra_directives: [--qos=regular]
       walltime: '10:00:00'
 
@@ -200,6 +205,9 @@ host_options:
     local:
       # Local machine, ubuntu, MacOS
       # if the local machine use module load this option will give you different version of job-queue cmd
+      # BCBL local use module
+      # Okazaki local NOT use module
+      # tlei ubuntu NOT use module
       use_module: False
       apptainer: apptainer/latest
       # Copy the example list: for BCBL we need ['/bcbl', '/tmp', '/export']; for okazaki we need ['/fileserver', '/tmp']

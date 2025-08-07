@@ -9,6 +9,15 @@
 # The above copyright notice and this permission notice shall be included in all copies or
 # substantial portions of the Software.
 # """
+
+'''
+The output QC will only related to the analysis dir, so it is very good!
+TODO: feature, give a analysis name and version, it will look for the things under BIDS/derivatives using 
+pybids
+
+For rtp2preproc, it seems that the only thing we need to check is that if the DWI file was prepared. 
+
+'''
 from __future__ import annotations
 
 import os

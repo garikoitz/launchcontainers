@@ -40,6 +40,8 @@ def setup_logger(quiet, verbose=False, debug=False, log_dir=None, log_filename=N
         the name of your log_file.
 
     '''
+    # Clear existing handlers to avoid duplicates
+    logger.handlers.clear()
     # set up the lowest level for the logger first, so that all the info will be get
     logger.setLevel(logging.DEBUG)
 
@@ -48,7 +50,7 @@ def setup_logger(quiet, verbose=False, debug=False, log_dir=None, log_filename=N
     log_formatter = logging.Formatter(
         '%(asctime)s (%(name)s):[%(levelname)s] \
             %(module)s - %(funcName)s() - line:%(lineno)d   $ %(message)s ',
-        datefmt='%Y-%m-%d %H:%M:%S',
+        datefmt='%Y-%m-%d_%H:%M:%S',
     )
 
     stream_formatter = logging.Formatter(
@@ -64,7 +66,7 @@ def setup_logger(quiet, verbose=False, debug=False, log_dir=None, log_filename=N
     elif debug:
         stream_handler.setLevel(logging.DEBUG)
     else:
-        stream_handler.setLevel(logging.WARNING)
+        stream_handler.setLevel(logging.INFO)
     logger.addHandler(stream_handler)
 
     if log_dir:
@@ -72,10 +74,10 @@ def setup_logger(quiet, verbose=False, debug=False, log_dir=None, log_filename=N
             makedirs(log_dir)
 
         file_handler_info = (
-            logging.FileHandler(op.join(log_dir, f'{log_filename}_info.log'), mode='a')
+            logging.FileHandler(op.join(log_dir, f'{log_filename}.log'), mode='a')
         )
         file_handler_error = (
-            logging.FileHandler(op.join(log_dir, f'{log_filename}_error.log'), mode='a')
+            logging.FileHandler(op.join(log_dir, f'{log_filename}.err'), mode='a')
         )
         file_handler_info.setFormatter(log_formatter)
         file_handler_error.setFormatter(log_formatter)

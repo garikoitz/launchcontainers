@@ -5,11 +5,15 @@ Maybe it's time to use this to write and note down the corresponding containers
 
 This one is WIP
 '''
-import os
+from __future__ import annotations
+
 import json
-import pandas as pd
 import logging
+import os
+
+import pandas as pd
 logger = logging.getLogger('Launchcontainers')
+
 
 def gen_dataset_desc_json(output_dir):
     os.makedirs(output_dir, exist_ok=True)  # Create directory if it doesn't exist
@@ -24,61 +28,62 @@ def gen_dataset_desc_json(output_dir):
         or just in acknowledgement section',
         'License': 'TODO: choose a license, e.g. PDDL (http://opendatacommons.org/licenses/pddl/)',
         'Name': 'TODO: name of the dataset',
-        'ReferencesAndLinks': ['TODO', 'List of papers or websites']
+        'ReferencesAndLinks': ['TODO', 'List of papers or websites'],
     }
 
     output_path = os.path.join(output_dir, 'dataset_description.json')
     with open(output_path, 'w') as f:
         json.dump(dataset_description, f, indent=4)
 
-    logger.info(f"dataset_description.json created at: {output_path}")
+    logger.info(f'dataset_description.json created at: {output_path}')
+
 
 def gen_participant_json(output_dir):
     os.makedirs(output_dir, exist_ok=True)  # Create directory if it doesn't exist
 
     participant = {
-                "participant_id": {
-                    "Description": "Participant identifier"
-                },
-                "age": {
-                    "Description": "Age in years (TODO - verify) as in the initial session, \
-                    might not be correct for other sessions"
-                },
-                "sex": {
-                    "Description": "self-rated by participant, M for male/F for female (TODO: verify)"
-                },
-                "group": {
-                    "Description": "(TODO: adjust - by default everyone is in control group)"
-                }
-                }
-
+        'participant_id': {
+            'Description': 'Participant identifier',
+        },
+        'age': {
+            'Description': 'Age in years (TODO - verify) as in the initial session, \
+                    might not be correct for other sessions',
+        },
+        'sex': {
+            'Description': 'self-rated by participant, M for male/F for female (TODO: verify)',
+        },
+        'group': {
+            'Description': '(TODO: adjust - by default everyone is in control group)',
+        },
+    }
 
     output_path = os.path.join(output_dir, 'participant.json')
     with open(output_path, 'w') as f:
         json.dump(participant, f, indent=4)
 
-    logger.info(f"participant.json created at: {output_path}")
+    logger.info(f'participant.json created at: {output_path}')
 
-def gen_readme(output_dir, content=""):
+
+def gen_readme(output_dir, content=''):
 
     os.makedirs(output_dir, exist_ok=True)
-    readme_path = os.path.join(output_dir, "README")
+    readme_path = os.path.join(output_dir, 'README')
 
-    with open(readme_path, "w") as f:
+    with open(readme_path, 'w') as f:
         f.write(content)
 
-    logger.info(f"Empty README created at: {readme_path}")
+    logger.info(f'Empty README created at: {readme_path}')
 
 
-def gen_participant_tsv(output_dir):
+def gen_participant_tsv(output_dir, columns):
     os.makedirs(output_dir, exist_ok=True)  # Create directory if it doesn't exist
 
     if columns is None:
-        columns = ["participant_id", "age", "sex", "group"]
+        columns = ['participant_id', 'age', 'sex', 'group']
 
-    participants_path = os.path.join(output_dir, "participants.tsv")
+    participants_path = os.path.join(output_dir, 'participants.tsv')
 
     df = pd.DataFrame(columns=columns)
-    df.to_csv(participants_path, sep="\t", index=False)
+    df.to_csv(participants_path, sep='\t', index=False)
 
-    logger.info(f"participants.tsv created at: {participants_path}")
+    logger.info(f'participants.tsv created at: {participants_path}')

@@ -1,36 +1,74 @@
 # clusters/slurm.py
 from __future__ import annotations
 
-import subprocess
+import os.path as op
+
+from launchcontainers import utils as do
 
 
-def gen_slurm_opts(jobqueue_config):
-    slurm_opts = {}
-    slurm_opts['cpus-per-task'] = jobqueue_config['cores']
-    slurm_opts['memory'] = jobqueue_config['memory']
-    slurm_opts['--ntasks'] = 1
-    slurm_opts['queue'] = jobqueue_config['queue']
-    slurm_opts['qos'] = jobqueue_config['qos'],
-    slurm_opts['time'] = jobqueue_config['walltime']
-    slurm_opts['output'] = 'logfile_slurm'
-    slurm_opts['error'] = 'logfile_slurm'
+def gen_slurm_array_job_script(
+    parse_namespace,
+    log_dir,
+    n_jobs,
 
-
-def run_slurm(cmds: list[str], parallel: bool = False, slurm_opts: dict = None):
+):
     """
-    Submit each cmd via `sbatch`. parallel flag is ignored (slurm is async).
-    slurm_opts can include qty, mem, etc.
-    """
-    slurm_opts = slurm_opts or {}
-    sbatch_base = ['sbatch']
-    for k, v in slurm_opts.items():
-        sbatch_base += [f'--{k}={v}']
+    Alternative implementation using SLURM array jobs (more efficient).
 
-    job_ids = []
-    for cmd in cmds:
-        full = sbatch_base + ['--wrap', cmd]
-        proc = subprocess.run(full, check=True, capture_output=True, text=True)
-        # parse “Submitted batch job 12345”
-        job_id = proc.stdout.strip().split()[-1]
-        job_ids.append(job_id)
-    return job_ids
+    Args:
+        Same as gen_slurm_job_script
+
+    Returns:
+        Single job ID for the array job (None if dry_run=True)
+    """
+    # read LC config yml from analysis dir
+    analysis_dir = parse_namespace.workdir
+    lc_config_fpath = op.join(analysis_dir, 'lc_config.yaml')
+    lc_config = do.read_yaml(lc_config_fpath)
+    host = lc_config['general']['host']
+    jobqueue_config = lc_config['host_options'][host]
+    # below is the job specific configs
+    job_name = jobqueue_config['job_name']
+    cores = jobqueue_config['cores']
+    memory = jobqueue_config['memory']
+    partition = jobqueue_config['partition']
+    qos = jobqueue_config['qos']
+    walltime = jobqueue_config['walltime']
+
+    # Generate array job script
+    job_name = f'{job_name}_array'
+    job_script = f"""#!/bin/bash
+    #SBATCH --array=1-{len(n_jobs)}
+    #SBATCH --job-name={job_name}
+    #SBATCH --output={log_dir}/{job_name}_%A_%a.out
+    #SBATCH --error={log_dir}/{job_name}_%A_%a.err
+    #SBATCH --time={walltime}
+    #SBATCH --cpus-per-task={cores}
+    #SBATCH --ntasks=1
+    #SBATCH --mem={memory}
+    #SBATCH --partition={partition}
+    #SBATCH --qos={qos}
+
+    LOG_DIR = {log_dir}
+    echo "Starting array task $SLURM_ARRAY_TASK_ID on $(hostname)"
+    echo "Job ID: $SLURM_JOB_ID"
+
+    # Read the command for this array index
+
+    COMMAND="your_command_here"
+    echo "Executing: $COMMAND"
+    eval $COMMAND
+
+    echo "Task $SLURM_ARRAY_TASK_ID completed successfully"
+
+    exitcode=$?
+
+    # Output results to a table
+    echo "sub-$subject $SLURM_ARRAY_TASK_ID $exitcode" \
+        >> $LOG_DIR/$SLURM_JOB_NAME_$SLURM_ARRAY_JOB_ID.tsv
+    echo Finished tasks $SLURM_ARRAY_TASK_ID with exit code $exitcode
+    exit $exitcode
+
+    """
+
+    return job_script

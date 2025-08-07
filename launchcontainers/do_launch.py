@@ -19,216 +19,76 @@ from __future__ import annotations
 import logging
 import os
 import os.path as op
-import subprocess as sp
 import sys
 from datetime import datetime
 
 from launchcontainers import utils as do
-from launchcontainers.check import check_dwi_pipelines as check
-from launchcontainers.clusters import dask_scheduler as daskq
-from launchcontainers.gen_launch_cmd import gen_sub_ses_cmd
+from launchcontainers.check import check_dwi_pipelines
+from launchcontainers.check import general_checks
+from launchcontainers.clusters import dask_scheduler as dask_launch
+from launchcontainers.clusters import sge
+from launchcontainers.clusters import slurm
+from launchcontainers.gen_launch_cmd import gen_launch_cmd
 
 logger = logging.getLogger('Launchcontainers')
-
-
-def show_first_tree(analysis_dir, sub, ses):
-
-    # Build the path to that subject/session folder
-    path = os.path.join(analysis_dir, f'sub-{sub}', f'ses-{ses}', 'input')
-
-    # Call “tree -C <path>” and let it print directly to your terminal
-    sp.run(['tree', '-C', '-L', '3' , path], check=True)
-
-
-def print_option_for_review(
-    num_of_true_run,
-    lc_config,
-    container,
-    bidsdir_name,
-):
-
-    basedir = lc_config['general']['basedir']
-    host = lc_config['general']['host']
-    bids_dname = os.path.join(basedir, bidsdir_name)
-    containerdir = lc_config['general']['containerdir']
-    version = lc_config['container_specific'][container]['version']
-    analysis_name = lc_config['general']['analysis_name']
-    all_containers = os.listdir(containerdir)
-    # add a check to see if container is there
-    container_sif_name = f'{container}_{version}.sif'
-    container_in_place = container_sif_name in all_containers
-    if not container_in_place :
-        raise FileNotFoundError(f'No such file : {container_sif_name} \n under {containerdir} ')
-    # output the options here for the user to review:
-    logger.critical(
-        '\n'
-        + '#####################################################\n'
-        + f'SubsesList is read, there are * {num_of_true_run} * jobs \n '
-        + f'Host is {host} \n'
-        + f'Basedir is: {basedir} \n'
-        + f'Container is:  {container_sif_name}\n'
-        + f'singularity image dir is {containerdir} \n'
-        + f'analysis name is: {analysis_name} \n'
-        + '##################################################### \n',
-    )
-
-    if container in ['freesurferator', 'anatrois']:
-        src_dir = bids_dname
-        logger.critical(f'\n### The source dir is: {src_dir}')
-    if container in ['rtppreproc', 'rtp2-preproc']:
-        precontainer_anat = lc_config['container_specific'][container]['precontainer_anat']
-        anat_analysis_name = lc_config['container_specific'][container]['anat_analysis_name']
-        pre_anatrois_dir = op.join(
-            basedir,
-            bidsdir_name,
-            'derivatives',
-            f'{precontainer_anat}',
-            'analysis-' + anat_analysis_name,
-        )
-
-        logger.critical(f'\n ### The source FSMASK and T1w dir: {pre_anatrois_dir}')
-    if container in ['rtp-pipeline', 'rtp2-pipeline']:
-        # rtppipeline specefic variables
-        precontainer_anat = lc_config['container_specific'][container]['precontainer_anat']
-        anat_analysis_name = lc_config['container_specific'][container]['anat_analysis_name']
-        precontainer_preproc = lc_config['container_specific'][container]['precontainer_preproc']
-        preproc_analysis_num = lc_config['container_specific'][container]['preproc_analysis_name']
-        # define the pre containers
-        pre_anatrois_dir = op.join(
-            basedir,
-            bidsdir_name,
-            'derivatives',
-            f'{precontainer_anat}',
-            'analysis-' + anat_analysis_name,
-        )
-
-        pre_preproc_dir = op.join(
-            basedir,
-            bidsdir_name,
-            'derivatives',
-            precontainer_preproc,
-            'analysis-' + preproc_analysis_num,
-        )
-
-        logger.critical(
-            f'\n### The source FSMASK and ROI dir is: {pre_anatrois_dir} \n'
-            + f'The source DWI preprocessing dir is: {pre_preproc_dir} \n',
-        )
-    return
-
-
-def print_job_script(host, jobqueue_config , n_jobs, daskworker_logdir):
-    if host == 'local':
-        launch_mode = jobqueue_config['launch_mode']
-    # If the host is not local, print the job script to be launched in the cluster.
-    if host != 'local' or (host == 'local' and launch_mode == 'dask_worker'):
-        _, cluster = daskq.dask_scheduler(jobqueue_config, n_jobs, daskworker_logdir)
-        if host != 'local':
-            logger.critical(
-                f'Cluster job script for this command is:\n'
-                f'{cluster.job_script()}',  # type: ignore
-            )
-        elif host == 'local' and launch_mode == 'dask_worker':
-            logger.critical(
-                f'Local job script by dask is:\n'
-                f'{cluster}',
-            )
-        else:
-            logger.critical(
-                'Job launched on local, no job script',
-            )
-    return
-
-
-def run_cmd(cmd: str):
-    return sp.run(cmd, shell=True).returncode
-
-
-def launch_with_dask(jobqueue_config, n_jobs, daskworker_logdir, cmds):
-
-    client, cluster = daskq.dask_scheduler(jobqueue_config, n_jobs, daskworker_logdir)
-    logger.info(
-        '---this is the cluster and client\n' + f'{client} \n cluster: {cluster} \n',
-    )
-
-    # Compose the command to run in the cluster
-    futures = client.map(  # type: ignore
-        run_cmd,
-        cmds,
-    )
-    results = client.gather(futures)  # type: ignore
-    logger.info(results)
-    logger.info('###########')
-    # Close the connection with the client and the cluster, and inform about it
-    client.close()  # type: ignore
-    cluster.close()  # type: ignore
-
-    logger.critical('\n' + 'launchcontainer finished, all the jobs are done')
-    return
 
 
 def launch_jobs(
     parse_namespace,
     df_subses,
-    num_of_true_run,
+    container_log_dir,
+    batch_command_file,
     run_lc,
 ):
     """
     """
     # read LC config yml from analysis dir
     analysis_dir = parse_namespace.workdir
-
     lc_config_fpath = op.join(analysis_dir, 'lc_config.yaml')
     lc_config = do.read_yaml(lc_config_fpath)
     host = lc_config['general']['host']
     jobqueue_config = lc_config['host_options'][host]
-
+    # if use dask, then we will use dask and dask jobqueue
+    # if not, we will create tmp files and launch them using sbatch/qsub
     use_dask = lc_config['general']['use_dask']
     if use_dask:
-        daskworker_logdir = os.path.join(analysis_dir, 'daskworker_log')
-
-    else:
-        print('Not implement yet')
-        # launch_logdir = os.path.join(analysis_dir, 'launch_log')
-        # timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-        # dot_o = os.path.join(launch_logdir, f'launch_log_{timestamp}.log')
-        # dot_e = os.path.join(launch_logdir, f'launch_log_{timestamp}.err')
-
-    n_jobs = num_of_true_run
-    # Iterate over the provided subject list
-    commands = []
-    lc_configs = []
-    subs = []
-    sess = []
-    dir_analysiss = []
-
-    for row in df_subses.itertuples(index=True, name='Pandas'):
-        sub = row.sub
-        ses = row.ses
-        RUN = row.RUN
-        dwi = row.dwi
-        # needs to implement dwi, func etc to control for the other containers
-
-        if RUN == 'True' and dwi == 'True':
-            # This cmd is only for print the command
-            command = gen_sub_ses_cmd(
-                lc_config, sub, ses, analysis_dir,
-            )
-            commands.append(command)
-            lc_configs.append(lc_config)
-            subs.append(sub)
-            sess.append(ses)
-            dir_analysiss.append(analysis_dir)
-
+        daskworker_logdir = os.path.join(analysis_dir, 'dask_log')
+        os.makedirs(daskworker_logdir, exist_ok=True)
+    # get number of jobs from subseslist
+    n_jobs = len(df_subses)
+    commands = gen_launch_cmd(parse_namespace, df_subses, batch_command_file)
+    array_id = 1
+    with open(batch_command_file) as f:
+        lines = f.readlines()
+    command = lines[array_id - 1].strip()
+    # if it is dry run mode
     if not run_lc:
-        logger.critical('\n### No launching, here is the command line command')
-        print_job_script(host, jobqueue_config , n_jobs, daskworker_logdir)
-        logger.critical(f'\n### Example launch command is: {commands[0]}')
+        logger.critical('\n### No launching, here is the launching command')
+        if use_dask:
+            # print the job_script generate by dask
+            dask_launch.print_job_script(host, jobqueue_config , n_jobs, daskworker_logdir)
+        else:
+            if host == 'DIPC':
+                job_script = slurm.gen_slurm_array_job_script(
+                    parse_namespace,
+                    container_log_dir,
+                    n_jobs,
+                )
+                logger.critical(f'\n### SLURM job script is {job_script}')
+            elif host == 'BCBL':
+                job_script = sge.gen_sge_array_job_script(
+                    parse_namespace,
+                    container_log_dir,
+                    n_jobs,
+                )
+                logger.critical(f'\n### SGE job script is {job_script}')
+        # finally cat the from the command
+        logger.critical(f'\n### Example launch command is: {command}')
 
     # RUN mode
     else:
         if use_dask:
-            launch_with_dask(
+            dask_launch.launch_with_dask(
                 jobqueue_config,
                 n_jobs,
                 daskworker_logdir,
@@ -236,8 +96,22 @@ def launch_jobs(
             )
 
         else:
-            pass
-
+            if host == 'DIPC':
+                batch_command = f"""$(sed -n "${{SLURM_ARRAY_TASK_ID}}p" {batch_command_file})"""
+                job_script = slurm.gen_slurm_array_job_script(
+                    parse_namespace,
+                    container_log_dir,
+                    n_jobs,
+                )
+                job_script.replace('your_command_here', batch_command)
+            elif host == 'BCBL':
+                batch_command = f"""$(sed -n "${{SGE_TASK_ID}}p" {batch_command_file})"""
+                job_script = sge.gen_sge_array_job_script(
+                    parse_namespace,
+                    container_log_dir,
+                    n_jobs,
+                )
+                job_script.replace('your_command_here', batch_command)
     return
 
 
@@ -254,74 +128,69 @@ def main(parse_namespace):
     # Get general information from the config.yaml file
     bidsdir_name = lc_config['general']['bidsdir_name']
     container = lc_config['general']['container']
-
+    analysis_name = lc_config['general']['analysis_name']
     # 2. do a independent check to see if everything is in place
-    check.check_dwi_analysis_folder(parse_namespace, container)
+    if container in [
+        'anatrois',
+        'rtppreproc',
+        'rtp-pipeline',
+        'freesurferator',
+        'rtp2-preproc',
+        'rtp2-pipeline',
+    ]:
+        check_dwi_pipelines.check_dwi_analysis_folder(parse_namespace, container)
 
     # get stuff from subseslist for future jobs scheduling
     sub_ses_list_path = op.join(analysis_dir, 'subseslist.txt')
-    df_subses, num_of_true_run = do.read_df(sub_ses_list_path)
-
+    df_subses, num_of_jobs = do.read_df(sub_ses_list_path)
+    if container in [
+        'anatrois',
+        'rtppreproc',
+        'rtp-pipeline',
+        'freesurferator',
+        'rtp2-preproc',
+        'rtp2-pipeline',
+    ]:
+        mask = (df_subses['RUN'] == 'True') & (df_subses['dwi'] == 'True')
+    else:
+        mask = df_subses['RUN'] == 'True'
+    df_subses = df_subses.loc[mask]
+    num_of_jobs = len(df_subses)
     # 3. tree sub-/ses- structure for checking
-    # get the first valid sub and ses using tree to show the data structure
-    mask = (df_subses['RUN'] == 'True') & (df_subses['dwi'] == 'True')
-
     # select the first row matching that mask
-    first_row = df_subses.loc[mask].iloc[0]
-
+    first_row = df_subses.iloc[0]
     # extract sub and ses
     sub = first_row['sub']
     ses = first_row['ses']
     logger.critical('\n### output example subject folder structure \n')
-    show_first_tree(analysis_dir, sub, ses)
+    general_checks.cli_show_folder_struc(analysis_dir, sub, ses)
 
     # 4. ask for user input about folder structure and example command
-    print_option_for_review(
-        num_of_true_run,
+    general_checks.print_option_for_review(
+        num_of_jobs,
         lc_config,
         container,
         bidsdir_name,
     )
 
     # 5. generate the job script
-    # 6. generate command for sample subject
-
-    launch_jobs(
-        parse_namespace,
-        df_subses,
-        num_of_true_run,
-        False,
+    # TODO: for different containers
+    # check here if the log dir and singularity home dir is being put under proper place
+    # Setup log dir, create command txt under log dir
+    container_log_dir = (
+        f'{analysis_dir}/container_logs/'
+        f"{analysis_name}_{datetime.now().strftime('%Y-%m-%d')}"
     )
+    os.makedirs(container_log_dir, exist_ok=True)
+    # Create batch command file to store
+    batch_command_file = op.join(container_log_dir, 'batch_commands.txt')
 
-    # host = lc_config['general']['host']
-    # # logger the settings
-    # if host == 'local':
-    #     njobs = lc_config['host_options'][host]['njobs']
-    #     if njobs == '' or njobs is None:
-    #         njobs = 2
-    #     launch_mode = lc_config['host_options']['local']['launch_mode']
-    #     valid_options = ['serial', 'parallel', 'dask_worker']
-    #     if launch_mode in valid_options:
-    #         host_str = (
-    #             f'{host}, \n and commands will be launched in {launch_mode} mode \n'
-    #             f'every {njobs} jobs. '
-    #             f'Serial is safe but it will take longer. '
-    #             f'If you launch in parallel be aware that some of the '
-    #             f'processes might be killed if the limit (usually memory) '
-    #             f'of the machine is reached. '
-    #         )
-    #     else:
-    #         do.die(
-    #             f'local:launch_mode {launch_mode} was passed, valid options are {valid_options}',
-    #         )
-    # else:
-    #     host_str = f' host is {host}'
+    # 6. generate command to print
 
     # === Ask user to confirm before launching anything ===
-
     ans = input(
         'You are about to launch jobs, please review the'
-        "previous session's info. Continue? [y / N]: ",
+        'commandline info. Continue? [y / N]: ',
     )
     if ans.strip().lower() not in ('y', 'yes'):
         logger.info('Aborted by user.')
@@ -333,10 +202,12 @@ def main(parse_namespace):
     launch_jobs(
         parse_namespace,
         df_subses,
-        num_of_true_run,
+        container_log_dir,
+        batch_command_file,
         run_lc,
     )
-
+    timestamp_finish = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    logger.critical(f'\n##### The finishing time is {timestamp_finish}')
     # when finished launch QC to read the log and check if everything is there
     return
 

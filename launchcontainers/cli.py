@@ -18,6 +18,8 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
+import os.path as op
 import sys
 from argparse import RawDescriptionHelpFormatter
 from datetime import datetime
@@ -26,6 +28,7 @@ from launchcontainers import config_logger
 from launchcontainers import do_launch
 from launchcontainers import do_prepare
 from launchcontainers import do_qc
+from launchcontainers import utils as do
 from launchcontainers.other_cli_tool import copy_configs
 from launchcontainers.other_cli_tool import create_bids
 from launchcontainers.other_cli_tool import gen_subses
@@ -202,7 +205,7 @@ def get_parser():
         '--name',
         type=str,
         help='output filename',
-    )    
+    )
     gen_subses.add_argument(
         '-o',
         '--output_dir',
@@ -240,27 +243,97 @@ def get_parser():
     return parse_namespace, parse_dict
 
 
+def create_analysis_dir(parse_namespace):
+    '''
+    Description: create analysis folder based on your container and your analysis.
+
+    In the meantime, it will copy your input config files to the analysis folder.
+
+    In the end, it will check if everything are in place and ready for the next level preparation
+    which is at the subject and session level
+
+    After this step, the following preparing method will based on the config files
+    under the analysis folder instread of your input
+    '''
+    # read the yaml to get input info
+    lc_config_fpath = parse_namespace.lc_config
+    lc_config = do.read_yaml(lc_config_fpath)
+    logger.info('\n setup_analysis_folder reading lc config yaml')
+    # read parameters from lc_config
+    basedir = lc_config['general']['basedir']
+    bidsdir_name = lc_config['general']['bidsdir_name']
+    deriv_layout = lc_config['general']['deriv_layout']
+    # the pipeline we are going to run
+    container = lc_config['general']['container']
+    version = lc_config['container_specific'][container]['version']
+    analysis_name = lc_config['general']['analysis_name']
+
+    # 1 create container dir and analysis dir
+    if container in [
+        'anatrois',
+        'rtppreproc',
+        'rtp-pipeline',
+        'freesurferator',
+        'rtp2-preproc',
+        'rtp2-pipeline',
+    ]:
+        if deriv_layout == 'legacy':
+            container_folder = op.join(
+                basedir,
+                bidsdir_name,
+                'derivatives',
+                f'{container}_{version}',
+            )
+        else:
+            container_folder = op.join(
+                basedir,
+                bidsdir_name,
+                'derivatives',
+                f'{container}-{version}_{analysis_name}',
+            )
+        # make dirs
+        os.makedirs(container_folder, exist_ok=True)
+        print(f'Container layout is {deriv_layout}, creating folder at {container_folder}')
+        # 2 create analysis dir
+        if deriv_layout == 'legacy':
+            analysis_dir = op.join(
+                container_folder, f'analysis-{analysis_name}', )
+        else:
+            analysis_dir = container_folder
+        os.makedirs(analysis_dir, exist_ok=True)
+
+    return analysis_dir
+
+
 def main():
     parse_namespace, parse_dict = get_parser()
     quiet = parse_namespace.quiet
     verbose = parse_namespace.verbose
     debug = parse_namespace.debug
+    if parse_namespace.mode == 'prepare':
+        analysis_dir = create_analysis_dir(parse_namespace)
+    elif parse_namespace.mode == 'run':
+        analysis_dir = parse_namespace.workdir
     logging_dir = parse_namespace.log_dir
+    # define the analysis dir here to store the logging log of lc
+    if not logging_dir:
+        logging_dir = analysis_dir
     print(f' The logging dir is {logging_dir}')
     # get the dir and fpath for launchcontainer logger
     timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    logging_fname = f'lc_logger_{timestamp}'
+    logging_fname = f'launchcontainer_logger_{timestamp}'
     # set up the logger for prepare mode
     config_logger.setup_logger(quiet, verbose, debug, logging_dir, logging_fname)
-    
+
     if parse_namespace.mode == 'prepare':
-        print('\n....running prepare mode\n')
-        do_prepare.main(parse_namespace)
+        logger.critical('\n....running prepare mode\n')
+        logger.critical(f'Working on the dir: {analysis_dir}')
+        do_prepare.main(parse_namespace, analysis_dir)
     if parse_namespace.mode == 'run':
-        print('\n....running run mode\n')
+        logger.critical('\n....running run mode\n')
         do_launch.main(parse_namespace)
     if parse_namespace.mode == 'qc':
-        print('\n....running quality check mode\n')
+        logger.critical('\n....running quality check mode\n')
         do_qc.main(parse_namespace)
     if parse_namespace.mode == 'create_bids':
         create_bids.main()
