@@ -17,23 +17,36 @@ retCB --> retfixRWblock01  (dependes on the language)
 this script will work with Joana's script, at somepoint, we will merge it
 '''
 
-sub='11'
-ses='02'
+sub='02'
+ses='10'
+
+
 fp_ana_name='afterJuly09'
 
 basedir = '/bcbl/home/public/Gari/VOTCLOC/main_exp'
 fmriprep_dir = f'{basedir}/BIDS/derivatives/fmriprep-{fp_ana_name}'
+prfanalyze_dir= f'{basedir}/BIDS/derivatives/prfanalyze-vista/analysis-01'
 bids_dir = f'{basedir}/BIDS'
+use_bids_query=True
 
-bids_layout=BIDSLayout(bids_dir, derivatives=False, validate=False)
-fmriprep_layout=BIDSLayout(fmriprep_dir,validate=False)
+if use_bids_query:
+    bids_layout=BIDSLayout(bids_dir, derivatives=False, validate=False)
+    fmriprep_layout=BIDSLayout(fmriprep_dir,validate=False)
+    prfanalyze_layout= BIDSLayout(prfanalyze_dir,validate=False)
 
-# use the BIDS to get the list that contains the old name
-all_ret_fmriprep=fmriprep_layout.get(subject=sub, session=ses,
-task=['retfixRW','retfixFF','retfixRWblock01'],datatype='func')
+    # use the BIDS to get the list that contains the old name
+    all_ret_fmriprep=fmriprep_layout.get(subject=sub, session=ses,
+    task=['retfixRW','retfixFF','retfixRWblock01'],datatype='func')
 
-all_ret_bids=bids_layout.get(subject=sub, session=ses,
-task=['retfixRW','retfixFF','retfixRWblock01'],datatype='func')
+    all_ret_bids=bids_layout.get(subject=sub, session=ses,
+    task=['retfixRW','retfixFF','retfixRWblock01'],datatype='func')
+
+    all_ret_prfanalyze=prfanalyze_layout.get(subject=sub, session=ses,
+    task=['retfixRW','retfixFF','retfixRWblock01'])
+
+else:
+    #use glob, not implemented
+    task=['retfixRW','retfixFF','retfixRWblock01']
 
 # define a dict and replace the key with the value
 rename_dict={
@@ -41,14 +54,20 @@ rename_dict={
     "retFF":"retfixFF",
     "retCB":"retfixRWblock01" }
 
-def replace_all(s, repl):
+def add_fix_to_name(s, repl):
+    for old, new in repl.items():
+        s = s.replace(old, new)
+    return s
+
+def remove_fix_from_name(s, repl):
     for old, new in repl.items():
         s = s.replace(new, old)
     return s
 
-for i in all_ret_bids:
+
+for i in all_ret_prfanalyze:
     fname=i.path
-    force_symlink(fname, replace_all(fname,rename_dict), False)
+    force_symlink(fname, remove_fix_from_name(fname,rename_dict), False)
 
 
 # it works
