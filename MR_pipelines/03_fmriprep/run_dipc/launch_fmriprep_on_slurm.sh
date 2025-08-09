@@ -23,9 +23,9 @@ code_dir="/scratch/tlei/soft/launchcontainers/MR_pipelines/03_fmriprep"
 # subseslist under basedir/code/subseslist
 sublist_name=$1
 sublist="${STUDY}/code/$sublist_name"
-analysis_name='one_ses_T1_and_T2_dummyscans5'
+analysis_name='one_ses_anat_T1_T2_dummyscans5'
 fp_version=25.1.3
-job_name=sub0102_all
+job_name=sub11_ses4
 
 slurm_log_dir=$STUDY/dipc_fmriprep/${analysis_name}_$(date +"%Y-%m-%d")
 mkdir -p ${slurm_log_dir}
