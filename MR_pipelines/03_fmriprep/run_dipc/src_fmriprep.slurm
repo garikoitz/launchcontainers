@@ -13,7 +13,7 @@
 # The above copyright notice and this permission notice shall be included in all copies or substantial
 # portions of the Software.
 
-#SBATCH --time=12:00:00
+#SBATCH --time=15:30:00
 #SBATCH -n 1  # this stands for number of task/ or number of nodes being used
 #SBATCH --cpus-per-task=20    #6
 #SBATCH --mem=72000
