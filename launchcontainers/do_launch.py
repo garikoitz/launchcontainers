@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import logging
+from os import makedirs
 import os
 import os.path as op
 import subprocess as sp
@@ -33,12 +34,26 @@ from launchcontainers.gen_launch_cmd import gen_launch_cmd
 
 logger = logging.getLogger('Launchcontainers')
 
+def write_job_script(job_script, script_dir, job_script_fname):
+    """Submit SLURM job by writing script to file first"""
+    
+    # Create script directory if specified
+    if script_dir:
+        makedirs(script_dir, exist_ok=True)
+        job_script_fpath = op.join(script_dir, f"{job_script_fname}.sh")
 
+    # Write script to file
+    with open(job_script_fpath, 'w') as f:
+        f.write(job_script)
+    
+    # Make executable
+    os.chmod(job_script_fpath, 0o755)
+
+    return job_script_fpath
 def launch_jobs(
     parse_namespace,
     df_subses,
     container_log_dir,
-    batch_command_file,
     run_lc,
 ):
     """
@@ -57,9 +72,14 @@ def launch_jobs(
         os.makedirs(daskworker_logdir, exist_ok=True)
     # get number of jobs from subseslist
     n_jobs = len(df_subses)
-    commands = gen_launch_cmd(parse_namespace, df_subses, batch_command_file)
+    # write commands in to a single file to form batch array
+    batch_command_fpath = op.join(container_log_dir, 'batch_commands.txt')
+    # create job_script_fname to get the batch job script
+    job_script_fname =  'src_launch_script.txt'
+    commands = gen_launch_cmd(parse_namespace, df_subses, batch_command_fpath)
+    # read the commands from the command array using python 
     array_id = 1
-    with open(batch_command_file) as f:
+    with open(batch_command_fpath) as f:
         lines = f.readlines()
     command = lines[array_id - 1].strip()
     # if it is dry run mode
@@ -105,32 +125,36 @@ def launch_jobs(
                 return result.returncode
 
             if host == 'DIPC':
-                batch_command = f"""$(sed -n "${{SLURM_ARRAY_TASK_ID}}p" {batch_command_file})"""
+                batch_command = f"""$(sed -n "${{SLURM_ARRAY_TASK_ID}}p" {batch_command_fpath})"""
                 job_script = slurm.gen_slurm_array_job_script(
                     parse_namespace,
                     container_log_dir,
                     n_jobs,
                 )
-                final_script = f"sbatch {job_script.replace('your_command_here', batch_command)}"
+                final_script = job_script.replace('your_command_here', batch_command)
+                # Submit job
+                job_script_fpath = write_job_script(final_script,container_log_dir,job_script_fname)
                 logger.critical(
                     f'This is the final job script that is being lauched: \n {final_script}',
                 )
-                return_code = launch_cmd(final_script)
+                cmd = f"sbatch {job_script_fpath}"
+                return_code = launch_cmd(cmd)
                 logger.critical(f'\n return code of launch is {return_code} \n')
             elif host == 'BCBL':
-                batch_command = f"""$(sed -n "${{SGE_TASK_ID}}p" {batch_command_file})"""
+                batch_command = f"""$(sed -n "${{SGE_TASK_ID}}p" {batch_command_fpath})"""
                 job_script = sge.gen_sge_array_job_script(
                     parse_namespace,
                     container_log_dir,
                     n_jobs,
                 )
-                job_script.replace('your_command_here', batch_command)
-                final_script = f"qsub {job_script.replace('your_command_here', batch_command)}"
-
+                final_script = job_script.replace('your_command_here', batch_command)
+                # Submit job
+                job_script_fpath = write_job_script(final_script,container_log_dir,job_script_fname)
                 logger.critical(
                     f'This is the final job script that is being lauched: \n {final_script}',
                 )
-                return_code = launch_cmd(final_script)
+                cmd = f"qsub {job_script_fpath}"
+                return_code = launch_cmd(cmd)
                 logger.critical(f'\n return code of launch is {return_code} \n')
 
     return
@@ -199,13 +223,10 @@ def main(parse_namespace):
     # check here if the log dir and singularity home dir is being put under proper place
     # Setup log dir, create command txt under log dir
     container_log_dir = (
-        f'{analysis_dir}/container_logs/'
-        f"{analysis_name}_{datetime.now().strftime('%Y-%m-%d')}"
+        f'{analysis_dir}/'
+        f"job_script_dir_{datetime.now().strftime('%Y-%m-%d')}"
     )
     os.makedirs(container_log_dir, exist_ok=True)
-    # Create batch command file to store
-    batch_command_file = op.join(container_log_dir, 'batch_commands.txt')
-
     # 6. generate command to print
     # === Ask user to confirm before launching anything ===
     ans = input(
@@ -223,8 +244,7 @@ def main(parse_namespace):
         parse_namespace,
         df_subses,
         container_log_dir,
-        batch_command_file,
-        run_lc,
+        run_lc
     )
     timestamp_finish = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     logger.critical(f'\n##### The finishing time is {timestamp_finish}')

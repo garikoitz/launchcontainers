@@ -188,6 +188,7 @@ host_options:
       tmpdir: /scratch/tlei/tmp
       mount_options: ['/scratch']
       # config the cluster
+      # job name is very important
       job_name: retest_paperdv
       cores: 20
       memory: 32G
