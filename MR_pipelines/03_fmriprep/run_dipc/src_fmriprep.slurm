@@ -13,7 +13,7 @@
 # The above copyright notice and this permission notice shall be included in all copies or substantial
 # portions of the Software.
 
-#SBATCH --time=24:00:00
+#SBATCH --time=15:30:00
 #SBATCH -n 1  # this stands for number of task/ or number of nodes being used
 #SBATCH --cpus-per-task=20    #6
 #SBATCH --mem=72000
@@ -86,7 +86,7 @@ subject=$(
     "${sublist}"
 )
 # Compose the command line
-cmd="module load Apptainer/1.2.4 &&  \
+cmd_anatonly="module load Apptainer/1.2.4 &&  \
      ${SINGULARITY_CMD} \
      /base \
      /base/${OUTPUT_DIR} \
@@ -96,10 +96,26 @@ cmd="module load Apptainer/1.2.4 &&  \
       --fs-license-file /base/.license \
       --omp-nthreads 10 --nthreads 20 --mem_mb 50000 \
       --skip-bids-validation \
+      --anat-only \
       --stop-on-first-crash \
-      --dummy-scans 5 \
       --bids-filter-file /code/fmriprep/bids_filter_sub-${subject}.json \
-      --output-spaces T1w func MNI152NLin2009cAsym fsnative fsaverage "
+      --output-spaces T1w MNI152NLin2009cAsym fsnative fsaverage "
+
+cmd_runall="module load Apptainer/1.2.4 &&  \
+     ${SINGULARITY_CMD} \
+     /base \
+     /base/${OUTPUT_DIR} \
+     participant \
+      --participant-label $subject \
+      -w /work/ -vv \
+      --fs-license-file /base/.license \
+      --omp-nthreads 10 --nthreads 20 --mem_mb 50000 \
+      --skip-bids-validation \
+      --fs-subjects-dir /base/derivatives/freesurfer \
+      --dummy-scans 5 \
+      --stop-on-first-crash \
+      --bids-filter-file /code/fmriprep/bids_filter_sub-${subject}.json \
+      --output-spaces T1w func MNI152NLin2009cAsym fsnative fsaverage "      
 
 # Add these two lines if you had freesurfer run already
 #       --bids-filter-file /code/fmriprep/bids_filter_sub-${subject}.json \
@@ -114,8 +130,8 @@ cmd="module load Apptainer/1.2.4 &&  \
 #     --notrack \
 # Setup done, run the command
 echo Running task ${SLURM_ARRAY_TASK_ID}, for subject ${subject}
-echo Commandline: $cmd
-eval $cmd
+echo Commandline: $cmd_anatonly
+eval $cmd_anatonly
 
 echo "Coping the log files to the $LOG_DIR"
 rsync -av $slurm_log_dir $LOG_DIR

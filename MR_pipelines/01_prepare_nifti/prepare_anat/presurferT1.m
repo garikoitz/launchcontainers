@@ -134,4 +134,29 @@ function  presurferT1(tbPath,src_dir, output_dir, sub, ses, force)
             end
         end
     end
+    % cp the T2w to target place
+    % T2w we only have 1 run so runI=1
+    runI=1
+    T2w_in = fullfile(src_sesP, 'anat', [sub,'_',ses,'_',run,'_T2w.nii.gz']);
+    T2w_json_in = strrep(T2w_in,'.nii.gz','.json');
+    T2w_out = fullfile(out_sesP, 'anat', [sub,'_',ses,'_',run,'_T2w.nii.gz']);
+    T2w_json_out = strrep(T2w_out,'.nii.gz','.json');
+    if ~exist(T2w_out, 'file') || force    
+        try
+            % move, rename, clean up
+            system(['cp ', T2w_in, ' ', T2w_out]);
+            pause(2);
+        catch
+            warning("T2w is NOT being copied correctly")
+        end
+    end
+    if ~exist(T2w_json_out, 'file') || force    
+        try
+            % move, rename, clean up
+            system(['cp ', T2w_json_in, ' ', T2w_json_out]);
+            pause(2);
+        catch
+            warning("T2w json is NOT being copied correctly")
+        end
+    end    
 end
