@@ -40,7 +40,7 @@ def write_job_script(job_script, script_dir, job_script_fname):
     # Create script directory if specified
     if script_dir:
         makedirs(script_dir, exist_ok=True)
-        job_script_fpath = op.join(script_dir, f"{job_script_fname}.sh")
+        job_script_fpath = op.join(script_dir, f"{job_script_fname}")
 
     # Write script to file
     with open(job_script_fpath, 'w') as f:
@@ -74,8 +74,6 @@ def launch_jobs(
     n_jobs = len(df_subses)
     # write commands in to a single file to form batch array
     batch_command_fpath = op.join(container_log_dir, 'batch_commands.txt')
-    # create job_script_fname to get the batch job script
-    job_script_fname =  'src_launch_script.txt'
     commands = gen_launch_cmd(parse_namespace, df_subses, batch_command_fpath)
     # read the commands from the command array using python 
     array_id = 1
@@ -131,6 +129,8 @@ def launch_jobs(
                     n_jobs,
                 )
                 final_script = job_script.replace('your_command_here', batch_command)
+                # create job_script_fname to get the batch job script
+                job_script_fname =  'src_launch_script.slurm'
                 # Submit job
                 job_script_fpath = write_job_script(final_script,container_log_dir,job_script_fname)
                 logger.critical(
@@ -154,6 +154,8 @@ def launch_jobs(
                     n_jobs,
                 )
                 final_script = job_script.replace('your_command_here', batch_command)
+                # create job_script_fname to get the batch job script
+                job_script_fname =  'src_launch_script.sh'
                 # Submit job
                 job_script_fpath = write_job_script(final_script,container_log_dir,job_script_fname)
                 logger.critical(
