@@ -35,33 +35,33 @@ def gen_sge_array_job_script(
     # Generate array job script
     job_name = f'{job_name}_array'
     job_script = f"""#!/bin/bash
-    #$ -t 1-{len(n_jobs)}
-    #$ -N {job_name}
-    #$ -o {log_dir}/{job_name}_$JOB_ID_$TASK_ID.out
-    #$ -e {log_dir}/{job_name}_$JOB_ID_$TASK_ID.err
-    #$ -l h_rt={walltime}
-    #$ -S /bin/bash
-    #$ -q {queue}
+#$ -t 1-{n_jobs}
+#$ -N {job_name}
+#$ -o {log_dir}/{job_name}_$JOB_ID_$TASK_ID.out
+#$ -e {log_dir}/{job_name}_$JOB_ID_$TASK_ID.err
+#$ -l h_rt={walltime}
+#$ -S /bin/bash
+#$ -q {queue}
 
-    LOG_DIR={log_dir}
-    echo "Starting array task $SGE_TASK_ID on $(hostname)"
-    echo "Job ID: $JOB_ID"
+LOG_DIR={log_dir}
+echo "Starting array task $SGE_TASK_ID on $(hostname)"
+echo "Job ID: $JOB_ID"
 
-    # Read the command for this array index
+# Read the command for this array index
 
-    COMMAND="your_command_here"
-    echo "Executing: $COMMAND"
-    eval $COMMAND
+COMMAND="your_command_here"
+echo "Executing: $COMMAND"
+eval $COMMAND
 
-    exitcode=$?
+exitcode=$?
 
-    echo "Task $SGE_TASK_ID completed with exit code $exitcode"
+echo "Task $SGE_TASK_ID completed with exit code $exitcode"
 
-    # Output results to a TSV
-    echo "Task $SGE_TASK_ID   Exit code: $exitcode" >> $LOG_DIR/{job_name}_$JOB_ID.tsv
+# Output results to a TSV
+echo "Task $SGE_TASK_ID   Exit code: $exitcode" >> $LOG_DIR/{job_name}_$JOB_ID.tsv
 
-    exit $exitcode
+exit $exitcode
 
-    """
+"""
 
     return job_script
