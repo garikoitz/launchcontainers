@@ -194,10 +194,9 @@ host_options:
       # DIPC setting
       #--partition=general \
       #--qos=${qos} \ # qos can be : regular test long xlong serial
-      queue: general
       partition: general
       qos: regular
-      # this is particularly for dask job-queue
+      # this is particularly for dask job-queue to have qos
       job_extra_directives: [--qos=regular]
       walltime: '10:00:00'
 

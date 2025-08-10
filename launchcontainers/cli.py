@@ -321,19 +321,25 @@ def main():
     print(f' The logging dir is {logging_dir}')
     # get the dir and fpath for launchcontainer logger
     timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    logging_fname = f'launchcontainer_logger_{timestamp}'
-    # set up the logger for prepare mode
-    config_logger.setup_logger(quiet, verbose, debug, logging_dir, logging_fname)
 
     if parse_namespace.mode == 'prepare':
         logger.critical('\n....running prepare mode\n')
         logger.critical(f'Working on the dir: {analysis_dir}')
+        logging_fname = f'lc_prepare_logger_{timestamp}'
+        # set up the logger for prepare mode
+        config_logger.setup_logger(quiet, verbose, debug, logging_dir, logging_fname)
         do_prepare.main(parse_namespace, analysis_dir)
     if parse_namespace.mode == 'run':
         logger.critical('\n....running run mode\n')
+        logging_fname = f'lc_run_logger_{timestamp}'
+        # set up the logger for prepare mode
+        config_logger.setup_logger(quiet, verbose, debug, logging_dir, logging_fname)
         do_launch.main(parse_namespace)
     if parse_namespace.mode == 'qc':
         logger.critical('\n....running quality check mode\n')
+        logging_fname = f'lc_qc_logger_{timestamp}'
+        # set up the logger for prepare mode
+        config_logger.setup_logger(quiet, verbose, debug, logging_dir, logging_fname)
         do_qc.main(parse_namespace)
     if parse_namespace.mode == 'create_bids':
         create_bids.main()

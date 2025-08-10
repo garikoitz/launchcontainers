@@ -32,13 +32,14 @@ def gen_slurm_array_job_script(
     cores = jobqueue_config['cores']
     memory = jobqueue_config['memory']
     partition = jobqueue_config['partition']
+    # qos is a DIPC specific command, it is defining the queue
     qos = jobqueue_config['qos']
     walltime = jobqueue_config['walltime']
 
     # Generate array job script
     job_name = f'{job_name}_array'
     job_script = f"""#!/bin/bash
-    #SBATCH --array=1-{len(n_jobs)}
+    #SBATCH --array=1-{n_jobs}
     #SBATCH --job-name={job_name}
     #SBATCH --output={log_dir}/{job_name}_%A_%a.out
     #SBATCH --error={log_dir}/{job_name}_%A_%a.err
