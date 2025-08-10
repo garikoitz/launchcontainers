@@ -87,6 +87,7 @@ def launch_jobs(
 
     # RUN mode
     else:
+        logger.critical('\n### No launching, here is the launching command')
         if use_dask:
             dask_launch.launch_with_dask(
                 jobqueue_config,
@@ -104,6 +105,9 @@ def launch_jobs(
                     n_jobs,
                 )
                 job_script.replace('your_command_here', batch_command)
+                logger.critical(
+                    f'This is the final job script that is being lauched: \n {job_script}',
+                )
             elif host == 'BCBL':
                 batch_command = f"""$(sed -n "${{SGE_TASK_ID}}p" {batch_command_file})"""
                 job_script = sge.gen_sge_array_job_script(
@@ -112,6 +116,9 @@ def launch_jobs(
                     n_jobs,
                 )
                 job_script.replace('your_command_here', batch_command)
+                logger.critical(
+                    f'This is the final job script that is being lauched: \n {job_script}',
+                )
     return
 
 
@@ -186,10 +193,9 @@ def main(parse_namespace):
     batch_command_file = op.join(container_log_dir, 'batch_commands.txt')
 
     # 6. generate command to print
-
     # === Ask user to confirm before launching anything ===
     ans = input(
-        'You are about to launch jobs, please review the'
+        'You are about to launch jobs, please review the '
         'commandline info. Continue? [y / N]: ',
     )
     if ans.strip().lower() not in ('y', 'yes'):
