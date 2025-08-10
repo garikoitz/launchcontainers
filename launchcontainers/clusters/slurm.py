@@ -37,37 +37,38 @@ def gen_slurm_array_job_script(
 
     # Generate array job script
     job_name = f'{job_name}_array'
-    job_script = f"""#!/bin/bash
-    #SBATCH --array=1-{n_jobs}
-    #SBATCH --job-name={job_name}
-    #SBATCH --output={log_dir}/{job_name}_%A_%a.out
-    #SBATCH --error={log_dir}/{job_name}_%A_%a.err
-    #SBATCH --time={walltime}
-    #SBATCH --cpus-per-task={cores}
-    #SBATCH --ntasks=1
-    #SBATCH --mem={memory}
-    #SBATCH --partition={partition}
-    #SBATCH --qos={qos}
+    job_script = f"""
+#!/bin/bash
+#SBATCH --array=1-{n_jobs}
+#SBATCH --job-name={job_name}
+#SBATCH --output={log_dir}/{job_name}_%A_%a.out
+#SBATCH --error={log_dir}/{job_name}_%A_%a.err
+#SBATCH --time={walltime}
+#SBATCH --cpus-per-task={cores}
+#SBATCH --ntasks=1
+#SBATCH --mem={memory}
+#SBATCH --partition={partition}
+#SBATCH --qos={qos}
 
-    LOG_DIR={log_dir}
-    echo "Starting array task $SLURM_ARRAY_TASK_ID on $(hostname)"
-    echo "Job ID: $SLURM_JOB_ID"
+LOG_DIR={log_dir}
+echo "Starting array task $SLURM_ARRAY_TASK_ID on $(hostname)"
+echo "Job ID: $SLURM_JOB_ID"
 
-    # Read the command for this array index
+# Read the command for this array index
 
-    COMMAND="your_command_here"
-    echo "Executing: $COMMAND"
-    eval $COMMAND
+COMMAND="your_command_here"
+echo "Executing: $COMMAND"
+eval $COMMAND
 
-    echo "Task $SLURM_ARRAY_TASK_ID completed successfully"
+echo "Task $SLURM_ARRAY_TASK_ID completed successfully"
 
-    exitcode=$?
+exitcode=$?
 
-    # Output results to a table
-    echo "sub-$subject $SLURM_ARRAY_TASK_ID $exitcode" \
-        >> $LOG_DIR/$SLURM_JOB_NAME_$SLURM_ARRAY_JOB_ID.tsv
-    echo Finished tasks $SLURM_ARRAY_TASK_ID with exit code $exitcode
-    exit $exitcode
+# Output results to a table
+echo "sub-$subject $SLURM_ARRAY_TASK_ID $exitcode" \
+    >> $LOG_DIR/$SLURM_JOB_NAME_$SLURM_ARRAY_JOB_ID.tsv
+echo Finished tasks $SLURM_ARRAY_TASK_ID with exit code $exitcode
+exit $exitcode
 
     """
 
