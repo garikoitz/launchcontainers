@@ -21,6 +21,7 @@ import os
 import os.path as op
 import sys
 from datetime import datetime
+import subprocess as sp
 
 from launchcontainers import utils as do
 from launchcontainers.check import check_dwi_pipelines
@@ -88,6 +89,7 @@ def launch_jobs(
     # RUN mode
     else:
         logger.critical('\n### No launching, here is the launching command')
+            
         if use_dask:
             dask_launch.launch_with_dask(
                 jobqueue_config,
@@ -97,6 +99,11 @@ def launch_jobs(
             )
 
         else:
+            def launch_cmd(cmd):
+                result = sp.run(cmd, shell=True, capture_output=True, text=True)
+                
+                return result.returncode   
+                        
             if host == 'DIPC':
                 batch_command = f"""$(sed -n "${{SLURM_ARRAY_TASK_ID}}p" {batch_command_file})"""
                 job_script = slurm.gen_slurm_array_job_script(
@@ -108,6 +115,8 @@ def launch_jobs(
                 logger.critical(
                     f'This is the final job script that is being lauched: \n {final_script}',
                 )
+                return_code=launch_cmd(final_script)
+                logger.critical(f"\n return code of launch is {return_code} \n")
             elif host == 'BCBL':
                 batch_command = f"""$(sed -n "${{SGE_TASK_ID}}p" {batch_command_file})"""
                 job_script = sge.gen_sge_array_job_script(
@@ -117,9 +126,13 @@ def launch_jobs(
                 )
                 job_script.replace('your_command_here', batch_command)
                 final_script= job_script.replace('your_command_here', batch_command)
+                
                 logger.critical(
                     f'This is the final job script that is being lauched: \n {final_script}',
                 )
+                return_code=launch_cmd(final_script)
+                logger.critical(f"\n return code of launch is {return_code} \n")
+
     return
 
 
