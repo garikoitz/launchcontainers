@@ -49,7 +49,7 @@ def gen_slurm_array_job_script(
     #SBATCH --partition={partition}
     #SBATCH --qos={qos}
 
-    LOG_DIR = {log_dir}
+    LOG_DIR={log_dir}
     echo "Starting array task $SLURM_ARRAY_TASK_ID on $(hostname)"
     echo "Job ID: $SLURM_JOB_ID"
 

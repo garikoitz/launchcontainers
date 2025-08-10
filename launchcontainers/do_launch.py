@@ -120,8 +120,7 @@ def launch_jobs(
 
         else:
             def launch_cmd(cmd):
-                result = sp.run(cmd, shell=True, capture_output=True, text=True)
-
+                result = sp.run(cmd, shell=True, capture_output=True, text=True, timeout=60)
                 return result.returncode
 
             if host == 'DIPC':
@@ -138,8 +137,15 @@ def launch_jobs(
                     f'This is the final job script that is being lauched: \n {final_script}',
                 )
                 cmd = f"sbatch {job_script_fpath}"
-                return_code = launch_cmd(cmd)
-                logger.critical(f'\n return code of launch is {return_code} \n')
+                try:
+                    return_code = launch_cmd(cmd)
+                    logger.critical(f'\n return code of launch is {return_code} \n')
+                except sp.TimeoutExpired:
+                    logger.critical("❌ Sbatch submission timed out!")
+                    return 1, "", "Submission timeout"
+                except Exception as e:
+                    logger.critical(f"❌ Error during submission: {e}")
+                    return 1, "", str(e)                    
             elif host == 'BCBL':
                 batch_command = f"""$(sed -n "${{SGE_TASK_ID}}p" {batch_command_fpath})"""
                 job_script = sge.gen_sge_array_job_script(
@@ -154,8 +160,15 @@ def launch_jobs(
                     f'This is the final job script that is being lauched: \n {final_script}',
                 )
                 cmd = f"qsub {job_script_fpath}"
-                return_code = launch_cmd(cmd)
-                logger.critical(f'\n return code of launch is {return_code} \n')
+                try:
+                    return_code = launch_cmd(cmd)
+                    logger.critical(f'\n return code of launch is {return_code} \n')
+                except sp.TimeoutExpired:
+                    logger.critical("❌ Sbatch submission timed out!")
+                    return 1, "", "Submission timeout"
+                except Exception as e:
+                    logger.critical(f"❌ Error during submission: {e}")
+                    return 1, "", str(e)   
 
     return
 
