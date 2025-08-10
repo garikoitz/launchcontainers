@@ -37,8 +37,7 @@ def gen_slurm_array_job_script(
 
     # Generate array job script
     job_name = f'{job_name}_array'
-    job_script = f"""
-#!/bin/bash
+    job_script = f"""#!/bin/bash
 #SBATCH --array=1-{n_jobs}
 #SBATCH --job-name={job_name}
 #SBATCH --output={log_dir}/{job_name}_%A_%a.out
