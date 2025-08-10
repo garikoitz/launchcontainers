@@ -104,9 +104,9 @@ def launch_jobs(
                     container_log_dir,
                     n_jobs,
                 )
-                job_script.replace('your_command_here', batch_command)
+                final_script= job_script.replace('your_command_here', batch_command)
                 logger.critical(
-                    f'This is the final job script that is being lauched: \n {job_script}',
+                    f'This is the final job script that is being lauched: \n {final_script}',
                 )
             elif host == 'BCBL':
                 batch_command = f"""$(sed -n "${{SGE_TASK_ID}}p" {batch_command_file})"""
@@ -116,8 +116,9 @@ def launch_jobs(
                     n_jobs,
                 )
                 job_script.replace('your_command_here', batch_command)
+                final_script= job_script.replace('your_command_here', batch_command)
                 logger.critical(
-                    f'This is the final job script that is being lauched: \n {job_script}',
+                    f'This is the final job script that is being lauched: \n {final_script}',
                 )
     return
 
