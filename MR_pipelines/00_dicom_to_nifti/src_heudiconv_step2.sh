@@ -34,7 +34,7 @@ cmd="singularity run \
 	    	--bind /bcbl:/bcbl \
 			--bind /export:/export \
         	${sing_path} \
-			-d /base/${dicom_dirname}/sub-{subject}/ses-{session}/*/*.dcm \
+			-d /bcbl/data/MRI/VOTCLOC_22324/DATA/images/sub-{subject}_ses-{session}/*/*.dcm \
 	    	--subjects ${sub} \
 			--ses ${ses} \
 			-o ${outputdir} \
@@ -49,3 +49,4 @@ echo $cmd
 eval $cmd
 
 module unload apptainer
+# This is the old one works for VOTCLOC/dicom -d /base/${dicom_dirname}/sub-{subject}/ses-{session}/*/*.dcm \

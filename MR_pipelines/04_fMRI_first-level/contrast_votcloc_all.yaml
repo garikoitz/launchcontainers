@@ -46,11 +46,11 @@ LEXvsAllnoLEXnoRWnoPER:
   positive: ["CS", "FF"]
   negative: ["bodylimb", "face"]
 
-PERvsAllnoLEXnoRW:
+PERvsAllnoPERnoRW:
   positive: ["SC"]
   negative: ["CS", "FF", "bodylimb", "face"]
 
-PERvsAllnoLEXnoRWnoLEX:
+PERvsAllnoPERnoRWnoLEX:
   positive: ["SC"]
   negative: ["bodylimb", "face"]
 

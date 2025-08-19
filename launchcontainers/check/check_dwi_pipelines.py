@@ -22,11 +22,13 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import os.path as op
 import zipfile
+from datetime import datetime
+
 
 logger = logging.getLogger('Launchcontainers')
-
 
 
 def check_tractparam(lc_config, sub, ses, tractparam_df):
@@ -159,3 +161,37 @@ def check_dwi_analysis_folder(parse_namespace, container):
         logger.critical('Please check your container version and pay attention to this')
 
     return general_config_present
+
+
+def backup_old_rtp2pipeline_log(
+    parse_namespace,
+    df_subses,
+):
+    """
+    """
+    # read LC config yml from analysis dir
+    analysis_dir = parse_namespace.workdir
+    for row in df_subses.itertuples(index=True, name='Pandas'):
+        sub = row.sub
+        ses = row.ses
+        subses_dir_output = op.join(
+            analysis_dir,
+            'sub-' + sub,
+            'ses-' + ses,
+            'output',
+        )
+
+        # check if there is old RTP
+        old_rtp_log = os.path.join(
+            subses_dir_output,
+            'log',
+            'RTP_log.txt',
+        )
+        if os.path.exists(old_rtp_log):
+            now = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+            new_name = old_rtp_log.replace('_log', f'_log_backup_at_{now}')
+            os.rename(old_rtp_log, new_name)
+        else:
+            logger.info('\n no previous RTP, will run ')
+
+    return

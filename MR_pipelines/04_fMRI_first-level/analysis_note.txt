@@ -1,4 +1,5 @@
 To run the analysis, you can do:
+0. prepare bids event files, check if all in place
 1. conda activate you_env
 2. python path/to/run_glm.py -h
     this will give you the input parameters of the glm code

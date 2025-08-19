@@ -17,12 +17,12 @@
 from __future__ import annotations
 
 import logging
-from os import makedirs
 import os
 import os.path as op
 import subprocess as sp
 import sys
 from datetime import datetime
+from os import makedirs
 
 from launchcontainers import utils as do
 from launchcontainers.check import check_dwi_pipelines
@@ -34,22 +34,25 @@ from launchcontainers.gen_launch_cmd import gen_launch_cmd
 
 logger = logging.getLogger('Launchcontainers')
 
+
 def write_job_script(job_script, script_dir, job_script_fname):
     """Submit SLURM job by writing script to file first"""
-    
+
     # Create script directory if specified
     if script_dir:
         makedirs(script_dir, exist_ok=True)
-        job_script_fpath = op.join(script_dir, f"{job_script_fname}")
+        job_script_fpath = op.join(script_dir, f'{job_script_fname}')
 
     # Write script to file
     with open(job_script_fpath, 'w') as f:
         f.write(job_script)
-    
+
     # Make executable
     os.chmod(job_script_fpath, 0o755)
 
     return job_script_fpath
+
+
 def launch_jobs(
     parse_namespace,
     df_subses,
@@ -75,7 +78,7 @@ def launch_jobs(
     # write commands in to a single file to form batch array
     batch_command_fpath = op.join(container_log_dir, 'batch_commands.txt')
     commands = gen_launch_cmd(parse_namespace, df_subses, batch_command_fpath)
-    # read the commands from the command array using python 
+    # read the commands from the command array using python
     array_id = 1
     with open(batch_command_fpath) as f:
         lines = f.readlines()
@@ -130,22 +133,24 @@ def launch_jobs(
                 )
                 final_script = job_script.replace('your_command_here', batch_command)
                 # create job_script_fname to get the batch job script
-                job_script_fname =  'src_launch_script.slurm'
+                job_script_fname = 'src_launch_script.slurm'
                 # Submit job
-                job_script_fpath = write_job_script(final_script,container_log_dir,job_script_fname)
+                job_script_fpath = write_job_script(
+                    final_script, container_log_dir, job_script_fname,
+                )
                 logger.critical(
                     f'This is the final job script that is being lauched: \n {final_script}',
                 )
-                cmd = f"sbatch {job_script_fpath}"
+                cmd = f'sbatch {job_script_fpath}'
                 try:
                     return_code = launch_cmd(cmd)
                     logger.critical(f'\n return code of launch is {return_code} \n')
                 except sp.TimeoutExpired:
-                    logger.critical("❌ Sbatch submission timed out!")
-                    return 1, "", "Submission timeout"
+                    logger.critical('❌ Sbatch submission timed out!')
+                    return 1, '', 'Submission timeout'
                 except Exception as e:
-                    logger.critical(f"❌ Error during submission: {e}")
-                    return 1, "", str(e)                    
+                    logger.critical(f'❌ Error during submission: {e}')
+                    return 1, '', str(e)
             elif host == 'BCBL':
                 batch_command = f"""$(sed -n "${{SGE_TASK_ID}}p" {batch_command_fpath})"""
                 job_script = sge.gen_sge_array_job_script(
@@ -155,22 +160,24 @@ def launch_jobs(
                 )
                 final_script = job_script.replace('your_command_here', batch_command)
                 # create job_script_fname to get the batch job script
-                job_script_fname =  'src_launch_script.sh'
+                job_script_fname = 'src_launch_script.sh'
                 # Submit job
-                job_script_fpath = write_job_script(final_script,container_log_dir,job_script_fname)
+                job_script_fpath = write_job_script(
+                    final_script, container_log_dir, job_script_fname,
+                )
                 logger.critical(
                     f'This is the final job script that is being lauched: \n {final_script}',
                 )
-                cmd = f"qsub {job_script_fpath}"
+                cmd = f'qsub {job_script_fpath}'
                 try:
                     return_code = launch_cmd(cmd)
                     logger.critical(f'\n return code of launch is {return_code} \n')
                 except sp.TimeoutExpired:
-                    logger.critical("❌ Sbatch submission timed out!")
-                    return 1, "", "Submission timeout"
+                    logger.critical('❌ Sbatch submission timed out!')
+                    return 1, '', 'Submission timeout'
                 except Exception as e:
-                    logger.critical(f"❌ Error during submission: {e}")
-                    return 1, "", str(e)   
+                    logger.critical(f'❌ Error during submission: {e}')
+                    return 1, '', str(e)
 
     return
 
@@ -188,7 +195,9 @@ def main(parse_namespace):
     # Get general information from the config.yaml file
     bidsdir_name = lc_config['general']['bidsdir_name']
     container = lc_config['general']['container']
-    analysis_name = lc_config['general']['analysis_name']
+    # get stuff from subseslist for future jobs scheduling
+    sub_ses_list_path = op.join(analysis_dir, 'subseslist.txt')
+    df_subses, num_of_jobs = do.read_df(sub_ses_list_path)
     # 2. do a independent check to see if everything is in place
     if container in [
         'anatrois',
@@ -199,10 +208,10 @@ def main(parse_namespace):
         'rtp2-pipeline',
     ]:
         check_dwi_pipelines.check_dwi_analysis_folder(parse_namespace, container)
+        if container in ['rtp2-pipeline', 'rtp-pipeline']:
+            # do a second check for the RTP file, if exist, backup
+            check_dwi_pipelines.backup_old_rtp2pipeline_log(parse_namespace, df_subses)
 
-    # get stuff from subseslist for future jobs scheduling
-    sub_ses_list_path = op.join(analysis_dir, 'subseslist.txt')
-    df_subses, num_of_jobs = do.read_df(sub_ses_list_path)
     if container in [
         'anatrois',
         'rtppreproc',
@@ -259,7 +268,7 @@ def main(parse_namespace):
         parse_namespace,
         df_subses,
         container_log_dir,
-        run_lc
+        run_lc,
     )
     timestamp_finish = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     logger.critical(f'\n##### The finishing time is {timestamp_finish}')
