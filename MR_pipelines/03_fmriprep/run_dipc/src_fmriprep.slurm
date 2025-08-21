@@ -13,7 +13,7 @@
 # The above copyright notice and this permission notice shall be included in all copies or substantial
 # portions of the Software.
 
-#SBATCH --time=15:30:00
+#SBATCH --time=4:30:00
 #SBATCH -n 1  # this stands for number of task/ or number of nodes being used
 #SBATCH --cpus-per-task=20    #6
 #SBATCH --mem=72000
@@ -111,7 +111,7 @@ cmd_runall="module load Apptainer/1.2.4 &&  \
       --fs-license-file /base/.license \
       --omp-nthreads 10 --nthreads 20 --mem_mb 50000 \
       --skip-bids-validation \
-      --fs-subjects-dir /base/derivatives/freesurfer \
+      --fs-subjects-dir /base/derivatives/freesurfer-with_t2 \
       --dummy-scans 5 \
       --stop-on-first-crash \
       --bids-filter-file /code/fmriprep/bids_filter_sub-${subject}.json \
@@ -130,8 +130,8 @@ cmd_runall="module load Apptainer/1.2.4 &&  \
 #     --notrack \
 # Setup done, run the command
 echo Running task ${SLURM_ARRAY_TASK_ID}, for subject ${subject}
-echo Commandline: $cmd_anatonly
-eval $cmd_anatonly
+echo Commandline: $cmd_runall
+eval $cmd_runall
 
 echo "Coping the log files to the $LOG_DIR"
 rsync -av $slurm_log_dir $LOG_DIR

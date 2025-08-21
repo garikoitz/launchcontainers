@@ -33,30 +33,30 @@ license_path="$baseP/BIDS/.license"
 #time="00:20:00"
 #task="all"
 
-# # # for prfanalyze-vista:
-step="prfanalyze-vista"
-version='2.2.1'
-qos="regular" # regular or test
-mem="32G"
-cpus="20"
-time="10:00:00" #time="00:10:00" 10:00:00
-task="retFF" # retCB retRW retFF
+# # # # for prfanalyze-vista:
+# step="prfanalyze-vista"
+# version='2.2.1'
+# qos="regular" # regular or test
+# mem="32G"
+# cpus="20"
+# time="10:00:00" #time="00:10:00" 10:00:00
+# task="retFF" # retCB retRW retFF
 # retfixRW retfixFF retfixRwblock01 retfixRWblock02
 
 
 # # # for prfresult:
-# step="prfresult"
-# version="0.1.1"
-# qos="test" # regular or test
-# mem="16G"
-# cpus="10"
-# time="00:10:00" #time="00:10:00" 10:00:00
-# task="all" # retCB retRW retFF
+step="prfresult"
+version="0.1.1"
+qos="test" # regular or test
+mem="16G"
+cpus="10"
+time="00:10:00" #time="00:10:00" 10:00:00
+task="all" # retCB retRW retFF
 
 # json input
 json_dir="$baseP/code/${step}_jsons"
 # subseslist dir:
-script_dir="/scratch/tlei/soft/launchcontainers/MR_pipelines/04FMRI_RET"
+script_dir="/scratch/tlei/soft/launchcontainers/MR_pipelines/04_fMRI_ret"
 code_dir=$baseP/code
 sif_path="/scratch/tlei/containers/${step}_${version}.sif"
 

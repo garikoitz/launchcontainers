@@ -30,13 +30,13 @@ version="1.5.0"
 qos="regular" # or test or regular
 mem="16G"
 cpus="6"
-time="00:20:00"
+time="00:30:00"
 task="all"
 
 # json input
 json_dir="$baseP/code/${step}_jsons"
 # subseslist dir:
-script_dir="/scratch/tlei/soft/launchcontainers/MR_pipelines/04FMRI_RET"
+script_dir="/scratch/tlei/soft/launchcontainers/MR_pipelines/04_fMRI_ret"
 code_dir=$baseP/code
 subses_list_dir=$code_dir/subseslist_jun16.txt
 sif_path="/scratch/tlei/containers/${step}_${version}.sif"

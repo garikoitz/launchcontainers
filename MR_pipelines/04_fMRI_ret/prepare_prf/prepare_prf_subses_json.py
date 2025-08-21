@@ -85,11 +85,11 @@ if __name__ == '__main__':
 
     # for bcbl /bcbl/home/public/Gari/VOTCLOC/main_exp
     # for dipc it is /scratch/tlei/VOTCLOC
-    basedir = '/bcbl/home/public/Gari/VOTCLOC/main_exp'
+    basedir = '/scratch/tlei/VOTCLOC'
 
     code_dir = os.path.join(basedir, 'code')
     # example: prfprepare prfanalyze-vista prfresult 
-    steps = ['prfresult'] 
+    steps = ['prfprepare'] 
     # if the session is the word-center session, use the list with retfix
     tasks = ['all']
     # [
@@ -102,7 +102,7 @@ if __name__ == '__main__':
 
     for step in steps:
 
-        subseslist_path = os.path.join(code_dir, 'subseslist_sub11.txt')
+        subseslist_path = os.path.join(code_dir, 'subseslist_jun16.txt')
         output_dir = os.path.join(code_dir , f'{step}_jsons')
 
         if not os.path.exists(output_dir):
