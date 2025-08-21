@@ -1,12 +1,30 @@
 To run prf, usually we do it on DIPC
+folder structure:
+├── fmriprep
+│   ├── analysis-25.1.4_t2_pial_dummyscan_5 -> /scratch/tlei/VOTCLOC/BIDS/derivatives/fmriprep-25.1.4_t2_pial_dummyscan_5
+│   └── analysis-beforeMar05_US -> /data/tlei/VOTCLOC/BIDS/derivatives/fmriprep-beforeMar05_US/
+├── fmriprep-25.1.3_afterJuly09
+        ├── sourcedata
+            └── freesurfer -> /scratch/tlei/VOTCLOC/BIDS/derivatives/freesurfer-no_t2/
+├── fmriprep-25.1.4_t2_pial_dummyscan_5
+    ├── sourcedata
+        └── freesurfer -> /scratch/tlei/VOTCLOC/BIDS/derivatives/freesurfer-with_t2/
+├── freesurfer-no_t2
+│   ├── fsaverage
+│   ├── sub-01
+├── freesurfer-with_t2
+
+Need to prepare the folder structure to the above format: symlink for fmriprep and freesurfer
 
 First we need to parepare the log files using the prepare_prf/01_prepare_prf_vistadisplpg.py
+(Note here: if in the vistadisplog, you are having retfixRW instead of retRW for the Wordcenter condition,
+you need to create a copy/ not a symlink of the orig bids file to make the prf thing work )
 
-
-Then we will edit the container specidic json for that particular containers
+Then we will edit the container specific json for that particular containers in the template json
 
 Then we prepare the json using prepare_prf/prepare_prf_subses_json.py
 
 Then we launch it by run_dipc/sbatch_xxx.sh analysis-name
 
 After the job is done, we will launch the check_prf to check the logs
+
