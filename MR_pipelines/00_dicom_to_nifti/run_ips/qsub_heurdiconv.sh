@@ -15,7 +15,7 @@
 project=votcloc
 basedir=/bcbl/home/public/Gari/VOTCLOC/main_exp
 outputdir=$basedir/raw_nifti
-dicom_dirname=dicom
+dcm_dir=/base/dicom # or /bcbl/data/MRI/VOTCLOC_22324/DATA/images
 
 #### below are not going to be changed
 codedir=$basedir/code
@@ -24,7 +24,7 @@ step=$1 # step1 or step2
 script_dir=/export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/00_dicom_to_nifti
 subseslist_name=$2 #$codedir/00_heudiconv/subseslist_heudiconv.txt
 subseslist_path=$codedir/$2
-heuristicfile=$script_dir/00_heudiconv/heuristic_${project}.py
+heuristicfile=$script_dir/heuristic/heuristic_${project}.py
 sing_path=/bcbl/home/public/Gari/singularity_images/heudiconv_1.3.2.sif
 
 analysis_name=$3 #may_launch_25ses
@@ -57,7 +57,7 @@ while IFS=, read -r sub ses; do
 		-o $log_file \
     	-e $error_file \
 		-l mem_free=16G \
-		-v basedir=${basedir},logdir=${logdir},dicom_dirname=$dicom_dirname,outputdir=${outputdir},sub=${sub},ses=${ses},heuristicfile=$heuristicfile,sing_path=$sing_path \
+		-v basedir=${basedir},logdir=${logdir},dcm_dir=$dcm_dir,outputdir=${outputdir},sub=${sub},ses=${ses},heuristicfile=$heuristicfile,sing_path=$sing_path \
 		$script_dir/src_heudiconv_${step}.sh "
 
 	echo $cmd

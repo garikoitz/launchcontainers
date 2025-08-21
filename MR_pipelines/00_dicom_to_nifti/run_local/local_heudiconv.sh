@@ -16,7 +16,7 @@
 project=votcloc
 basedir=/bcbl/home/public/Gari/VOTCLOC/main_exp
 outputdir=$basedir/raw_nifti
-dicom_dirname=dicom
+dcm_dir=/base/dicom
 
 #### below are not going to be changed
 codedir=$basedir/code
@@ -55,7 +55,7 @@ while IFS=',' read -r sub ses; do
     # Export variables for use in the called script
     export basedir
     export logdir
-    export dicom_dirname
+    export dcm_dir
     export outputdir
     export sub
     export ses

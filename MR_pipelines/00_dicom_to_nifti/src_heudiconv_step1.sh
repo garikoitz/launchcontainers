@@ -35,12 +35,12 @@ module list
 
 echo "Subject: ${sub} "
 echo "Session: ${ses} "
-cmd="singularity run \
+cmd="singularity run --cleanenv --no-home --containall \
         	--bind ${basedir}:/base \
 	    	--bind /bcbl:/bcbl \
 			--bind /export:/export \
         	${sing_path} \
-			-d /bcbl/data/MRI/VOTCLOC_22324/DATA/images/sub-{subject}_ses-{session}/*/*.dcm \
+			-d ${dcm_dir}/sub-{subject}_ses-{session}/*/*.dcm \
 	    	-s ${sub} \
 			-ss ${ses} \
 			-o ${outputdir} \

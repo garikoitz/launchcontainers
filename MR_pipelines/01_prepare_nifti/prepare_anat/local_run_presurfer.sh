@@ -18,7 +18,7 @@ bids_dirname=BIDS
 # toolbox path that stores all the matlab toolboxes
 tbPath=/export/home/tlei/tlei/toolboxes
 src_dir=$basedir/raw_nifti
-analysis_name=run_S110102
+analysis_name=forJoana_allses10
 outputdir=${basedir}/${bids_dirname}
 force=false # if overwrite exsting file
 
