@@ -31,6 +31,10 @@ packages = [{include = "launchcontainers"}]
 lc = "launchcontainers.cli:main"
 
 [tool.poetry.dependencies]
+# nilearn
+nilearn = ">=0.10.4"
+# matplotlib
+matplotlib = "*"
 # bokeh
 bokeh = ">=2.4.2"
 # python after Oct 4, 2021

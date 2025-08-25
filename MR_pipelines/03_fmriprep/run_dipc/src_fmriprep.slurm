@@ -13,10 +13,10 @@
 # The above copyright notice and this permission notice shall be included in all copies or substantial
 # portions of the Software.
 
-#SBATCH --time=4:30:00
+#SBATCH --time=18:00:00
 #SBATCH -n 1  # this stands for number of task/ or number of nodes being used
 #SBATCH --cpus-per-task=20    #6
-#SBATCH --mem=72000
+#SBATCH --mem=60000
 #SBATCH --partition=general  # Queue names you can submit to
 #SBATCH --qos=regular       #<regular,serial,test,long or xlong>
 

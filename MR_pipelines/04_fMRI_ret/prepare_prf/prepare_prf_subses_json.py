@@ -89,24 +89,21 @@ if __name__ == '__main__':
 
     code_dir = os.path.join(basedir, 'code')
     # example: prfprepare prfanalyze-vista prfresult 
-    steps = ['prfprepare'] 
-    # if the session is the word-center session, use the list with retfix
-    tasks = ['all']
-    # [
-    #     'retRW', 'retFF', 'retCB', 'retfixRW', 'retfixFF',
-    #     'retfixRWblock', 'retfixRWblock01', 'retfixRWblock02',
-    # ]  
-    # ['all']
+    steps = ['prfprepare', 'prfanalyze-vista','prfresult'] 
     
     force = True
 
     for step in steps:
-
         subseslist_path = os.path.join(code_dir, 'subseslist_jun16.txt')
         output_dir = os.path.join(code_dir , f'{step}_jsons')
 
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
+        if step not in ['prfanalyze-vista']:
+            tasks= ['all']
+        else:
+            tasks = ['retRW', 'retFF', 'retCB', 'retfixRW', 'retfixFF',
+            'retfixRWblock', 'retfixRWblock01', 'retfixRWblock02']            
 
         template_json = os.path.join(code_dir, '04b_prf', f'{step}.json')
 

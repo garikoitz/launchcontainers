@@ -28,8 +28,8 @@ license_path="$baseP/BIDS/.license"
 step="prfprepare"
 version="1.5.0"
 qos="regular" # or test or regular
-mem="16G"
-cpus="6"
+mem="12G"
+cpus="2"
 time="00:30:00"
 task="all"
 

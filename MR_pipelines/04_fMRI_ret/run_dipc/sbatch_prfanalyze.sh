@@ -30,11 +30,11 @@ license_path="$baseP/BIDS/.license"
 step="prfanalyze-vista"
 version='2.2.1'
 qos="regular" # regular or test
-mem="32G"
+mem="10G"
 cpus="20"
-time="12:00:00" #time="00:10:00" 10:00:00
-task="retfixRWblock01" # retCB retRW retFF
-# retfixRW retfixFF retfixRWblock01 retfixRWblock02
+time="8:00:00" #time="00:10:00" 10:00:00
+task="retfixRWblock02" # retCB retRW retFF
+# retfixRW retfixFF retfixRWblock01 retfixRWblock02 retfixRWblock
 
 # json input
 json_dir="$baseP/code/${step}_jsons"

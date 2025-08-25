@@ -73,7 +73,7 @@ def check_prfanalyze_logs(folder_path):
 
 
 # Example usage:
-folder = '/scratch/tlei/VOTCLOC/dipc_prfprepare_logs/sub110102_2025-07-09'
+folder = '/scratch/tlei/VOTCLOC/dipc_prfprepare_logs/s01all_2025-08-25'
 
 check_prfprepare_logs(folder)
 
