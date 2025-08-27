@@ -21,8 +21,8 @@ def rsync_single_subject(analysis_dir, sub, ses):
     # Run rsync
     cmd = [
         'rsync', '-avzP', '-h',
-        str(file_path_tracts) + '/', 
-        str(file_path_rtp) + '/'
+        str(file_path_rtp) + '/',
+        str(file_path_tracts) + '/'
     ]
     
     try:
