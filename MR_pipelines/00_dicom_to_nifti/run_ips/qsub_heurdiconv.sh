@@ -53,7 +53,7 @@ while IFS=, read -r sub ses; do
     error_file="${logdir}/qsub_${sub}_${ses}_${now}.e"
 	cmd="qsub -q short.q \
 	    -S /bin/bash \
-		-N heudiconv_s-${sub}_s-${ses} \
+		-N s${sub}_t${ses}_dcm \
 		-o $log_file \
     	-e $error_file \
 		-l mem_free=16G \

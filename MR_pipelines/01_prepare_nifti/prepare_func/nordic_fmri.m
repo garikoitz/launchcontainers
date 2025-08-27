@@ -19,7 +19,7 @@ function nordic_fmri(tbPath, src_dir, output_dir, sub, ses, nordic_scans_end, do
     sub=['sub-' sub];
     ses=['ses-' ses];
     if ~exist(output_dir, 'dir')
-       mkdir(output_dir)
+       mkdir(output_dir);
     end
     spm12Path = fullfile(tbPath, 'spm12');
     bidsmatlab_path=fullfile(tbPath,'bids-matlab');
@@ -28,7 +28,7 @@ function nordic_fmri(tbPath, src_dir, output_dir, sub, ses, nordic_scans_end, do
     fmamtPath = fullfile(tbPath, 'freesurfer_mrtrix_afni_matlab_tools'); % tbUse if not installed
     addpath(genpath(fmamtPath));
     addpath(genpath(fullfile(src_dir,'..','code')));
-    addpath(genpath('/bcbl/home/home_n-z/tlei/soft/launchcontainers/src/launchcontainers/py_pipeline'));
+    addpath(genpath('/bcbl/home/home_n-z/tlei/soft/launchcontainers/src/launchcontainers/MR_pipelines'));
     nordicpath=fullfile(tbPath,'NORDIC_Raw');
     addpath(genpath(nordicpath));
     setenv('FSLOUTPUTTYPE', 'NIFTI_GZ');
@@ -63,7 +63,7 @@ function nordic_fmri(tbPath, src_dir, output_dir, sub, ses, nordic_scans_end, do
     disp('### Starting step 1, preaparing the  mag and phase for nordic \n')
     time_start=datetime('now');
     parfor src_magI=1:length(src_mags) % src_magI=1
-        prepare_nordic_bold_nifti(fullfile(src_mags(src_magI).folder, src_mags(src_magI).name),nordic_scans_end ,force)
+        prepare_nordic_bold_nifti(fullfile(src_mags(src_magI).folder, src_mags(src_magI).name),nordic_scans_end ,force);
     end
 
     %% Step 2, prepare ARG struct for each run of the the magnitude.nii.gz
