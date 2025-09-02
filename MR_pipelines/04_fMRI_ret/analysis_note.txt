@@ -19,7 +19,12 @@ Need to prepare the folder structure to the above format: symlink for fmriprep a
 First we need to parepare the log files using the prepare_prf/01_prepare_prf_vistadisplpg.py
 (Note here: if in the vistadisplog, you are having retfixRW instead of retRW for the Wordcenter condition,
 you need to create a copy/ not a symlink of the orig bids file to make the prf thing work )
+for the WC condition, you need to create correct name under fmriprep and bids subsesfunc dir, so that the 
+stimuli name can be picked properly
 
+The renaming of the WC ret will happen after the fMRIprep, so that the files are being run only name changed
+
+There should be a way, to map the sourcedata/stimuli name with the BIDS task- identifier;
 Then we will edit the container specific json for that particular containers in the template json
 
 Then we prepare the json using prepare_prf/prepare_prf_subses_json.py

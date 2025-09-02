@@ -32,8 +32,8 @@ version='2.2.1'
 qos="regular" # regular or test
 mem="10G"
 cpus="20"
-time="8:00:00" #time="00:10:00" 10:00:00
-task="retfixRWblock02" # retCB retRW retFF
+time="12:00:00" #time="00:10:00" 10:00:00
+task="retfixRW" # retCB retRW retFF
 # retfixRW retfixFF retfixRWblock01 retfixRWblock02 retfixRWblock
 
 # json input

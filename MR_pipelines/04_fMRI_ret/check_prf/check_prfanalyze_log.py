@@ -73,9 +73,10 @@ def check_prfanalyze_logs(folder_path):
 
 
 # Example usage:
-folder = '/scratch/tlei/VOTCLOC/dipc_prfprepare_logs/s01all_2025-08-25'
+folder = '/scratch/tlei/VOTCLOC/dipc_prfanalyze-vista_logs/WCbatch2_2025-09-02'
 
-check_prfprepare_logs(folder)
+check_prfanalyze_logs(folder)
 
 # check_prfanalyze_errs(folder)
 # check_prfanalyze_logs(folder)
+# check_prfprepare_logs(folder)

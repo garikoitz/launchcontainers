@@ -25,7 +25,7 @@ sublist_name=$1
 sublist="${STUDY}/code/$sublist_name"
 analysis_name='t2_pial_dummyscan_5'
 fp_version=25.1.4
-job_name=sub07all
+job_name=sub111009
 
 
 slurm_log_dir=$STUDY/dipc_fmriprep/${analysis_name}_$(date +"%Y-%m-%d")
