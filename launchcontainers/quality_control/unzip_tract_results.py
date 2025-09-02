@@ -71,7 +71,42 @@ def check_and_unzip_tract(subses_outputdir):
         logger.warning(warning_msg)
         
     return has_tract_dir, has_tract_zip, unzip_success, warning_msg
+# this is actually used to check tract result, the previous function is for checking and unzipping
 
+def check_tract_output(subses_outputdir):
+    """
+    Check for tract directory or zip file and unzip if needed
+    
+    Args:
+        subses_outputdir (Path): Path to the output directory
+        
+    Returns:
+        tuple: (has_tract_dir, has_tract_zip, unzip_success, warning_msg)
+    """
+    subses_outputdir = Path(subses_outputdir)
+    tract_dir = subses_outputdir / "RTP_PIPELINE_ALL_OUTPUT"
+    tract_zip = subses_outputdir / "RTP_PIPELINE_ALL_OUTPUT.zip"
+
+    has_tract_dir = tract_dir.exists() and tract_dir.is_dir()
+    has_tract_zip = tract_zip.exists() and tract_zip.is_file()
+    unzip_success = False
+    warning_msg = ""
+    
+    if has_tract_dir and has_tract_zip:
+        logger.info("Both tract/ and tract.zip exist, skipping")
+        return has_tract_dir, has_tract_zip, True, ""
+    
+    elif not has_tract_dir and has_tract_zip:
+     
+        logger.info(f"need to unzip {tract_zip}")
+        unzip_success = False
+        has_tract_dir = True
+    
+    else:
+        warning_msg = f"Missing files: has_tract_dir {has_tract_dir}, and has_tract_zip: {has_tract_zip} "
+        logger.warning(warning_msg)
+        
+    return has_tract_dir, has_tract_zip, unzip_success, warning_msg
 """
 Parallel processing the unzipping
 """
@@ -92,7 +127,7 @@ def process_single_subject(analysis_dir, sub, ses, run, dwi):
             )
             
             # Call your check_and_unzip_tract function
-            result = check_and_unzip_tract(subses_outputdir)
+            result = check_tract_output(subses_outputdir)
             
             logger.info(f"Processed sub-{sub}_ses-{ses}: Success")
             return {

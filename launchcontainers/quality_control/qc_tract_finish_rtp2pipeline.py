@@ -3,6 +3,7 @@
 import pandas as pd
 from pathlib import Path
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -76,23 +77,23 @@ def check_tract_completeness(subses_outputdir):
         found_suffixes = []
         missing_suffixes = []
         
-        # this is for checking in the folder 
-        # for suffix in expected_suffixes:
-        #     file_path_tracts = subses_outputdir / "tracts" / f"{tract_name}{suffix}"
-        #     file_path_rtp = subses_outputdir / "RTP" / "mrtrix" / f"{tract_name}{suffix}"
-        #     if file_path_tracts.exists() or file_path_rtp.exists():
-        #         found_suffixes.append(suffix)
-        #     else:
-        #         missing_suffixes.append(suffix)
-        
-        # this is for checking in the csv
+        #this is for checking in the folder 
         for suffix in expected_suffixes:
-            tract_in_csv = f"mrtrix/{tract_name}{suffix}"
-
-            if output_summary_df["FileName"].str.contains(tract_in_csv).any():
+            file_path_tracts = subses_outputdir / "tracts" / f"{tract_name}{suffix}"
+            file_path_rtp = subses_outputdir / "RTP" / "mrtrix" / f"{tract_name}{suffix}"
+            if file_path_tracts.exists() : #or file_path_rtp.exists():
                 found_suffixes.append(suffix)
             else:
                 missing_suffixes.append(suffix)
+        
+        # # this is for checking in the csv
+        # for suffix in expected_suffixes:
+        #     tract_in_csv = f"mrtrix/{tract_name}{suffix}"
+
+        #     if output_summary_df["FileName"].str.contains(tract_in_csv).any():
+        #         found_suffixes.append(suffix)
+        #     else:
+        #         missing_suffixes.append(suffix)
 
 
         tract_status[tract_name] = {
@@ -108,7 +109,6 @@ def check_tract_completeness(subses_outputdir):
             
     return complete_tracts, missing_tracts, tract_status
 
-import os
 
 def find_subseslist(analysis_dir):
     for dirpath, dirnames, filenames in os.walk(analysis_dir):
@@ -117,6 +117,31 @@ def find_subseslist(analysis_dir):
                 return os.path.join(dirpath, fname)
     raise FileNotFoundError(f'No subseslist.txt found under {analysis_dir}')
 
+def check_and_tract_dir(subses_outputdir):
+    """
+    Check for tract directory or zip file and unzip if needed
+    
+    Args:
+        subses_outputdir (Path): Path to the output directory
+        
+    Returns:
+        tuple: (has_tract_dir, has_tract_zip, unzip_success, warning_msg)
+    """
+    subses_outputdir = Path(subses_outputdir)
+    tract_dir = subses_outputdir / "RTP_PIPELINE_ALL_OUTPUT"
+    tract_zip = subses_outputdir / "RTP_PIPELINE_ALL_OUTPUT.zip"
+
+    has_tract_dir = tract_dir.exists() and tract_dir.is_dir()
+    has_tract_zip = tract_zip.exists() and tract_zip.is_file()
+    unzip_success = False
+    warning_msg = ""
+    
+    if has_tract_dir and has_tract_zip:
+        logger.info("Both tract/ and tract.zip exist")
+        return has_tract_dir, has_tract_zip, True, ""
+    elif not has_tract_zip:
+        logger.info("output.zip doesn't exist, not finishing")
+        
 def check_all_sub(analysis_dir):
 
     path_to_subses = find_subseslist(analysis_dir)
