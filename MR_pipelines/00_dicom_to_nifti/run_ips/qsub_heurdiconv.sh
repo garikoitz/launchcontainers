@@ -15,7 +15,7 @@
 project=votcloc
 basedir=/bcbl/home/public/Gari/VOTCLOC/main_exp
 outputdir=$basedir/raw_nifti
-dcm_dir=/base/dicom # or /bcbl/data/MRI/VOTCLOC_22324/DATA/images
+dcm_dir=/bcbl/data/MRI/VOTCLOC_22324/DATA/images #/base/dicom # or /bcbl/data/MRI/VOTCLOC_22324/DATA/images
 
 #### below are not going to be changed
 codedir=$basedir/code

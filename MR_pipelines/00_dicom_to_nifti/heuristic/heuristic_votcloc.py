@@ -178,7 +178,7 @@ def infotodict(seqinfo):
                 info[ret_RW_sbref].append(s.series_id)
             if ('FF' in s.protocol_name) or ('word' in s.protocol_name):
                 info[ret_FF_sbref].append(s.series_id)
-            if ('CB' in s.protocol_name) :
+            if (('CB' in s.protocol_name) or ('fixRWblock' in s.protocol_name)) :
                 info[ret_CB_sbref].append(s.series_id)
 
         if (s.dim1 == 92) and (s.dim3 == 80):
@@ -197,7 +197,7 @@ def infotodict(seqinfo):
                     info[ret_FF_P].append(s.series_id)
                 else:
                     info[ret_FF_M].append(s.series_id)
-            if ((s.series_files == 156) or (s.series_files == 155)) and ('CB' in s.protocol_name):
+            if ((s.series_files == 156) or (s.series_files == 155)) and (('CB' in s.protocol_name) or ('fixRWblock' in s.protocol_name)):
                 if ('Pha' in s.series_description) :
                     info[ret_CB_P].append(s.series_id)
                 else:

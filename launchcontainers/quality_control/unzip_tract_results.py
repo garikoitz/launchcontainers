@@ -40,7 +40,7 @@ def check_and_unzip_tract(subses_outputdir):
     subses_outputdir = Path(subses_outputdir)
     tract_dir = subses_outputdir / "RTP_PIPELINE_ALL_OUTPUT"
     tract_zip = subses_outputdir / "RTP_PIPELINE_ALL_OUTPUT.zip"
-    
+
     has_tract_dir = tract_dir.exists() and tract_dir.is_dir()
     has_tract_zip = tract_zip.exists() and tract_zip.is_file()
     unzip_success = False

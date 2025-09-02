@@ -2,7 +2,7 @@
 
 # Configuration /export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/01_prepare_nifti/prepare_func
 script_dir=/export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/01_prepare_nifti/prepare_func
-analysis_name='batchS4567891011'
+analysis_name='batchS9S11'
 # variable pass to the matlab
 TB_PATH="/export/home/tlei/tlei/toolboxes"
 SRC_DIR="/bcbl/home/public/Gari/VOTCLOC/main_exp/raw_nifti"

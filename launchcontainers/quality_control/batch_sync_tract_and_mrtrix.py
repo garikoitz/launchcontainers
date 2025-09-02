@@ -10,7 +10,7 @@ def rsync_single_subject(analysis_dir, sub, ses):
     
     file_path_tracts = subses_outputdir / "tracts" 
     file_path_rtp = subses_outputdir / "RTP" / "mrtrix"
-    
+    tract_dir = subses_outputdir / "RTP_PIPELINE_ALL_OUTPUT" / "mrtrix"
     # Skip if source doesn't exist
     if not file_path_tracts.exists():
         return f"sub-{sub}_ses-{ses}: No tracts directory"
@@ -58,7 +58,7 @@ def batch_rsync_tracts(analysis_dir):
     
     # Run parallel rsync
     results = []
-    with ThreadPoolExecutor(max_workers=35) as executor:
+    with ThreadPoolExecutor(max_workers=18) as executor:
         futures = {executor.submit(rsync_single_subject, *task): task for task in tasks}
         
         for future in as_completed(futures):
