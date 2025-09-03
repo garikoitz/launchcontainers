@@ -181,7 +181,7 @@ def save_statmap_to_gifti(data, outname):
 # Function to replace prefix
 def replace_prefix_and_suffix(val):
     if isinstance(val, str) and (val.endswith('1') or val.endswith('2')):
-        val=val[:-1]
+        val = val[:-1]
     if isinstance(val, str) and (
         val.startswith('EU_') or val.startswith('ES_')
         or val.startswith('AT_') or val.startswith('EN_')
@@ -280,7 +280,7 @@ def prepare_glm_input(
     This function is looping for each run of the task to get:
     1. the processed timeseries
     2. events.tsv
-    3. the compounds
+    3. the confounds
 
     2+3 will help tp create design_matrix
 
@@ -371,7 +371,7 @@ def prepare_glm_input(
         events = l1[2][0][0]  # Dataframe of events information
         confounds = l1[3][0][0]  # Dataframe of confounds
         events.loc[:, 'onset'] = events['onset'] + idx * (n_scans) * t_r
-        #events_allrun.append(events)
+        # events_allrun.append(events)
 
         # get rid of rest so that the setting would be the same as spm
         events_nobaseline = events[events.loc[:, 'trial_type'] != 'baseline']
@@ -633,14 +633,14 @@ def main():
     layout = BIDSLayout(bids_dir, validate=False)
     run_list = generate_run_groups(layout, subject, session, task, selected_runs)
 
-
-    hemis = ["L", "R"]  # L for left, R for right
-    for hemi in hemis: #hemi = 'L'
+    hemis = ['L', 'R']  # L for left, R for right
+    for hemi in hemis:  # hemi = 'L'
 
         finished = process_run_list(
             bids_dir, fmriprep_dir, label_dir, contrast_fpath,
             subject, session, output_name, task, start_scans , hemi, space, slice_time_ref,
-            run_list, use_smoothed, sm, apply_label_as_mask)
+            run_list, use_smoothed, sm, apply_label_as_mask,
+        )
 
     return
 
