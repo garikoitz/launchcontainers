@@ -34,6 +34,7 @@ glm_yaml_path=${codedir}/contrast_votcloc_all.yaml
 # slice timing ref, default is 0.5 can change
 slice_timing=(0.5)
 use_smoothed=False
+dry_run=True
 
 # log dir
 LOG_DIR=$basedir/l1_surfaces_log/analysis-${out_name}
@@ -68,7 +69,8 @@ cmd="qsub -q short.q \
 	-v glm_yaml_path=${glm_yaml_path} \
 	-v slice_timing=${slice_timing} \
 	-v codedir=$codedir \
-	$codedir/run_qsub/cli_glm_qsub_api.sh "
+	-v dry_run=$dry_run \
+	$codedir/cli_glm_api.sh "
 
 echo $cmd
 eval $cmd

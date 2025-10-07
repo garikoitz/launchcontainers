@@ -92,20 +92,20 @@ def get_parser():
         '-start_scans',
         type=int,
         # default="",
-        help='number of pre_scans in the fMRI time series ',
+        help='number of non-steady TRs in the fMRI time series ',
     )
     parser.add_argument(
         '-space',
         type=str,
         # default="",
-        help='Space you want to conduct the experiment: \
+        help='Space you want to conduct the experiment. \
         Valid options: T1w func MNI152NLin2009cAsym fsnative fsaverage ',
     )
     parser.add_argument(
         '-contrast',
         type=str,
         # default="",
-        help='path to yaml file define contrast ',
+        help='path to yaml file defining contrast ',
     )
 
     parser.add_argument(
@@ -135,7 +135,11 @@ def get_parser():
         action='store_true',
         help='use_smooth, e.g. True or False',
     )
-
+    parser.add_argument(
+        '-dry_run',
+        action='store_true',
+        help='dry_run, if its just print the stuff out, e.g. True or False',
+    )
     parser.add_argument(
         '-sm',
         type=str,
@@ -267,6 +271,7 @@ def glm_l1(
         save_statmap_to_gifti(variance, outname)
 
     finished = 1
+    print(f'glm for {hemi} finished')
     return finished
 
 
@@ -398,6 +403,9 @@ def prepare_glm_input(
         cosine_keys = [key for key in confounds.keys() if 'cosine' in key]
 
         # Pull out the confounds we want to keep
+        # confound_keys_keep = (
+        #     motion_keys + a_compcor_keys + cosine_keys
+        # )
         confound_keys_keep = (
             motion_keys + a_compcor_keys + cosine_keys + non_steady_state_keys
         )
@@ -408,6 +416,7 @@ def prepare_glm_input(
             confounds_keep['framewise_displacement'],
         )
         confounds_keep = confounds_keep.iloc[start_scans:]
+        print(f'the length of confounds is {len(confounds_keep)}')
         confounds_allrun.append(confounds_keep)
         # Create the design matrix
         # Start by getting times of scans
@@ -422,7 +431,11 @@ def prepare_glm_input(
     # Applying the function to the entire DataFrame
     concat_events = concat_events.applymap(replace_prefix_and_suffix)
     concat_confounds = pd.concat(confounds_allrun, axis=0)
+    print(f'There are those columns in the concat_confoudns: \n {concat_confounds.columns}')
+    print(concat_confounds.head(20))
     nonan_confounds = concat_confounds.dropna(axis=1, how='any')
+    print(f'\n\nThere are those columns in the FINAL concat_confoudns: \n {nonan_confounds.columns}')
+    print(nonan_confounds.head(20)) 
     # Construct the design matrix
     design_matrix = make_first_level_design_matrix(
         concat_frame_times,
@@ -530,18 +543,10 @@ def generate_run_groups(layout, subject, session, task, selected_runs=None):
     print(f'the run list is {run_list}')
     return run_list
 
-
-'''
-
-
-
-'''
-
-
 def process_run_list(
         bids_dir, fmriprep_dir, label_dir, contrast_fpath,
         subject, session, output_name, task, start_scans, hemi, space, slice_time_ref,
-        run_list, use_smoothed, sm, apply_label_as_mask, ):
+        run_list, use_smoothed, sm, apply_label_as_mask, dry_run):
     print('Processing hemi', hemi)
     print('Processing runs are : ', run_list)
     conc_gii_data_std, design_matrix_std, contrasts = prepare_glm_input(
@@ -550,15 +555,18 @@ def process_run_list(
         run_list, use_smoothed, sm, apply_label_as_mask,
     )
     print(f'Contrasts we are using is : {contrasts.keys()}')
-
     print(f'----------before going to the glm_l1, smooth is {use_smoothed}')
+
     # if apply_label_as_mask:
     #     run_identifier=f"{run_identifier}_mask-{apply_label_as_mask.spilt('.')[1]}-{apply_label_as_mask.spilt('.')[2]}"
-    finished = glm_l1(
-        conc_gii_data_std, design_matrix_std, contrasts,
-        bids_dir, task, space, hemi, subject, session,
-        output_name, use_smoothed, sm,
-    )
+    if not dry_run:
+        finished = glm_l1(
+            conc_gii_data_std, design_matrix_std, contrasts,
+            bids_dir, task, space, hemi, subject, session,
+            output_name, use_smoothed, sm,
+        )
+    else:
+        print('dry run mode, you will see the designmatrix and the confoudns')
     return finished
 
 
@@ -619,6 +627,7 @@ def main():
     sm = parser_dict['sm']
     apply_label_as_mask = parser_dict['mask']  # 'lh.mOTS.RWvsPER.label'
     selected_runs = parser_dict['selected_runs']
+    dry_run = parser_dict['dry_run']
     print(f'the selected runs are {selected_runs}')
     # define directories
     bids_dir = op.join(basedir, input_dirname)
@@ -639,7 +648,7 @@ def main():
         finished = process_run_list(
             bids_dir, fmriprep_dir, label_dir, contrast_fpath,
             subject, session, output_name, task, start_scans , hemi, space, slice_time_ref,
-            run_list, use_smoothed, sm, apply_label_as_mask,
+            run_list, use_smoothed, sm, apply_label_as_mask, dry_run
         )
 
     return

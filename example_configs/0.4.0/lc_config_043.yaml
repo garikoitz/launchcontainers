@@ -201,14 +201,13 @@ host_options:
       job_extra_directives: [--qos=regular]
       walltime: '10:00:00'
 
-
     local:
       # Local machine, ubuntu, MacOS
       # if the local machine use module load this option will give you different version of job-queue cmd
       # BCBL local use module
       # Okazaki local NOT use module
       # tlei ubuntu NOT use module
-      use_module: False
+      use_module: True
       apptainer: apptainer/latest
       # Copy the example list: for BCBL we need ['/bcbl', '/tmp', '/export']; for okazaki we need ['/fileserver', '/tmp']
       mount_options: ['/bcbl', '/tmp', '/scratch', '/export']
@@ -216,6 +215,7 @@ host_options:
       # This can only be serial, parallel
       launch_mode: 'parallel'
       # Arguments below only affect to parallel launch mode
-      njobs: 5
-      memory_limit: '32GiB'
-      threads_per_worker: 10
+      # Below are the option that can use 30 cores from LMC02
+      njobs: 15
+      memory_limit: '64GiB'
+      threads_per_worker: 30

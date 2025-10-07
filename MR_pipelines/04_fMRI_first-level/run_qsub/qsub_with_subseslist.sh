@@ -20,21 +20,21 @@ bids_dir_name=BIDS
 
 # directory stores the run_glm.py code
 codedir=/export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/04_fMRI_first-level
-# analysis name of fmriprep #'beforeMar05_US' there is only one analysis now
-fp_name=beforeMar05_US
-# task
+# analysis name of fmriprep #'beforeMar05_US'  or 25.1.4_t2_pial_dummyscan_5
+fp_name=25.1.4_t2-fs_nodummy-scans_bold2anat-t1w
 task=fLoc
 # start_scans: number of scans started:
 start_scans=6
 # space
 space=fsnative
 # output analysis name
-out_name=fp_beforeJuly09
+out_name=fp_nodummy_t1-nobbr
 # path to contrast yaml, you can define any kind of yaml under any place
 glm_yaml_path=${codedir}/contrast_votcloc_all.yaml
 # slice timing ref, default is 0.5 can change
 slice_timing=(0.5)
 use_smoothed=False
+dry_run=False
 # log dir
 LOG_DIR=$basedir/l1_surfaces_log/analysis-${out_name}
 
@@ -80,7 +80,8 @@ do
 		-v glm_yaml_path=${glm_yaml_path} \
 		-v slice_timing=${slice_timing} \
 		-v codedir=$codedir \
-		$codedir/run_qsub/cli_glm_qsub_api.sh "
+		-v dry_run=$dry_run \
+		$codedir/cli_glm_api.sh "
 
 	echo $cmd
 	eval $cmd

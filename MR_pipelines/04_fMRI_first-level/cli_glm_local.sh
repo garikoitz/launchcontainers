@@ -22,7 +22,7 @@ bids_dir_name=BIDS
 codedir=/export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/04_fMRI_first-level
 
 # analysis name of fmriprep #'beforeMar05_US' there is only one analysis now
-fp_name=afterJuly09
+fp_name=25.1.4_t2_pial_dummyscan_5
 
 # path to contrast yaml, you can define any kind of yaml under any place
 glm_yaml_path=${codedir}/contrast_votcloc_all.yaml
@@ -38,7 +38,10 @@ task=$3
 # number of dummy scans
 start_scans=$4
 # output analysis name
-out_name=$5
+out_name=new_fmriprep
+
+# if only run for check
+dry_run=$5
 
 space=fsnative
 # log dir
@@ -58,19 +61,34 @@ echo "the smoothing on bold is ${sm} fwhm"
 echo "Task we are running are: ${task}"
 echo "get the codedir": ${codedir}
 echo "Start scans is ": ${start_scans}
+echo "The mode is dry_run" ${dry_run}
 echo "output name is ${out_name}"
 source ~/tlei/soft/miniconda3/etc/profile.d/conda.sh
 conda activate votcloc
 echo "going to run python"
 
 
-cmd_nosmooth="python ${codedir}/run_glm.py \
+
+if [ "$dry_run" = "True" ]; then
+    cmd_nosmooth="python ${codedir}/run_glm.py \
+-base ${basedir} -sub ${sub} -ses ${ses} -fp_ana_name ${fp_name} \
+-task ${task} -start_scans ${start_scans} -space ${space} -contrast ${glm_yaml_path} \
+-output_name ${out_name} \
+-slice_time_ref ${slice_timing} -dry_run "
+else
+    cmd_nosmooth="python ${codedir}/run_glm.py \
 -base ${basedir} -sub ${sub} -ses ${ses} -fp_ana_name ${fp_name} \
 -task ${task} -start_scans ${start_scans} -space ${space} -contrast ${glm_yaml_path} \
 -output_name ${out_name} \
 -slice_time_ref ${slice_timing} "
+fi
+
+
+
 # -selected_runs 5 6 \
 echo $cmd_nosmooth
+
+
 read -p "Do you want to run this command? (y/n): " answer
 case "$answer" in
     [Yy]* )
