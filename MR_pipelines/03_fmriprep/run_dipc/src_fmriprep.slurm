@@ -24,14 +24,14 @@
 # need to create the log folder first
 # the sublist is shared across launch.sh and the slurm
 
-basedir="/scratch/tlei/VOTCLOC"
-BIDS_DIR="/scratch/tlei/VOTCLOC/BIDS"
+echo "basedir is ${basedir}"
+BIDS_DIR="${basedir}/BIDS"
 CODE_DIR="${basedir}/code"
 echo $CODE_DIR
 OUTPUT_DIR=derivatives/fmriprep-${fp_version}_${analysis_name}
 LOG_DIR=$BIDS_DIR/$OUTPUT_DIR/logs
 
-export cache_dir=/scratch/tlei/fmriprep_tmps_$analysis_name
+export cache_dir=/scratch/tlei/fmriprep_tmps_${fp_version}_${analysis_name}
 mkdir -p ${LOG_DIR}
 
 #LOCAL_FREESURFER_DIR="/dipc/tlei/.license"
@@ -112,12 +112,14 @@ cmd_runall="module load Apptainer/1.2.4 &&  \
       --omp-nthreads 10 --nthreads 20 --mem_mb 50000 \
       --skip-bids-validation \
       --fs-subjects-dir /base/derivatives/freesurfer-with_t2 \
-      --dummy-scans 5 \
       --stop-on-first-crash \
-      --bids-filter-file /code/fmriprep/bids_filter_sub-${subject}.json \
+      --force bbr \
+      --bold2anat-init t2w \
       --output-spaces T1w func MNI152NLin2009cAsym fsnative fsaverage "      
 
 # Add these two lines if you had freesurfer run already
+#             --force bbr \
+#       --dummy-scans 5 \
 #       --bids-filter-file /code/fmriprep/bids_filter_sub-${subject}.json \
 #       --fs-subjects-dir /base/derivatives/freesurfer \
 #  --bids-filter-file /base/bids_filter.json \
