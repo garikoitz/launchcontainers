@@ -31,6 +31,9 @@ logger = logging.getLogger('Launchcontainers')
 
 
 def copy_configs(container, extra_config_fpath, analysis_dir, force, option=None):
+    '''
+    Copy configs to analysis dir from the specifed dir of the parser
+    '''
     if os.path.isfile(extra_config_fpath):
         logger.info(
             '\n'
@@ -52,9 +55,6 @@ def copy_configs(container, extra_config_fpath, analysis_dir, force, option=None
             do.copy_file(src_fpath, dst_fpath, force)
         else:
             raise ValueError('Unsupported file type.')
-    if container in ['rtp2-preproc', 'rtppreproc']:
-        # there are no extra configs for rtp-preproc or rtp2-preproc
-        pass
 
     if container in ['rtp2-pipeline', 'rtp-pipeline']:
         if option == 'tractparams':
@@ -75,10 +75,12 @@ def gen_config_dict_and_copy(parser_namespace, analysis_dir):
     This function is used to copy other config files to the analysis folder
 
     and will have a dictionary that stores all the info
+
+    ## input parser namespace is a dict
     '''
     # read the yaml to get input info
     lc_config_fpath = parser_namespace.lc_config
-    lc_config = lc_config = do.read_yaml(lc_config_fpath)
+    lc_config = do.read_yaml(lc_config_fpath)
     logger.info('\n prepare_dwi_extra_configs reading lc config yaml')
     # read parameters from lc_config
     container = lc_config['general']['container']

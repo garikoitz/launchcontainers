@@ -126,7 +126,8 @@ def copy_scan_tsv(src_bids_folder, targ_bids_folder, force, sub=None, ses=None):
                 subject=sub, session=ses, suffix='scans', extension='tsv', return_type='filename',
             )
         ]
-
+        if len(scan_tsv_path)==0:
+            print(f"Warning no scans tsv for sub-{sub}_ses-{ses}")
         for scan_tsv in scan_tsv_path:
             # Construct corresponding destination path in targ_bids_folder
             relative_path = os.path.relpath(scan_tsv, src_bids_folder)

@@ -11,5 +11,6 @@
     "workbench.activityBar.iconClickBehavior": "toggle",
     "workbench.activityBar.location": "default",
     "workbench.preferredHighContrastLightColorTheme": "Default Light Modern",
-    "workbench.preferredLightColorTheme": "Visual Studio Light"
+    "workbench.preferredLightColorTheme": "Visual Studio Light",
+    "python.REPL.enableREPLSmartSend": false
 }

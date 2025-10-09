@@ -65,8 +65,8 @@ def read_df(path_to_df_file):
         num_of_true_run = len(df.loc[df['RUN'] == 'True'])
     except Exception as e:
         num_of_true_run = None
-        logger.warn(f'The df you are reading is not subseslist \
-            or something is wrong {e}')
+        logger.warn(f'The df you are reading is not subseslist'
+           +f'or something is wrong {e}')
     logger.info(df.head(5))
 
     return df, num_of_true_run

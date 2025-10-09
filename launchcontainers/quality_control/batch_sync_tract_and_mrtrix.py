@@ -4,12 +4,24 @@ import pandas as pd
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-def rsync_single_subject(analysis_dir, sub, ses):
-    """Rsync tracts to RTP/mrtrix for one subject"""
+'''
+This script is because I don't really know how the RTP-pipeline output the result to which place
+so I rsync things in place for checking
+
+'''
+def rsync_single_subject(analysis_dir, sub, ses): 
+    """Rsync tracts to RTP/mrtrix for each session
+
+    """
+
+
+    # get the output dir for each session
     subses_outputdir = Path(analysis_dir) / f'sub-{sub}' / f'ses-{ses}' / 'output'
-    
+    # The directory which stores all the tracts
     file_path_tracts = subses_outputdir / "tracts" 
+    # the RTP working dir and all the tracts file will be under RTP/mrtrix
     file_path_rtp = subses_outputdir / "RTP" / "mrtrix"
+    # Another place that stores the RTP output, it should be a zip file
     tract_dir = subses_outputdir / "RTP_PIPELINE_ALL_OUTPUT" / "mrtrix"
     # Skip if source doesn't exist
     if not file_path_tracts.exists():
