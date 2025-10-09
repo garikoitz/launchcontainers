@@ -17,18 +17,18 @@ unset fp_version
 unset sublist
 unset slurm_log_dir
 
-STUDY="/scratch/tlei/VOTCLOC"
+STUDY="/scratch/tlei/old_VOTCLOC"
 code_dir="/scratch/tlei/soft/launchcontainers/MR_pipelines/03_fmriprep"
 # the subseslist here is just a subseslist name, it will look for
 # subseslist under basedir/code/subseslist
 sublist_name=$1
 sublist="${STUDY}/code/$sublist_name"
-analysis_name='t2_pial_dummyscan_5'
+analysis_name='t2-fs_dummyscans-5_bold2anat-t2w_forcebbr'
 fp_version=25.1.4
-job_name=sub111009
+job_name=sub125911
 
 
-slurm_log_dir=$STUDY/dipc_fmriprep/${analysis_name}_$(date +"%Y-%m-%d")
+slurm_log_dir=$STUDY/dipc_fmriprep/${fp_version}_${analysis_name}_$(date +"%Y-%m-%d")
 mkdir -p ${slurm_log_dir}
 
 export analysis_name
@@ -45,7 +45,7 @@ DATA_LINES=$((TOTAL_LINES - 1))
 now=$(date +"%H-%M")
 
 cmd="sbatch \
-    --export=ALL,analysis_name="${analysis_name}",fp_version="${fp_version}",slurm_log_dir="${slurm_log_dir}",sublist="${sublist}"\
+    --export=ALL,analysis_name="${analysis_name}",fp_version="${fp_version}",slurm_log_dir="${slurm_log_dir}",sublist="${sublist}",basedir=${STUDY}\
     --array=1-${DATA_LINES} \
     -J "${job_name}"
     -o "$slurm_log_dir/%J_%x-%A-%a_${now}.o" \
