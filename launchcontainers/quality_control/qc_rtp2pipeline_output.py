@@ -104,7 +104,7 @@ def find_tract_qc_csv(analysis_dir: Path):
                 return os.path.join(dirpath, fname)
     raise FileNotFoundError(f'No qc_unfinished_tracts.csv found under {analysis_dir}')
 
-
+# quick qc the analysis dir by checking the RTP_log.txt
 def qc_rtp2_pipeline_logs(analysis_dir: Path):
     '''
     Description: function to simply check the RTP log to see if the pipeline is finished
@@ -173,13 +173,14 @@ def get_subses_finished_tract(subses_dir: Path):
 
     output: df
         dataframe stores the info of tract that are finished 
+    
     '''
 
     tracts_zip = subses_dir /'output' / 'tracts.zip'
     RTP_PIPELINE_ALL_OUTPUT_zip = subses_dir /'output' / 'RTP_PIPELINE_ALL_OUTPUT.zip'
     RTP_mrtrix_dir = subses_dir /'output' / 'RTP' / 'mrtrix'
     # if 3 of those files exists, use tracts.zip
-    if (tracts_zip.exists()) or (RTP_PIPELINE_ALL_OUTPUT_zip.exists()) or (
+    if (tracts_zip.exists()) or (RTP_PIPELINE_ALL_OUTPUT_zip.exists()) and (
         RTP_mrtrix_dir.exists()):
         print('we are using tracts.zip to check tracts')
         zip_path = tracts_zip if tracts_zip.exists() else RTP_PIPELINE_ALL_OUTPUT_zip
@@ -199,11 +200,11 @@ def get_subses_finished_tract(subses_dir: Path):
         df1 = pd.DataFrame(counts)
         # if it's already in zip, 9 files per tract
         df1['finished']=df1['count']==9
-        df=df1[df1['finished']]['tract'].to_list()
-    # 
+        finished_list=df1[df1['finished']]['tract'].to_list()
+    # use the RTP/mrtrix tmp output
     elif (not tracts_zip.exists() and not RTP_PIPELINE_ALL_OUTPUT_zip.exists()) and (
         RTP_mrtrix_dir.exists()):
-    # 3 use the mrtrix folder under the RTP/ tracts
+        print('we are using RTP/mrtrix/tract to check tracts')
         names4 = os.listdir(RTP_mrtrix_dir)
         only_prefix4=["_".join(i.split('_')[0:3]).strip(".tck") 
                 for i in names4 if 'tmp' not in i and 'dwi' not in i]
@@ -220,11 +221,11 @@ def get_subses_finished_tract(subses_dir: Path):
         # if its from the RTP / mrtrix
         # each tract need 12 files to be there
         df1['finished']=df1['count']==12
-        df=df1[df1['finished']]['tract'].to_list()
+        finished_list=df1[df1['finished']]['tract'].to_list()
     else:
         print("There are nothing finished for")
-        df=[]
-    return df
+        finished_list=[]
+    return finished_list
 
 def qc_unfinished_tracts_under_analysis(analysis_dir: Path):
     '''
@@ -252,6 +253,7 @@ def qc_unfinished_tracts_under_analysis(analysis_dir: Path):
         RUN = row.RUN
         dwi = row.dwi
         if RUN == 'True' and dwi == 'True':
+            print(f'sub is {sub}')
             subses_dir = analysis_dir / f'sub-{sub}' / f'ses-{ses}'
             path_tractparams = subses_dir / 'input' /'tractparams'/ 'tractparams.csv'
             tractparam_df, _ = do.read_df(path_tractparams)
@@ -409,7 +411,7 @@ def gen_batch_lc_script(analysis_dir: Path, step: str):
     # get the inputs from analysis dir
     output_dir_all_configs = analysis_dir.parent / f'rerun_configs_{analysis_dir.name}'
     # get the qc_unfinished df
-    qc_df_path=  find_qc_csv(analysis_dir)
+    qc_df_path=  find_tract_qc_csv(analysis_dir)
     # read the qc_df, will only get the prefix qc_unfinished_tracts and ignore the time
     qc_df = pd.read_csv(qc_df_path)
     # for all the sub in the qc_unfinished_tracts, 
@@ -476,7 +478,7 @@ def launch_cmd(cmds: str):
         sp.run(cmd, shell=True)
 
 
-def qc_and_prepare_rerun_main_analysis(analysis_dir:Path, dry_run: Optional[bool]=True)
+def main_qc_and_prepare_rerun_main_analysis(analysis_dir:Path, step: str, dry_run: Optional[bool]=True):
     # TODO: 
     # add a check, if the qc_df and the command.txt or the jsons are already there
     # no need to rerun everything
@@ -493,7 +495,6 @@ def qc_and_prepare_rerun_main_analysis(analysis_dir:Path, dry_run: Optional[bool
             # create the config files for each sub's rerun
             create_rerun_configs(analysis_dir)
             # generate and launch lc script step: prepare or run
-            step = 'prepare'
             cmds= gen_batch_lc_script(analysis_dir, step)
             # if it's dry run mode, print the path to all commands
             if not dry_run:
@@ -691,16 +692,16 @@ def qc_and_merge_all_reruns_of_main_output(analysis_dir: Path):
                 print(f'Pipeline not finished {sub}-{ses}')
 
 # finally do a rsync and get all the result
-if __name__ == '__main__':
-
-    deriv_dir = Path(f'/bcbl/home/public/DB/devtrajtract/DATA/MINI/'
-    f'nifti/derivatives/rtp2-pipeline_0.2.1_3.0.4rc2')
-    analysis_dir = deriv_dir / 'analysis-rerun_sub-S022_ses-T01_120-tracts'
-    # default is using dry run mode, and user need to check the scripts
-    dry_run=True
-    qc_main_analysis(analysis_dir, dry_run)
+# if __name__ == '__main__':
 
     # deriv_dir = Path(f'/bcbl/home/public/DB/devtrajtract/DATA/MINI/'
     # f'nifti/derivatives/rtp2-pipeline_0.2.1_3.0.4rc2')
-    # main_launch_name = 'analysis-paper_dv-main'
-    qc_rerun_analysis(deriv_dir, main_launch_name)
+    # analysis_dir = deriv_dir / 'analysis-rerun_sub-S022_ses-T01_120-tracts'
+    # # default is using dry run mode, and user need to check the scripts
+    # dry_run=True
+    # qc_main_analysis(analysis_dir, dry_run)
+
+    # # deriv_dir = Path(f'/bcbl/home/public/DB/devtrajtract/DATA/MINI/'
+    # # f'nifti/derivatives/rtp2-pipeline_0.2.1_3.0.4rc2')
+    # # main_launch_name = 'analysis-paper_dv-main'
+    # qc_rerun_analysis(deriv_dir, main_launch_name)

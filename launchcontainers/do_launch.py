@@ -248,7 +248,7 @@ def main(parse_namespace):
     # Setup log dir, create command txt under log dir
     container_log_dir = (
         f'{analysis_dir}/'
-        f"job_script_dir_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
+        f"job_script_dir_{datetime.now().strftime('%Y-%m-%d_%H-%M')}"
     )
     os.makedirs(container_log_dir, exist_ok=True)
     # 6. generate command to print
