@@ -27,7 +27,7 @@ def flatten_directory(directory):
             shutil.move(str(item), str(directory / item.name))
         subdir.rmdir()
 
-def unzip_subses_output(subses_outputdir):
+def unzip_subses_output(subses_outputdir: Path, force):
     """
     Check for tract directory or zip file and unzip if needed
     
@@ -42,17 +42,35 @@ def unzip_subses_output(subses_outputdir):
     tract_dir = subses_outputdir / "RTP_PIPELINE_ALL_OUTPUT"
     tract_zip = subses_outputdir / "RTP_PIPELINE_ALL_OUTPUT.zip"
 
-    has_tract_dir = tract_dir.exists() and tract_dir.is_dir() and len(os.listdir(tract_dir))!=0 
+    has_tract_dir = tract_dir.exists() and tract_dir.is_dir() and len(os.listdir(tract_dir))!=0
     has_tract_zip = tract_zip.exists() and tract_zip.is_file()
     unzip_success = False
     warning_msg = ""
     
-    if has_tract_dir and has_tract_zip:
-        logger.info("Both tract/ and tract.zip exist, skipping")
+    if has_tract_dir and has_tract_zip and not force:
+        logger.info("Both RTP_PIPELINE_ALL_OUTPUT/ and RTP_PIPELINE_ALL_OUTPUT.zip exist, skipping")
         return has_tract_dir, has_tract_zip, True, ""
     
-    elif not has_tract_dir and has_tract_zip:
+    elif not has_tract_dir and has_tract_zip or force:
         try:
+            logger.info(f"Unzipping {tract_zip}")
+            with zipfile.ZipFile(tract_zip, 'r') as zip_ref:
+                tract_dir.mkdir(parents=True, exist_ok=True)
+                zip_ref.extractall(tract_dir)
+                flatten_directory(tract_dir)
+                
+            unzip_success = True
+            has_tract_dir = True
+            logger.info("Successfully unzipped tract.zip")
+            
+        except Exception as e:
+            warning_msg = f"Failed to unzip tract.zip: {e}"
+            logger.error(warning_msg)
+
+    elif has_tract_dir and has_tract_zip and force:
+        try:
+            # first remove the dir that are there
+            shutil.rmtree(tract_dir)
             logger.info(f"Unzipping {tract_zip}")
             with zipfile.ZipFile(tract_zip, 'r') as zip_ref:
                 tract_dir.mkdir(parents=True, exist_ok=True)
@@ -87,7 +105,7 @@ def check_subses_output(subses_outputdir):
     tract_dir = subses_outputdir / "RTP_PIPELINE_ALL_OUTPUT"
     tract_zip = subses_outputdir / "RTP_PIPELINE_ALL_OUTPUT.zip"
 
-    has_tract_dir = tract_dir.exists() and tract_dir.is_dir()
+    has_tract_dir = tract_dir.exists() and tract_dir.is_dir() and len(os.listdir(tract_dir))!=0
     has_tract_zip = tract_zip.exists() and tract_zip.is_file()
     unzip_success = False
     warning_msg = ""
@@ -115,7 +133,7 @@ Parallel processing the unzipping
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def process_single_subject(analysis_dir, sub, ses, run, dwi):
+def process_single_subject(analysis_dir, sub, ses, run, dwi, force):
     """Process a single subject-session for tract unzipping"""
     try:
         if run == 'True' and dwi == 'True':
@@ -127,7 +145,7 @@ def process_single_subject(analysis_dir, sub, ses, run, dwi):
             )
             
             # Call your unzip_subses_output function
-            result = unzip_subses_output(subses_outputdir)
+            result = unzip_subses_output(subses_outputdir, force)
             
             logger.info(f"Processed sub-{sub}_ses-{ses}: Success")
             return {
@@ -156,7 +174,7 @@ def process_single_subject(analysis_dir, sub, ses, run, dwi):
             'error': str(e)
         }
 
-def unzipping_tracts_parallel(analysis_dir, n_workers=65):
+def unzipping_tracts_parallel(analysis_dir, force, n_workers=65):
     """
     Unzip tracts in parallel using concurrent.futures
     
@@ -179,8 +197,9 @@ def unzipping_tracts_parallel(analysis_dir, n_workers=65):
     
     # Prepare tasks
     tasks = []
+    force = False
     for row in df_subSes.itertuples(index=False, name='Pandas'):
-        tasks.append((analysis_dir, row.sub, row.ses, row.RUN, row.dwi))
+        tasks.append((analysis_dir, row.sub, row.ses, row.RUN, row.dwi, force))
     
     # Execute in parallel
     results = []
@@ -264,7 +283,7 @@ def save_processing_summary(analysis_dir, results):
 def check_and_unzip_tract_wrapper(output_dir, sub, ses):
     """Wrapper function for ProcessPoolExecutor"""
     try:
-        result = unzip_subses_output(output_dir)
+        result = unzip_subses_output(output_dir, force)
         return {
             'subject': sub,
             'session': ses,
@@ -285,9 +304,9 @@ def check_and_unzip_tract_wrapper(output_dir, sub, ses):
 if __name__ == "__main__":
     analysis_dir = Path(f'/bcbl/home/public/DB/devtrajtract/DATA/MINI/nifti/derivatives'+
     f'/rtp-pipeline_4.5.1-3.0.3/analysis-default_tracts_all')
-    
+    force = False
     # Use ThreadPoolExecutor (recommended for I/O-bound operations like unzipping)
-    results = unzipping_tracts_parallel(analysis_dir, n_workers=70)
+    results = unzipping_tracts_parallel(analysis_dir, force, n_workers=70)
 
 
 
