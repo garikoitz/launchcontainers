@@ -5,7 +5,10 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 '''
-This script is because I don't really know how the RTP-pipeline output the result to which place
+This script is because I don't really know how the RTP-pipeline 
+
+output the result to which place
+
 so I rsync things in place for checking
 
 '''
