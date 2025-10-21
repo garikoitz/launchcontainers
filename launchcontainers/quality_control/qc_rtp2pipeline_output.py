@@ -692,8 +692,9 @@ def qc_and_merge_all_reruns_of_main_output(analysis_dir: Path):
                 print(f'Pipeline not finished {sub}-{ses}')
 
 # finally do a rsync and get all the result
-# if __name__ == '__main__':
-
+if __name__ == '__main__':
+    analysis_dir = Path('/scratch/tlei/paper_dv/BIDS/derivatives/rtp2-pipeline_0.2.2_3.0.4/analysis-test_hemi-both_4TOI_wbt')
+    qc_rtp2_pipeline_logs(analysis_dir)
     # deriv_dir = Path(f'/bcbl/home/public/DB/devtrajtract/DATA/MINI/'
     # f'nifti/derivatives/rtp2-pipeline_0.2.1_3.0.4rc2')
     # analysis_dir = deriv_dir / 'analysis-rerun_sub-S022_ses-T01_120-tracts'
