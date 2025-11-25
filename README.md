@@ -7,10 +7,12 @@
 
 Currently, **launchcontainers** works along with [anatROIs](https://github.com/garikoitz/anatROIs), [RTP-preproc](https://github.com/garikoitz/rtp-preproc), and [RTP2-pipeline](https://github.com/garikoitz/rtp-pipeline).
 
-To use the newest version, please `pip install launchcontainers==0.4.2 `
+To use the newest version, please `pip install launchcontainers==0.4.3 `
 
 
 ## NEW FEATURES
+* Update to `0.4.3`. Add feature QC rtp2pipelines, it was integrated in the code `launchcontainers/launchcontainers
+/quality_control/`, you can use it by doing python qc_rtp2pipeline_output.py analysis_dir, it will read if all the tracts is finished for you
 * Update to `0.4.2`. Refactor the launchcontainer command-line interaction to make it more user-friendly
     * For *prepare mode*, the user will do: `lc --log-dir path/to/log/dir prepare -lcc path/to/lc_yaml -ssl path/to/subseslist -cc path/to/cc`
         * The prepare mode will create symlink and prepare analysis folder structure. it will output analysis_dir in the commandline for *run mode*
