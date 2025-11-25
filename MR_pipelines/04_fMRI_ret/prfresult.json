@@ -1,0 +1,56 @@
+{
+    "subjects": [
+        "04"
+    ],
+    "sessions": [
+        "02"
+    ],
+    "tasks": [
+        "all"
+    ],
+    "runs": [
+        "all"
+    ],
+    "prfanalyzeAnalysis": "01",
+    "masks": {
+        "rois": [
+            [
+                "V1", "V2", "V3","hV4"
+            ]
+        ],
+        "atlases": [
+            "benson"
+        ],
+        "varianceExplained": [
+            0.1
+        ],
+        "eccentricity": false,
+        "beta": false
+    },
+    "coveragePlot": {
+        "create": true,
+        "method": [
+            "max"
+        ],
+        "minColorBar": [
+            0
+        ]
+    },
+    "cortexPlot": {
+        "createCortex": true,
+        "createGIF": true,
+        "parameter": [
+            "ecc"
+        ],
+        "hemisphere": "both",
+        "surface": [
+            "sphere"
+        ],
+        "showBordersArea": [
+            "V1"
+        ]
+    },
+    "saveAs3D": true,
+    "verbose": true,
+    "force": false
+}

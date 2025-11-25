@@ -1,0 +1,2 @@
+# this is used to move data with exclude option very helpful
+rsync -avzP -h --info=progress2 --exclude 'ses-*/anat/*_ses-*/' -e 'ssh' /home/tlei/public/Gari/VOTCLOC/main_exp/BIDS/sub-02 tlei@hyperion-01.sw.ehu.es:/scratch/tlei/VOTCLOC/BIDS

@@ -1,0 +1,95 @@
+To run the analysis, you can do:
+0. prepare bids event files, check if all in place
+1. conda activate you_env
+2. python path/to/run_glm.py -h
+    this will give you the input parameters of the glm code
+
+3. I prepare a command line script to launch it in which it stores the default analysis APIs
+it is called cli_glm_local.sh
+you can run it with $bash cli_glm_local.sh sub_id ses_id task_id num_of_scans_to_remove output_name
+
+# cli input of sub and ses
+sub=$1
+ses=$2
+# task id in the BIDS format
+task=$3
+# number of dummy scans
+start_scans=$4
+# output analysis name
+out_name=$5
+
+e.g.: bash cli_glm_local.sh 02 10 fLoc 5 example_git
+
+
+More information and documentation
+
+1. build the running environment using the requirement.txt
+
+2. features of the run_glm.py (I simply copy from the -h output)
+
+usage: run_glm.py [-h] [-base BASE] [-sub SUB] [-ses SES] [-fp_ana_name FP_ANA_NAME]
+                  [-task TASK] [-start_scans START_SCANS] [-space SPACE] [-contrast CONTRAST]
+                  [-output_name OUTPUT_NAME] [-i I] [-slice_time_ref SLICE_TIME_REF]
+                  [-use_smoothed] [-sm SM] [-mask MASK]
+                  [-selected_runs SELECTED_RUNS [SELECTED_RUNS ...]]
+
+        Python script to batch run surface based fMRI first-level analysis
+
+options:
+  -h, --help            show this help message and exit
+  -base BASE            basedir e.g. /bcbl/home/public/Gari/VOTCLOC/main_exp
+  -sub SUB              subject id, e.g. S005
+  -ses SES              ses id, e.g. T01
+  -fp_ana_name FP_ANA_NAME
+                        analysis name of the fmriprep, the src input to this
+  -task TASK            task name of the fMRI time series
+  -start_scans START_SCANS
+                        number of pre_scans in the fMRI time series
+  -space SPACE          Space you want to conduct the experiment: Valid options: T1w func
+                        MNI152NLin2009cAsym fsnative fsaverage
+  -contrast CONTRAST    path to yaml file define contrast
+  -output_name OUTPUT_NAME
+                        output folder name
+  -i I                  input bids dir name, default is BIDS
+  [OPTIONAL BELOW]
+  -slice_time_ref SLICE_TIME_REF
+                        slice timeing, default fmriprep 0.5, we set 0 sometimes
+  -use_smoothed         use_smooth, e.g. True or False
+  -sm SM                freesurfer fwhm smooth factor, 01 02 03 04 05 010
+  -mask MASK            name of label file you want to apply maskm it iwll search at the
+                        BIDS/freesurfer
+  -selected_runs SELECTED_RUNS [SELECTED_RUNS ...]
+                        List of runs you sepecfied, input 5 6 will be read as [5,6]
+
+
+3. To run the cli_glm_local_api.sh some parameters needs to be edited:
+
+1. path to contrast.yaml if you define a new yaml at new place
+    (the all_contrast.yaml is a reference, contrast_lexper.yaml is a subset of it)
+2. fp_name if you have new fmriprep analysis name or folder
+3. task, if the task is not fLoc, right now it was using fLoc
+
+4. attention: if you decided to run with specific runs, and you are running in on IPS
+please edit the cli_glm_qsub_api.sh and add the corresponding params there
+
+
+How the code works?
+The code will
+    find the preprocessed bold under fmriprep dir as you specify
+    find the .event.tsv under BIDS/sub/ses/func
+    [optional]
+        use smoothed bold if user provided the smoothed bold
+        use fs mask to mask the brain and do glm only on masked area
+
+    run glm on a specified space if it is inside of the fmriprep output
+
+[batch analysis with BCBL qsub]
+
+There are 2 options:
+1. launch 1 session using bash qsub_one_ses.sh sub_id ses_id
+2. launch batch sessions using bash qsub_with_subseslist.sh (no input, need to generate subseslist,  sep is ",")
+
+[More to come]
+
+the code are very flexible, both run_glm.py and cli_glm_xxx_api.sh
+I will have API for parallel processing and in the future using LC to launch it

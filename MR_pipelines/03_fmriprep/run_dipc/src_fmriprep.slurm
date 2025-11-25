@@ -1,0 +1,145 @@
+#!/bin/bash
+# """
+# MIT License
+
+# Copyright (c) 2024-2025 Yongning Lei
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy of this software
+# and associated documentation files (the "Software"), to deal in the Software without restriction,
+# including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,
+# subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all copies or substantial
+# portions of the Software.
+
+#SBATCH --time=18:00:00
+#SBATCH -n 1  # this stands for number of task/ or number of nodes being used
+#SBATCH --cpus-per-task=20    #6
+#SBATCH --mem=60000
+#SBATCH --partition=general  # Queue names you can submit to
+#SBATCH --qos=regular       #<regular,serial,test,long or xlong>
+
+# if you want to syn the logs to the analysis folder,
+# need to create the log folder first
+# the sublist is shared across launch.sh and the slurm
+
+echo "basedir is ${basedir}"
+BIDS_DIR="${basedir}/BIDS"
+CODE_DIR="${basedir}/code"
+echo $CODE_DIR
+OUTPUT_DIR=derivatives/fmriprep-${fp_version}_${analysis_name}
+LOG_DIR=$BIDS_DIR/$OUTPUT_DIR/logs
+
+export cache_dir=/scratch/tlei/fmriprep_tmps_${fp_version}_${analysis_name}
+mkdir -p ${LOG_DIR}
+
+#LOCAL_FREESURFER_DIR="/dipc/tlei/.license"
+
+# Prepare some writeable bind-mount points.
+TEMPLATEFLOW_HOST_HOME=$cache_dir/.cache/templateflow
+FMRIPREP_HOST_CACHE=$cache_dir/.cache/fmriprep
+FMRIPREP_WORK_DIR=$cache_dir/.work/fmriprep
+mkdir -p ${TEMPLATEFLOW_HOST_HOME}
+mkdir -p ${FMRIPREP_HOST_CACHE}
+mkdir -p ${FMRIPREP_WORK_DIR}
+
+# Prepare derivatives folder
+mkdir -p ${BIDS_DIR}/${OUTPUT_DIR}
+
+# This trick will help you reuse freesurfer results across pipelines and fMRIPrep versions
+# mkdir -p ${BIDS_DIR}/derivatives/freesurfer-6.0.1
+# if [ ! -d ${BIDS_DIR}/${OUTPUT_DIR}/freesurfer ]; then
+#         ln -s ${BIDS_DIR}/derivatives/freesurfer-6.0.1
+#         ${BIDS_DIR}/${OUTPUT_DIR}/freesurfer
+#         fi
+
+# Make sure FS_LICENSE is defined in the container.
+export SINGULARITYENV_FS_LICENSE=${BIDS_DIR}/.license
+# /scratch/tlei/VOTCLOC/.license
+# Designate a templateflow bind-mount point
+export SINGULARITYENV_TEMPLATEFLOW_HOME="/templateflow"
+# SINGULARITY_CMD="unset PYTHONPATH && singularity run --cleanenv --home /scratch/glerma \
+#                  -B /scratch/glerma:/scratch/glerma \
+SINGULARITY_CMD="unset PYTHONPATH && singularity run --cleanenv --no-home --writable-tmpfs\
+                 -B $BIDS_DIR:/base \
+                 -B $CODE_DIR:/code \
+                 -B ${TEMPLATEFLOW_HOST_HOME}:${SINGULARITYENV_TEMPLATEFLOW_HOME}\
+                 -B ${FMRIPREP_HOST_CACHE}:/work \
+                 /scratch/tlei/containers/fmriprep_${fp_version}.sif "
+
+                 # If you already have FS run, add this line to find it
+                 # -B ${LOCAL_FREESURFER_DIR}:/fsdir \
+# Remove IsRunning files from FreeSurfer
+# find ${LOCAL_FREESURFER_DIR}/sub-$subject/ -name "*IsRunning*" -type f -delete
+
+# Parse the participants.tsv file and extract one subject ID from the
+# line corresponding to this SLURM task.
+# this is getting the sub from \t operator
+# subject=$(
+#   sed -n -E "$((${SLURM_ARRAY_TASK_ID} + 1))s/^([0-9]+)[[:space:]]+([0-9]+)$/\1/p" \
+#   ${basedir}/code/${sublist}
+# )
+# this is get the sub from , operator
+subject=$(
+  sed -n -E "$((${SLURM_ARRAY_TASK_ID} + 1))s/^([^,]+),.*$/\1/p" \
+    "${sublist}"
+)
+# Compose the command line
+cmd_anatonly="module load Apptainer/1.2.4 &&  \
+     ${SINGULARITY_CMD} \
+     /base \
+     /base/${OUTPUT_DIR} \
+     participant \
+      --participant-label $subject \
+      -w /work/ -vv \
+      --fs-license-file /base/.license \
+      --omp-nthreads 10 --nthreads 20 --mem_mb 50000 \
+      --skip-bids-validation \
+      --anat-only \
+      --stop-on-first-crash \
+      --bids-filter-file /code/fmriprep/bids_filter_sub-${subject}.json \
+      --output-spaces T1w MNI152NLin2009cAsym fsnative fsaverage "
+
+cmd_runall="module load Apptainer/1.2.4 &&  \
+     ${SINGULARITY_CMD} \
+     /base \
+     /base/${OUTPUT_DIR} \
+     participant \
+      --participant-label $subject \
+      -w /work/ -vv \
+      --fs-license-file /base/.license \
+      --omp-nthreads 10 --nthreads 20 --mem_mb 50000 \
+      --skip-bids-validation \
+      --fs-subjects-dir /base/derivatives/freesurfer-with_t2 \
+      --stop-on-first-crash \
+      --force bbr \
+      --bold2anat-init t2w \
+      --output-spaces T1w func MNI152NLin2009cAsym fsnative fsaverage "      
+
+# Add these two lines if you had freesurfer run already
+#             --force bbr \
+#       --dummy-scans 5 \
+#       --bids-filter-file /code/fmriprep/bids_filter_sub-${subject}.json \
+#       --fs-subjects-dir /base/derivatives/freesurfer \
+#  --bids-filter-file /base/bids_filter.json \
+#  --use-syn-sdc \
+#  --fs-subjects-dir /base/derivatives/fmriprep/analysis-okazaki_correctfmap/sourcedata/freesurfer
+# --project-goodvoxels --notrack --mem_mb 60000 --nprocs 16 --omp-nthreads 8 --slice-time-ref 0
+#      --fs-subjects-dir /fsdir"
+#     --slice-time-ref 0 \
+#     --project-goodvoxels \
+#     --notrack \
+# Setup done, run the command
+echo Running task ${SLURM_ARRAY_TASK_ID}, for subject ${subject}
+echo Commandline: $cmd_runall
+eval $cmd_runall
+
+echo "Coping the log files to the $LOG_DIR"
+rsync -av $slurm_log_dir $LOG_DIR
+exitcode=$?
+
+# Output results to a table
+echo "sub-$subject   ${SLURM_ARRAY_TASK_ID} $exitcode" >> ${LOG_DIR}/${SLURM_JOB_NAME}_${SLURM_ARRAY_JOB_ID}.tsv
+echo Finished tasks ${SLURM_ARRAY_TASK_ID} with exit code $exitcode
+exit $exitcode

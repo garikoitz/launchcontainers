@@ -1,0 +1,100 @@
+# """
+# MIT License
+
+# Copyright (c) 2024-2025 Yongning Lei
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy of this software
+# and associated documentation files (the "Software"), to deal in the Software without restriction,
+# including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,
+# subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all copies or substantial
+# portions of the Software.
+# """
+
+# Define base paths
+baseP="/bcbl/home/public/Gari/VOTCLOC/main_exp"
+HOME_DIR="$baseP/singularity_home"
+
+# container specific
+# for prfprepare:
+license_path="$baseP/BIDS/.license"
+
+##### For each container
+#####
+# step="prfprepare"
+# version="1.5.0"
+# queue="veryshort.q"
+# mem="8G"
+# cpus="6"
+# time="00:10:00"
+# task="all"
+
+# # # for prfanalyze-vista:
+# step="prfanalyze-vista"
+# version='2.2.1'
+# queue="long.q"
+# mem="32G"
+# cpus="20"
+# time="10:00:00" #time="00:10:00" 10:00:00
+# task="retFF" # retCB retRW retFF
+
+# # for prfresult:
+step="prfresult"
+version="0.1.3"
+queue="short.q"
+mem="16G"
+cpus="10"
+time="02:00:00" #time="00:10:00" 10:00:00
+task="all" # retCB retRW retFF
+
+# json input
+json_dir="$baseP/code/${step}_jsons"
+# subseslist dir:
+script_dir="/export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/04FMRI_RET"
+code_dir=$baseP/code
+subseslist_name=$1 #$codedir/00_heudiconv/subseslist_heudiconv.txt
+subseslist_path=$code_dir/$1
+sif_path="/bcbl/home/public/Gari/singularity_images/${step}_${version}.sif"
+
+# log dir
+LOG_DIR="$baseP/ips_${step}_logs/hyperion20ses_$(date +"%Y-%m-%d")"
+# Ensure directories exist
+mkdir -p "$LOG_DIR"
+mkdir -p "$HOME_DIR"
+
+line_num=1
+# Read subseslist.txt (Skipping header line)
+tail -n +2 $subseslist_path | while IFS=',' read -r sub ses _; do
+    ((line_num++))
+
+    now=$(date +"%H-%M")
+	log_file="${LOG_DIR}/local_${sub}_${ses}_${now}.o"
+    error_file="${LOG_DIR}/local_${sub}_${ses}_${now}.e"
+
+    # Export variables for the script
+    export baseP="$baseP"
+    export license_path="$license_path"
+    export version="$version"
+    export sub="$sub"
+    export ses="$ses"
+    export json_path="$json_dir/${task}_sub-${sub}_ses-${ses}.json"
+    export sif_path="$sif_path"
+
+    # Info
+    echo "Running job locally for sub-${sub} ses-${ses}"
+    echo "Logging to:"
+    echo "  STDOUT: $log_file"
+    echo "  STDERR: $error_file"
+
+    # Run the script in background and log output
+    cmd="bash $script_dir/run_local/${step}_local.sh" >"$log_file" 2>"$error_file"
+    echo "###***#*#*#*##*$cmd"
+    eval $cmd
+
+done
+
+# #when finish should copy the subseslist into the analysis dir
+# echo "Coping the log files to the logdir"
+# rsync -av $subseslist_path $LOG_DIR

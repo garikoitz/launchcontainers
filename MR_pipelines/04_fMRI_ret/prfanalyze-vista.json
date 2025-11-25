@@ -1,0 +1,18 @@
+{
+    "subjectName": "04",
+    "sessionName": "[03,04]",
+    "tasks"      : "[all]",
+    "isPRFSynthData" : false,
+    "options": {
+    	"prfprepareAnalysis": "01",
+        "model"             : "one gaussian",
+        "grid"              : false,
+        "wsearch"           : "5",
+        "detrend"           : 1,
+        "keepAllPoints"     : false,
+        "numberStimulusGridPoints": 101
+    },
+    "stimulus": {
+        "stimulus_diameter" : 18
+    }
+}

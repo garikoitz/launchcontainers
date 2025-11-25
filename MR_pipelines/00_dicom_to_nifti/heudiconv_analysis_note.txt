@@ -1,0 +1,9 @@
+First, copy things from BCBL lab folder to VOTCLOC/dicom
+then conduct the heudiconv to VOTCLOC/raw_nifti folder
+
+The fastest way is to use IPS to launch heudiconv, I will never use DIPC because it is too slow
+and it is hard to control for the QC
+
+IF IPS is not working, try local serial, local parallel is not working
+
+I would put subseslist_heudiconv into basedir/code, so that it is more organized

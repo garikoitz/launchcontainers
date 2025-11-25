@@ -1,0 +1,127 @@
+AllvsNull:
+  positive: ["face", "bodylimb", "RW", "FF", "CS", "SC"]
+  negative: []
+
+PERvsNull:
+  positive: ["SC"]
+  negative: []
+
+LEXvsNull:
+  positive: ["CS", "FF"]
+  negative: []
+
+PERvsLEX:
+  positive: ["SC"]
+  negative: ["CS", "FF"]
+
+RWvsLEX:
+  positive: ["RW"]
+  negative: ["CS", "FF"]
+
+RWvsPER:
+  positive: ["RW"]
+  negative: ["SC"]
+
+RWvsNull:
+  positive: ["RW"]
+  negative: []
+
+RWvsLEXPER:
+  positive: ["RW"]
+  negative: ["CS", "FF", "SC"]
+
+RWvsAllnoWordnoLEX:
+  positive: ["RW"]
+  negative: ["SC", "bodylimb", "face"]
+
+RWvsAllnoWord:
+  positive: ["RW"]
+  negative: ["CS", "FF", "SC", "bodylimb", "face"]
+
+LEXvsAllnoLEXnoRW:
+  positive: ["CS", "FF"]
+  negative: ["SC", "bodylimb", "face"]
+
+LEXvsAllnoLEXnoRWnoPER:
+  positive: ["CS", "FF"]
+  negative: ["bodylimb", "face"]
+
+PERvsAllnoPERnoRW:
+  positive: ["SC"]
+  negative: ["CS", "FF", "bodylimb", "face"]
+
+PERvsAllnoPERnoRWnoLEX:
+  positive: ["SC"]
+  negative: ["bodylimb", "face"]
+
+CSvsFF:
+  positive: ["CS"]
+  negative: ["FF"]
+
+FFvsCS:
+  positive: ["FF"]
+  negative: ["CS"]
+
+FacesvsNull:
+  positive: ["face"]
+  negative: []
+
+FacesvsLEX:
+  positive: ["face"]
+  negative: ["CS", "FF"]
+
+FacesvsPER:
+  positive: ["face"]
+  negative: ["SC"]
+
+FacesvsLEXPER:
+  positive: ["face"]
+  negative: ["SC", "CS", "FF"]
+
+FacesvsAllnoFace:
+  positive: ["face"]
+  negative: ["SC", "CS", "FF", "bodylimb"]
+
+LimbsvsNull:
+  positive: ["bodylimb"]
+  negative: []
+
+LimbsvsLEX:
+  positive: ["bodylimb"]
+  negative: ["CS", "FF"]
+
+LimbsvsPER:
+  positive: ["bodylimb"]
+  negative: ["SC"]
+
+LimbsvsLEXPER:
+  positive: ["bodylimb"]
+  negative: ["SC", "CS", "FF"]
+
+LimbsvsAllnoLimbs:
+  positive: ["bodylimb"]
+  negative: ["SC", "CS", "FF", "face"]
+
+RWvsCS:
+  positive: ["RW"]
+  negative: ["CS"]
+
+RWvsFF:
+  positive: ["RW"]
+  negative: ["FF"]
+
+RWvsFace:
+  positive: ["RW"]
+  negative: ["face"]
+
+RWvsLimbs:
+  positive: ["RW"]
+  negative: ["bodylimb"]
+
+RWvsSD:
+  positive: ["RW"]
+  negative: ["SC"]
+
+FacesvsLimbs:
+  positive: ["face"]
+  negative: ["bodylimb"]
