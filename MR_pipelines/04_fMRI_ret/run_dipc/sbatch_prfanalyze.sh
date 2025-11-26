@@ -33,7 +33,7 @@ qos="regular" # regular or test
 mem="10G"
 cpus="20"
 time="12:00:00" #time="00:10:00" 10:00:00
-task="retfixRW" # retCB retRW retFF
+task="retfixRWblock" # retCB retRW retFF
 # retfixRW retfixFF retfixRWblock01 retfixRWblock02 retfixRWblock
 
 # json input

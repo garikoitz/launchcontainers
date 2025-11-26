@@ -68,12 +68,20 @@ def check_prfanalyze_logs(folder_path):
         with open(out_file_path) as f:
             lines = f.readlines()
             count = sum(1 for line in lines if line.strip().startswith('Writing the estimates'))
-            if count != 6:
-                print(f"\n{out_file} has {count} lines starting with 'Writing the estimates' (expected 6).")
-
+            no_bold = sum(1 for line in lines if line.strip().startswith('No BOLD images found!'))
+            if no_bold ==1:
+                pass
+            else:
+                if count != 6:
+                    
+                    #print(f"\n{out_file} has {count} lines starting with 'Writing the estimates' (expected 6).")
+                    task=out_file.split('_')[2]
+                    sub= out_file.split('_')[4].split('-')[0]
+                    ses= out_file.split('_')[4].split('-')[1]
+                    print(f"subses:sub-{sub}_ses-{ses}, has error task {task}")
 
 # Example usage:
-folder = '/scratch/tlei/VOTCLOC/dipc_prfanalyze-vista_logs/WCbatch2_2025-09-02'
+folder = '/scratch/tlei/VOTCLOC/dipc_prfanalyze-vista_logs/65ses_2025-11-18'
 
 check_prfanalyze_logs(folder)
 

@@ -100,7 +100,7 @@ def link_vistadisplog(sourcedata, sub, ses, force, task='ret'):
         ),
     )
     if matFiles.size != 0 :
-        print('Got the matfiles, going to start symlink')
+        print(', going to start symlink')
     else:
         print(f'##### sub-{sub} ses-{ses} Not get the matfiles, please check path')
     for matFile in matFiles:
@@ -195,9 +195,47 @@ def link_vistadisplog(sourcedata, sub, ses, force, task='ret'):
         print(f'symlink created for  {srcdata_subses_dir} at {subses_dir}')
 
 
-def check_params_and_bids(layout, sub, ses):
+def check_params_and_bids(layout, fp_layout, sourcedata, sub, ses):
     # need to check if params and bids task name match,
     # they might not match because I put fixRWblock as CB
+
+    # 1. get all the tasks from BIDS fmriprep and sourcedata
+    tasks_in_bids =[i for i in layout.get_tasks(subject= sub, session=ses) if i not in ['fLoc']]
+    
+    tasks_in_fmriprep =[i for i in fp_layout.get_tasks(subject= sub, session=ses) if i not in ['fLoc']]
+    matFiles = np.sort(
+        glob(
+            path.join(
+                sourcedata,
+                f'sub-{sub}', f'ses-{ses}', '20*.mat',
+            ),
+        ),
+    )
+    if matFiles.size != 0 :
+        print('')
+    else:
+        print(f'##### sub-{sub} ses-{ses} Not get the matfiles, please check path')
+    tasks_in_sourcedata=[]
+    for matFile in matFiles:
+
+        stimName = loadmat(matFile, simplify_cells=True)['params']['loadMatrix'].split('/')[-1].split('_')[1]
+        tasks_in_sourcedata.append(f'ret{stimName}')
+
+    # 2. check, if the tasks are in fMRIprep
+    tasks_in_bids = set(tasks_in_bids)
+    tasks_in_fmriprep = set(tasks_in_fmriprep)
+    tasks_in_sourcedata = set(tasks_in_sourcedata)
+
+    if tasks_in_bids == tasks_in_fmriprep:
+        pass
+    else:
+        print(f'FMRIPREP error sub-{sub}_ses-{ses}')
+    
+    # 3. check, if the task are in sourcedata
+    if tasks_in_bids == tasks_in_sourcedata:
+        pass
+    else:
+        print(f'sourcedata error sub-{sub}_ses-{ses}')
 
     return
 
@@ -235,3 +273,49 @@ if __name__ == '__main__':
     main()
 
 # needs to rename bids task name and run name
+'''
+sourcedata error sub-01_ses-08
+FMRIPREP error sub-02_ses-09
+sourcedata error sub-02_ses-09
+FMRIPREP error sub-02_ses-10
+sourcedata error sub-02_ses-10
+sourcedata error sub-03_ses-08
+sourcedata error sub-04_ses-01
+sourcedata error sub-04_ses-10
+# sourcedata error sub-05_ses-07
+# sourcedata error sub-05_ses-08
+# sourcedata error sub-06_ses-01
+
+# sourcedata error sub-06_ses-02
+
+# sourcedata error sub-06_ses-03
+
+# sourcedata error sub-06_ses-04
+
+# sourcedata error sub-06_ses-05
+
+# sourcedata error sub-06_ses-06
+
+# sourcedata error sub-06_ses-07
+
+# sourcedata error sub-06_ses-08
+#sourcedata error sub-07_ses-10 >>> no RW block
+#sourcedata error sub-08_ses-04
+sourcedata error sub-09_ses-10
+#sourcedata error sub-10_ses-02
+#sourcedata error sub-10_ses-03
+#sourcedata error sub-10_ses-04
+#sourcedata error sub-10_ses-06
+sourcedata error sub-10_ses-10 (no anat, why?)
+
+sourcedata error sub-11_ses-01 retCB
+sourcedata error sub-11_ses-02 retfixRWblock01
+sourcedata error sub-11_ses-03 retfixRWblock01 (duplicates in fmriprep)
+sourcedata error sub-11_ses-04 retfixRWblock02 
+sourcedata error sub-11_ses-05 retfixRWblock02
+sourcedata error sub-11_ses-06 retfixRWblock01
+sourcedata error sub-11_ses-07 retfixRWblock01
+sourcedata error sub-11_ses-08 retfixRWblock01
+sourcedata error sub-11_ses-09 retfixRWblock01
+##sourcedata error sub-11_ses-10 retfixRWblock01 --> missing
+'''
