@@ -1,3 +1,4 @@
+
 __pycache__/
 test*.ipynb
 *dask-worker*
@@ -5,7 +6,8 @@ test*.ipynb
 *DS_Store
 local/
 .history
-.vscode
+.vscode/
+.vscode/settings.json
 *~
 # Byte-compiled / optimized / DLL files
 __pycache__/
