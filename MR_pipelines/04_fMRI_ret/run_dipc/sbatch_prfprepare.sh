@@ -38,9 +38,11 @@ json_dir="$baseP/code/${step}_jsons"
 # subseslist dir:
 script_dir="/scratch/tlei/soft/launchcontainers/MR_pipelines/04_fMRI_ret"
 code_dir=$baseP/code
-subses_list_dir=$code_dir/subseslist_jun16.txt
+
 sif_path="/scratch/tlei/containers/${step}_${version}.sif"
 log_note=$1
+subses_name=$2 
+subses_list_dir=$code_dir/$subses_name
 # log dir
 LOG_DIR="$baseP/dipc_${step}_logs/${log_note}_$(date +"%Y-%m-%d")"
 # Ensure directories exist

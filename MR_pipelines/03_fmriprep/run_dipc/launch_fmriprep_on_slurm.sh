@@ -17,7 +17,7 @@ unset fp_version
 unset sublist
 unset slurm_log_dir
 
-STUDY="/scratch/tlei/old_VOTCLOC"
+STUDY="/scratch/tlei/VOTCLOC"
 code_dir="/scratch/tlei/soft/launchcontainers/MR_pipelines/03_fmriprep"
 # the subseslist here is just a subseslist name, it will look for
 # subseslist under basedir/code/subseslist
@@ -25,7 +25,7 @@ sublist_name=$1
 sublist="${STUDY}/code/$sublist_name"
 analysis_name='t2-fs_dummyscans-5_bold2anat-t2w_forcebbr'
 fp_version=25.1.4
-job_name=sub125911
+job_name=sub0406
 
 
 slurm_log_dir=$STUDY/dipc_fmriprep/${fp_version}_${analysis_name}_$(date +"%Y-%m-%d")

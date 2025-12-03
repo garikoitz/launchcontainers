@@ -194,52 +194,6 @@ def link_vistadisplog(sourcedata, sub, ses, force, task='ret'):
         symlink(srcdata_subses_dir, subses_dir)
         print(f'symlink created for  {srcdata_subses_dir} at {subses_dir}')
 
-
-def check_params_and_bids(layout, fp_layout, sourcedata, sub, ses):
-    # need to check if params and bids task name match,
-    # they might not match because I put fixRWblock as CB
-
-    # 1. get all the tasks from BIDS fmriprep and sourcedata
-    tasks_in_bids =[i for i in layout.get_tasks(subject= sub, session=ses) if i not in ['fLoc']]
-    
-    tasks_in_fmriprep =[i for i in fp_layout.get_tasks(subject= sub, session=ses) if i not in ['fLoc']]
-    matFiles = np.sort(
-        glob(
-            path.join(
-                sourcedata,
-                f'sub-{sub}', f'ses-{ses}', '20*.mat',
-            ),
-        ),
-    )
-    if matFiles.size != 0 :
-        print('')
-    else:
-        print(f'##### sub-{sub} ses-{ses} Not get the matfiles, please check path')
-    tasks_in_sourcedata=[]
-    for matFile in matFiles:
-
-        stimName = loadmat(matFile, simplify_cells=True)['params']['loadMatrix'].split('/')[-1].split('_')[1]
-        tasks_in_sourcedata.append(f'ret{stimName}')
-
-    # 2. check, if the tasks are in fMRIprep
-    tasks_in_bids = set(tasks_in_bids)
-    tasks_in_fmriprep = set(tasks_in_fmriprep)
-    tasks_in_sourcedata = set(tasks_in_sourcedata)
-
-    if tasks_in_bids == tasks_in_fmriprep:
-        pass
-    else:
-        print(f'FMRIPREP error sub-{sub}_ses-{ses}')
-    
-    # 3. check, if the task are in sourcedata
-    if tasks_in_bids == tasks_in_sourcedata:
-        pass
-    else:
-        print(f'sourcedata error sub-{sub}_ses-{ses}')
-
-    return
-
-
 def main():
     # for bcbl /bcbl/home/public/Gari/VOTCLOC/main_exp
     # for dipc it is /scratch/tlei/VOTCLOC

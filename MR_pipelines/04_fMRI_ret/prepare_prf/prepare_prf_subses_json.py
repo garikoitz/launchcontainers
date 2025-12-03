@@ -94,7 +94,7 @@ if __name__ == '__main__':
     force = True
 
     for step in steps:
-        subseslist_path = os.path.join(code_dir, 'subseslist_jun16.txt')
+        subseslist_path = os.path.join(code_dir, 'subseslist_ret_normal.txt')
         output_dir = os.path.join(code_dir , f'{step}_jsons')
 
         if not os.path.exists(output_dir):

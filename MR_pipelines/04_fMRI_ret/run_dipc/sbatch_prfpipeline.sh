@@ -61,7 +61,8 @@ code_dir=$baseP/code
 sif_path="/scratch/tlei/containers/${step}_${version}.sif"
 
 log_note=$1
-subses_list_dir=$code_dir/subseslist_jun16.txt
+subses_name=$2 
+subses_list_dir=$code_dir/$subses_name
 # log dir
 LOG_DIR="$baseP/dipc_${step}_logs/${log_note}_$(date +"%Y-%m-%d")"
 # Ensure directories exist
