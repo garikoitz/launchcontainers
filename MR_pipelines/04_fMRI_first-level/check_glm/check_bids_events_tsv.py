@@ -36,4 +36,5 @@ df_mismatch = pd.DataFrame(
     columns=['sub', 'ses', 'run'],
 )
 
+df_mismatch.to_csv('/bcbl/home/public/Gari/VOTCLOC/main_exp/BIDS/bold_without_events_2025-12-10.tsv', sep='\t', index=False)
 print(df_mismatch)

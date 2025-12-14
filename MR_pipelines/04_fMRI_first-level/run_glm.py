@@ -200,7 +200,7 @@ def replace_prefix_and_suffix(val):
 def glm_l1(
     conc_gii_data_std, design_matrix_std, contrasts,
     bids_dir, task, space, hemi, subject, session,
-    output_name, use_smoothed=False, sm=None,
+    output_name, use_smoothed=False, sm=None, randrun_idx=None
 ):
     print('------- glm start running')
     # Define output directory
@@ -233,6 +233,10 @@ def glm_l1(
             outname_base_run = outname_base_run.replace(
                 '_statmap', f'_desc-smoothed{sm}_statmap',
             )
+        if randrun_idx:
+            outname_base_run = outname_base_run.replace(
+                '_statmap', f'{randrun_idx}_statmap',
+            )
         outname_base_run = op.join(outdir, outname_base_run)  # Place in output directory
 
         # compute contrast-related statistics
@@ -254,21 +258,22 @@ def glm_l1(
         outname = outname_base_run.replace('stat-X', 'stat-effect')
         save_statmap_to_gifti(betas, outname)
 
-        # z-score
-        outname = outname_base_run.replace('stat-X', 'stat-z')
-        save_statmap_to_gifti(z_score, outname)
-
         # t-value
         outname = outname_base_run.replace('stat-X', 'stat-t')
         save_statmap_to_gifti(t_value, outname)
+        
+        if not randrun_idx:
+            # z-score
+            outname = outname_base_run.replace('stat-X', 'stat-z')
+            save_statmap_to_gifti(z_score, outname)
 
-        # p-value
-        outname = outname_base_run.replace('stat-X', 'stat-p')
-        save_statmap_to_gifti(p_value, outname)
+            # p-value
+            outname = outname_base_run.replace('stat-X', 'stat-p')
+            save_statmap_to_gifti(p_value, outname)
 
-        # variance
-        outname = outname_base_run.replace('stat-X', 'stat-variance')
-        save_statmap_to_gifti(variance, outname)
+            # variance
+            outname = outname_base_run.replace('stat-X', 'stat-variance')
+            save_statmap_to_gifti(variance, outname)
 
     finished = 1
     print(f'glm for {hemi} finished')
@@ -532,21 +537,24 @@ def generate_run_groups(layout, subject, session, task, selected_runs=None):
     # Get all unique run numbers for the given task
     if not selected_runs:
         runs = sorted(set(layout.get_runs(subject=subject, session=session, task=task)))
+        randrun_idx = None
     # runs = [1,2,3,4]
     else:
         runs = selected_runs
+        randrun_idx = f"_run-{''.join(map(str, runs))}"
     if not runs:
         raise ValueError(f"No runs found for task '{task}' in BIDS dataset.")
 
     # Convert run numbers to two-digit string format (e.g., "01", "02")
     run_list = [f'{run:02d}' for run in runs]
     print(f'the run list is {run_list}')
-    return run_list
+
+    return run_list, randrun_idx
 
 def process_run_list(
         bids_dir, fmriprep_dir, label_dir, contrast_fpath,
         subject, session, output_name, task, start_scans, hemi, space, slice_time_ref,
-        run_list, use_smoothed, sm, apply_label_as_mask, dry_run):
+        run_list, use_smoothed, sm, apply_label_as_mask, dry_run, randrun_idx=None):
     print('Processing hemi', hemi)
     print('Processing runs are : ', run_list)
     conc_gii_data_std, design_matrix_std, contrasts = prepare_glm_input(
@@ -563,7 +571,7 @@ def process_run_list(
         finished = glm_l1(
             conc_gii_data_std, design_matrix_std, contrasts,
             bids_dir, task, space, hemi, subject, session,
-            output_name, use_smoothed, sm,
+            output_name, use_smoothed, sm, randrun_idx
         )
     else:
         print('dry run mode, you will see the designmatrix and the confoudns')
@@ -640,7 +648,7 @@ def main():
 
     label_dir = f'{fsdir}/sub-{subject}/label'
     layout = BIDSLayout(bids_dir, validate=False)
-    run_list = generate_run_groups(layout, subject, session, task, selected_runs)
+    run_list, randrun_idx = generate_run_groups(layout, subject, session, task, selected_runs)
 
     hemis = ['L', 'R']  # L for left, R for right
     for hemi in hemis:  # hemi = 'L'
@@ -648,7 +656,7 @@ def main():
         finished = process_run_list(
             bids_dir, fmriprep_dir, label_dir, contrast_fpath,
             subject, session, output_name, task, start_scans , hemi, space, slice_time_ref,
-            run_list, use_smoothed, sm, apply_label_as_mask, dry_run
+            run_list, use_smoothed, sm, apply_label_as_mask, dry_run, randrun_idx
         )
 
     return

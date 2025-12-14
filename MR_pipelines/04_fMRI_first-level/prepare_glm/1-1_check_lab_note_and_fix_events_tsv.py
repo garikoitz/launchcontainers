@@ -4,7 +4,27 @@ import pandas as pd
 from bids import BIDSLayout
 from launchcontainers.utils import read_df, force_symlink, check_symlink
 
+## note: 
+# for now, need to manually delete sub-07 ses-10 run 11 events.tsv because I wasn't converting the run 11
 ### excecution
+def get_onset_onset_dirname(onset_subses_dir, sub, ses):
+    '''
+    This function we used that can check if the sub- ses- id is the same with BIDS
+    '''
+    onset_subses_dir = os.path.join(sourcedata_dir, f'sub-{sub}', f'ses-{ses}')
+    votcloc_logs = [i for i in os.listdir(onset_subses_dir) if '1back' in i]
+    for i in votcloc_logs:
+        dirname=i
+        subses = f'sub-{sub}_ses-{ses}'
+        logger.info(subses)
+        if subses in dirname:
+            onset_dirname = dirname
+        else:
+            continue
+    logger.info(f'Onset_dirname_we got is {onset_dirname}')
+    return onset_dirname
+
+
 if __name__ == "__main__":
     # 🔹 Path to the downloaded Excel file
     # Replace with your actual file path
@@ -54,11 +74,13 @@ if __name__ == "__main__":
     df_filtered = subses_with_rerun
 
     bids_dir = '/bcbl/home/public/Gari/VOTCLOC/main_exp/BIDS'
-    layout = BIDSLayout(bids_dir, validate=False)
+    #layout = BIDSLayout(bids_dir, validate=False)
 
     for _, row in df_filtered.iterrows():
         sub = str(row['sub'])  # Convert to string and zero-pad
         ses = str(row['ses'])  # Convert to string and zero-pad
+        onset_dirname = get_onset_onset_dirname(sourcedata_dir, sub, ses)
+        all_onset_dir = os.path.join(sourcedata_dir, f'sub-{sub}', f'ses-{ses}', onset_dirname)
         protocol_name = row['protocol_name']
 
         # Extract run number and rerun number from protocol_name
@@ -72,33 +94,35 @@ if __name__ == "__main__":
 
             # Source and target paths
             try:
-                source_event = layout.get(
+                event_in_sourcedata = os.path.join(all_onset_dir, layout.get(
                     subject=sub, session=ses, run=rerun_number,
                     task='fLoc', suffix='events', extension='tsv',
+                )[0].filename)
+                func_needs_correct = layout.get(
+                    subject=sub, session=ses, run=run_number,
+                    task='fLoc', suffix='bold', extension='nii.gz',
                 )[0].path
-                target_event = source_event.replace(f'run-{rerun_number}', f'run-{run_number}')
+                target_event = func_needs_correct.replace("bold.nii.gz","events.tsv")
+                
                 # Ensure source file exists before linking
-                if os.path.exists(source_event):
+                if os.path.exists(event_in_sourcedata):
                     # Avoid overwriting existing files
-                    if not (os.path.exists(target_event) or os.path.islink(target_event)):
-                        force_symlink(source_event, target_event,True)
-                        print(f'Linked {source_event} -> {target_event}')
-                    else:
-                        print(f'Target exists, skipping: {target_event}')
+                    force_symlink(event_in_sourcedata, target_event,True)
+                        
                 else:
-                    print(f'Source missing, skipping: {source_event}')
+                    print(f'Source missing, skipping: {event_in_sourcedata}')
             except Exception as e:
                 print(f"error for {sub}, {ses} because of {e}")
 
 
-## below, add a check to see if the run num of tsv is matching with run num of func
-subs=layout.get_subject()
-for sub in subs:
-    sess=layout.get_session(subject=sub)
-    for ses in sess:
-        bids_func=layout.get(
-            subject=sub,
-            session=ses,
-            datatype='func',task='fLoc',suffix='bold',extension='nii.gz',
-            return_type='list')
+# ## below, add a check to see if the run num of tsv is matching with run num of func
+# subs=layout.get_subject()
+# for sub in subs:
+#     sess=layout.get_session(subject=sub)
+#     for ses in sess:
+#         bids_func=layout.get(
+#             subject=sub,
+#             session=ses,
+#             datatype='func',task='fLoc',suffix='bold',extension='nii.gz',
+#             return_type='list')
        

@@ -33,10 +33,10 @@ between sub- /ses- /func/xx.events.tsv to the BIDS/sourcedata/fMRI_log/
 basedir = '/bcbl/home/public/Gari/VOTCLOC/main_exp'
 sourcedata_dir = f'{basedir}/BIDS/sourcedata'
 bids_dir = '/bcbl/home/public/Gari/VOTCLOC/main_exp/BIDS'
-layout = BIDSLayout(bids_dir, validate=False)
+#layout = BIDSLayout(bids_dir, validate=False)
 sub_list=layout.get_subject()
 task = 'fLoc'
-force = False
+force = True
 
 logging.basicConfig(
     filename=os.path.join(basedir,f"check_bids_events_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log"),
@@ -60,16 +60,23 @@ def get_onset_onset_dirname(onset_subses_dir, sub, ses):
         if subses in dirname:
             onset_dirname = dirname
         else:
-            onset_dirname = None
+            continue
     logger.info(f'Onset_dirname_we got is {onset_dirname}')
     return onset_dirname
 # TODO:
 # get onset file under the onset_dirname, so that there will be no error
 
-# loop and linking the bids_events.tsv under BIDS sub- / ses- folder
-for sub in sub_list:
-    ses_list=layout.get_session(subject=sub)
-    for ses in ses_list:
+# # loop and linking the bids_events.tsv under BIDS sub- / ses- folder
+# for sub in sub_list:
+#     ses_list=layout.get_session(subject=sub)
+#     for ses in ses_list:
+# Fixed subjects and sessions
+subjects = [f"{i:02d}" for i in range(1, 12)]  # sub-01 to sub-11
+sessions = [f"{i:02d}" for i in range(1, 11)]  # ses-01 to ses-10
+
+# Check each subject/session combination
+for sub in subjects:
+    for ses in sessions:        
         onset_dirname = get_onset_onset_dirname(sourcedata_dir, sub, ses)
         all_onset_dir = os.path.join(sourcedata_dir, f'sub-{sub}', f'ses-{ses}', onset_dirname)
         runs = layout.get_runs(subject=sub,session=ses,task='fLoc')
