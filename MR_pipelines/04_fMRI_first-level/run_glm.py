@@ -21,6 +21,7 @@ import csv
 import logging
 import os
 import os.path as op
+import random
 import time
 from argparse import RawDescriptionHelpFormatter
 from os import makedirs
@@ -60,58 +61,49 @@ def get_parser():
     parser.add_argument(
         '-base',
         type=str,
-        # default="",
         help='basedir e.g. /bcbl/home/public/Gari/VOTCLOC/main_exp',
     )
     parser.add_argument(
         '-sub',
         type=str,
-        # default="",
         help='subject id, e.g. S005',
     )
     parser.add_argument(
         '-ses',
         type=str,
-        # default="",
         help='ses id, e.g. T01',
     )
     parser.add_argument(
         '-fp_ana_name',
         type=str,
-        # default="",
         help='analysis name of the fmriprep, the src input to this ',
     )
 
     parser.add_argument(
         '-task',
         type=str,
-        # default="",
         help='task name of the fMRI time series ',
     )
     parser.add_argument(
         '-start_scans',
         type=int,
-        # default="",
         help='number of non-steady TRs in the fMRI time series ',
     )
     parser.add_argument(
         '-space',
         type=str,
-        # default="",
         help='Space you want to conduct the experiment. \
         Valid options: T1w func MNI152NLin2009cAsym fsnative fsaverage ',
     )
     parser.add_argument(
         '-contrast',
         type=str,
-        # default="",
         help='path to yaml file defining contrast ',
     )
 
     parser.add_argument(
         '-output_name',
         type=str,
-        # default="",
         help='output folder name ',
     )
     parser.add_argument(
@@ -162,14 +154,71 @@ def get_parser():
         required=False,
         help='List of runs you sepecfied',
     )
+    parser.add_argument(
+        '-power_analysis',
+        action='store_true',
+        help='Run power analysis mode: generates 10 random combinations for 1-10 runs (100 GLMs total)',
+    )
+    parser.add_argument(
+        '-n_iterations',
+        type=int,
+        default=10,
+        help='Number of random iterations per run count in power analysis mode (default: 10)',
+    )
+    parser.add_argument(
+        '-seed',
+        type=int,
+        default=42,
+        help='Random seed for power analysis run generation (default: 42)',
+    )
+    parser.add_argument(
+        '-total_runs',
+        type=int,
+        default=10,
+        help='Total number of runs available (default: 10)',
+    )
 
     parse_dict = vars(parser.parse_args())
-    # parse_namespace = parser.parse_args()
 
     return parse_dict
+
+
+def generate_random_run_combinations(total_runs, num_runs, n_iterations, seed=None):
+    """
+    Generate random combinations of runs for power analysis.
+    
+    Parameters:
+    -----------
+    total_runs : int
+        Total number of available runs
+    num_runs : int
+        Number of runs to select in each iteration
+    n_iterations : int
+        Number of random combinations to generate
+    seed : int, optional
+        Random seed for reproducibility
+        
+    Returns:
+    --------
+    list of lists
+        Each sublist contains num_runs randomly selected run numbers
+    """
+    if seed is not None:
+        random.seed(seed + num_runs)  # Different seed for each num_runs
+    
+    available_runs = list(range(1, total_runs + 1))
+    combinations = []
+    
+    for i in range(n_iterations):
+        # Randomly sample runs without replacement
+        selected = random.sample(available_runs, num_runs)
+        selected.sort()
+        combinations.append(selected)
+    
+    return combinations
+
+
 # Helper function for saving GIFTI statmaps
-
-
 def save_statmap_to_gifti(data, outname):
     """Save a statmap to a gifti file.
     data: nilearn contrast model output, e.g., contrast.effect_size()
@@ -349,8 +398,6 @@ def prepare_glm_input(
 
             gii_data_std = gii_data_std * mask
             gii_data_float = gii_data_float * mask
-            # gii_data=nilearn.masking.apply_mask(nii_path, surf_mask, dtype='f',
-            # smoothing_fwhm=None, ensure_finite=True)
 
         # Get shape of data
         n_scans = np.shape(gii_data_std)[1]
@@ -381,7 +428,6 @@ def prepare_glm_input(
         events = l1[2][0][0]  # Dataframe of events information
         confounds = l1[3][0][0]  # Dataframe of confounds
         events.loc[:, 'onset'] = events['onset'] + idx * (n_scans) * t_r
-        # events_allrun.append(events)
 
         # get rid of rest so that the setting would be the same as spm
         events_nobaseline = events[events.loc[:, 'trial_type'] != 'baseline']
@@ -408,9 +454,6 @@ def prepare_glm_input(
         cosine_keys = [key for key in confounds.keys() if 'cosine' in key]
 
         # Pull out the confounds we want to keep
-        # confound_keys_keep = (
-        #     motion_keys + a_compcor_keys + cosine_keys
-        # )
         confound_keys_keep = (
             motion_keys + a_compcor_keys + cosine_keys + non_steady_state_keys
         )
@@ -450,11 +493,7 @@ def prepare_glm_input(
         add_regs=nonan_confounds,
     )
 
-    # set the design matrix's NaN value to 0?
-
     # z-score the design matrix to standardize it
-    # edited Feb 17 2025, it seems that before the code to form design_matrix std
-    # is a to form a array, here I changed it to a dataframe?
     design_matrix_std = design_matrix.apply(stats.zscore, axis=0)
     # add constant in to standardized design matrix since you cannot z-score a constant
     design_matrix_std['constant'] = np.ones(len(design_matrix_std)).astype(int)
@@ -515,33 +554,30 @@ def load_contrasts(yaml_file, design_matrix):
     return contrasts
 
 
-def read_tsv(filename):
-    with open(filename, newline='') as file:
-        reader = csv.DictReader(file, delimiter='\t')
-        return list(reader)
-
-
 def generate_run_groups(layout, subject, session, task, selected_runs=None):
     """
-    Queries BIDS layout for available runs of a task and returns a list of 10 lists,
-    each containing `factor` randomly selected runs (with repetition if necessary).
+    Queries BIDS layout for available runs of a task and returns run list.
 
     Parameters:
-    - bids_dir (str): Path to the BIDS dataset.
-    - task (str): Task name to query runs.
+    - layout: BIDS layout object
+    - subject: subject ID
+    - session: session ID
+    - task: Task name to query runs
+    - selected_runs: Optional list of specific runs to use
 
     Returns:
-    - List of 10 lists, each containing `factor` runs.
+    - run_list: List of run numbers as strings (e.g., ['01', '02'])
+    - randrun_idx: String identifier for filenames (e.g., '_run-0105')
     """
 
     # Get all unique run numbers for the given task
     if not selected_runs:
         runs = sorted(set(layout.get_runs(subject=subject, session=session, task=task)))
         randrun_idx = None
-    # runs = [1,2,3,4]
     else:
         runs = selected_runs
         randrun_idx = f"_run-{''.join(map(str, runs))}"
+    
     if not runs:
         raise ValueError(f"No runs found for task '{task}' in BIDS dataset.")
 
@@ -551,10 +587,12 @@ def generate_run_groups(layout, subject, session, task, selected_runs=None):
 
     return run_list, randrun_idx
 
+
 def process_run_list(
         bids_dir, fmriprep_dir, label_dir, contrast_fpath,
         subject, session, output_name, task, start_scans, hemi, space, slice_time_ref,
         run_list, use_smoothed, sm, apply_label_as_mask, dry_run, randrun_idx=None):
+    """Process a single run list and perform GLM"""
     print('Processing hemi', hemi)
     print('Processing runs are : ', run_list)
     conc_gii_data_std, design_matrix_std, contrasts = prepare_glm_input(
@@ -565,8 +603,6 @@ def process_run_list(
     print(f'Contrasts we are using is : {contrasts.keys()}')
     print(f'----------before going to the glm_l1, smooth is {use_smoothed}')
 
-    # if apply_label_as_mask:
-    #     run_identifier=f"{run_identifier}_mask-{apply_label_as_mask.spilt('.')[1]}-{apply_label_as_mask.spilt('.')[2]}"
     if not dry_run:
         finished = glm_l1(
             conc_gii_data_std, design_matrix_std, contrasts,
@@ -575,90 +611,134 @@ def process_run_list(
         )
     else:
         print('dry run mode, you will see the designmatrix and the confoudns')
+        finished = 1
+    
     return finished
 
 
+def run_power_analysis(
+        bids_dir, fmriprep_dir, label_dir, contrast_fpath,
+        subject, session, base_output_name, task, start_scans, space, slice_time_ref,
+        use_smoothed, sm, apply_label_as_mask, dry_run,
+        total_runs, n_iterations, seed):
+    """
+    Run power analysis: 100 GLMs (10 iterations × 10 run configurations)
+    """
+    
+    print("="*70)
+    print("STARTING POWER ANALYSIS MODE")
+    print(f"Subject: {subject}, Session: {session}")
+    print(f"Total configurations: {total_runs} (1 to {total_runs} runs)")
+    print(f"Iterations per configuration: {n_iterations}")
+    print(f"Total GLMs to run: {total_runs * n_iterations * 2}")  # × 2 for L and R hemispheres
+    print(f"Random seed: {seed}")
+    print("="*70)
+    print()
+    
+    hemis = ['L', 'R']
+    total_glms_completed = 0
+    total_glms = total_runs * n_iterations * len(hemis)
+    
+    # Loop through num_of_runs from 1 to total_runs
+    for num_of_runs in range(1, total_runs + 1):
+        
+        print(f"\n{'='*70}")
+        print(f"Configuration: {num_of_runs} run(s)")
+        print(f"{'='*70}")
+        
+        # Generate random run combinations for this num_of_runs
+        combinations = generate_random_run_combinations(
+            total_runs, num_of_runs, n_iterations, seed
+        )
+        
+        # Loop through each iteration
+        for iter_num, selected_runs in enumerate(combinations, start=1):
+            
+            print(f"\nIteration {iter_num}/{n_iterations}: runs {selected_runs}")
+            
+            # Convert to string format for processing
+            run_list = [f'{run:02d}' for run in selected_runs]
+            randrun_idx = f"_run-{''.join(map(str, selected_runs))}"
+            
+            # Create output name for this specific iteration
+            iter_output_name = f"{base_output_name}/power_analysis_{num_of_runs}_run/iter_{iter_num:02d}"
+            
+            # Process both hemispheres
+            for hemi in hemis:
+                print(f"  Processing hemisphere: {hemi}")
+                
+                finished = process_run_list(
+                    bids_dir, fmriprep_dir, label_dir, contrast_fpath,
+                    subject, session, iter_output_name, task, start_scans, 
+                    hemi, space, slice_time_ref,
+                    run_list, use_smoothed, sm, apply_label_as_mask, dry_run, randrun_idx
+                )
+                
+                total_glms_completed += 1
+                progress = (total_glms_completed / total_glms) * 100
+                print(f"  Progress: {total_glms_completed}/{total_glms} ({progress:.1f}%)")
+    
+    print("\n" + "="*70)
+    print("POWER ANALYSIS COMPLETED!")
+    print(f"Total GLMs completed: {total_glms_completed}")
+    print("="*70)
+
+
 def main():
-    '''
-    subject='02'
-    session='09'
-    task='fLoc'
-    start_scans=6
-    space='fsnative'
-    basedir='/bcbl/home/public/Gari/VOTCLOC/main_exp'
-    input_dirname='BIDS'
-    fp_ana_name='beforeMar05_US'
-    output_name='WC-run0506-meeting_test'
-    slice_time_ref=0.5
-    contrast_fpath='/export/home/tlei/tlei/soft/VOTCLOC/MR_analysis/04_surface_glm/contrast_wordcenter.yaml'
-    use_smoothed=False
-    sm=None
-
-    apply_label_as_mask=None
-
-    bids_dir = op.join(basedir, input_dirname)
-    fsdir=os.path.join(bids_dir, 'derivatives','freesurfer')
-
-    fmriprep_dir = op.join(
-        bids_dir,
-        'derivatives', f'fmriprep-{fp_ana_name}',
-    )
-
-    label_dir = f"{fsdir}/sub-{subject}/label"
-
-    #hemis = ['L']  # , "R"]  # L for left, R for right
-    hemi='L'
-    selected_runs=[5,6]
-    layout = BIDSLayout(bids_dir, validate=False)
-    run_list=generate_run_groups(layout,subject, session, task, selected_runs)
-
-    '''
     parser_dict = get_parser()
     basedir = parser_dict['base']
-
     input_dirname = parser_dict['i']
-
     subject = parser_dict['sub']
     session = parser_dict['ses']
-
-    # define task and space
-    task = parser_dict['task']  # 'fLoc'  # Task name
-    start_scans = int(parser_dict['start_scans'])  # number of scans in the begining,
-    # fLoc is 6, ret is 5
-    space = parser_dict['space']  # 'fsnative'  # BOLD projected on subject's freesurfer surface
-
+    task = parser_dict['task']
+    start_scans = int(parser_dict['start_scans'])
+    space = parser_dict['space']
     fp_ana_name = parser_dict['fp_ana_name']
     output_name = parser_dict['output_name']
     slice_time_ref = parser_dict['slice_time_ref']
     contrast_fpath = parser_dict['contrast']
     use_smoothed = parser_dict['use_smoothed']
     sm = parser_dict['sm']
-    apply_label_as_mask = parser_dict['mask']  # 'lh.mOTS.RWvsPER.label'
+    apply_label_as_mask = parser_dict['mask']
     selected_runs = parser_dict['selected_runs']
     dry_run = parser_dict['dry_run']
-    print(f'the selected runs are {selected_runs}')
-    # define directories
+    power_analysis = parser_dict['power_analysis']
+    n_iterations = parser_dict['n_iterations']
+    seed = parser_dict['seed']
+    total_runs = parser_dict['total_runs']
+    
+    # Define directories
     bids_dir = op.join(basedir, input_dirname)
     fsdir = os.path.join(bids_dir, 'derivatives', 'freesurfer')
-
-    fmriprep_dir = op.join(
-        bids_dir,
-        'derivatives', f'fmriprep-{fp_ana_name}',
-    )
-
+    fmriprep_dir = op.join(bids_dir, 'derivatives', f'fmriprep-{fp_ana_name}')
     label_dir = f'{fsdir}/sub-{subject}/label'
+    
+    # Create BIDS layout once and reuse
+    print("Creating BIDS layout...")
     layout = BIDSLayout(bids_dir, validate=False)
-    run_list, randrun_idx = generate_run_groups(layout, subject, session, task, selected_runs)
-
-    hemis = ['L', 'R']  # L for left, R for right
-    for hemi in hemis:  # hemi = 'L'
-
-        finished = process_run_list(
+    print("BIDS layout created!")
+    
+    if power_analysis:
+        # Run power analysis mode (100 GLMs)
+        run_power_analysis(
             bids_dir, fmriprep_dir, label_dir, contrast_fpath,
-            subject, session, output_name, task, start_scans , hemi, space, slice_time_ref,
-            run_list, use_smoothed, sm, apply_label_as_mask, dry_run, randrun_idx
+            subject, session, output_name, task, start_scans, space, slice_time_ref,
+            use_smoothed, sm, apply_label_as_mask, dry_run,
+            total_runs, n_iterations, seed
         )
-
+    else:
+        # Regular mode - single GLM
+        print("Running in regular mode (single GLM)")
+        run_list, randrun_idx = generate_run_groups(layout, subject, session, task, selected_runs)
+        
+        hemis = ['L', 'R']
+        for hemi in hemis:
+            finished = process_run_list(
+                bids_dir, fmriprep_dir, label_dir, contrast_fpath,
+                subject, session, output_name, task, start_scans, hemi, space, slice_time_ref,
+                run_list, use_smoothed, sm, apply_label_as_mask, dry_run, randrun_idx
+            )
+    
     return
 
 
@@ -666,4 +746,4 @@ if __name__ == '__main__':
     tic = time.time()
     main()
     toc = time.time()
-    print(f'total time of the program is {toc - tic:.4f}')
+    print(f'\nTotal time of the program is {(toc - tic)/60:.2f} minutes')
