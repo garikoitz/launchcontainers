@@ -398,6 +398,8 @@ def prepare_glm_input(
 
             gii_data_std = gii_data_std * mask
             gii_data_float = gii_data_float * mask
+            # gii_data=nilearn.masking.apply_mask(nii_path, surf_mask, dtype='f',
+            # smoothing_fwhm=None, ensure_finite=True)
 
         # Get shape of data
         n_scans = np.shape(gii_data_std)[1]
@@ -428,6 +430,7 @@ def prepare_glm_input(
         events = l1[2][0][0]  # Dataframe of events information
         confounds = l1[3][0][0]  # Dataframe of confounds
         events.loc[:, 'onset'] = events['onset'] + idx * (n_scans) * t_r
+        # events_allrun.append(events)
 
         # get rid of rest so that the setting would be the same as spm
         events_nobaseline = events[events.loc[:, 'trial_type'] != 'baseline']
@@ -454,6 +457,9 @@ def prepare_glm_input(
         cosine_keys = [key for key in confounds.keys() if 'cosine' in key]
 
         # Pull out the confounds we want to keep
+        # confound_keys_keep = (
+        #     motion_keys + a_compcor_keys + cosine_keys
+        # )
         confound_keys_keep = (
             motion_keys + a_compcor_keys + cosine_keys + non_steady_state_keys
         )
@@ -493,7 +499,11 @@ def prepare_glm_input(
         add_regs=nonan_confounds,
     )
 
+    # set the design matrix's NaN value to 0?
+
     # z-score the design matrix to standardize it
+    # edited Feb 17 2025, it seems that before the code to form design_matrix std
+    # is a to form a array, here I changed it to a dataframe?
     design_matrix_std = design_matrix.apply(stats.zscore, axis=0)
     # add constant in to standardized design matrix since you cannot z-score a constant
     design_matrix_std['constant'] = np.ones(len(design_matrix_std)).astype(int)

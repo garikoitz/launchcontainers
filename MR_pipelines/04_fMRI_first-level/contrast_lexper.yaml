@@ -7,3 +7,14 @@ RWvsPER:
   positive: ["RW"]
   negative: ["SC"]
 
+RWvsNull:
+  positive: ["RW"]
+  negative: []
+
+RWvsFF:
+  positive: ["RW"]
+  negative: ["FF"]
+
+FFvsNull:
+  positive: ["FF"]
+  negative: []
