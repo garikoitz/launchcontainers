@@ -685,7 +685,7 @@ def qc_and_merge_all_reruns_of_main_output(analysis_dir: Path):
             detailed_qc=detailed_qc_rerun_single_subses_output(sub,ses,analysis_dir, rerun_dir)
             # if quick and detained qc success, we will start merge and check all output
             if detailed_qc and quick_qc:
-                merge_outputs(sub,ses,analysis_dir, rerun_dir)
+                merge_rerun_single_subses_output(sub,ses,analysis_dir, rerun_dir)
             elif quick_qc and not detailed_qc:
                 print(f'Pipeline finished but not having all output, please check {sub}-{ses}')
             else:

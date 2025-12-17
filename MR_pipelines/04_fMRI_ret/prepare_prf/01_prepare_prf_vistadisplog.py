@@ -100,7 +100,7 @@ def link_vistadisplog(sourcedata, sub, ses, force, task='ret'):
         ),
     )
     if matFiles.size != 0 :
-        print('Got the matfiles, going to start symlink')
+        print(', going to start symlink')
     else:
         print(f'##### sub-{sub} ses-{ses} Not get the matfiles, please check path')
     for matFile in matFiles:
@@ -194,19 +194,11 @@ def link_vistadisplog(sourcedata, sub, ses, force, task='ret'):
         symlink(srcdata_subses_dir, subses_dir)
         print(f'symlink created for  {srcdata_subses_dir} at {subses_dir}')
 
-
-def check_params_and_bids(layout, sub, ses):
-    # need to check if params and bids task name match,
-    # they might not match because I put fixRWblock as CB
-
-    return
-
-
 def main():
     # for bcbl /bcbl/home/public/Gari/VOTCLOC/main_exp
     # for dipc it is /scratch/tlei/VOTCLOC
     basedir = '/scratch/tlei/VOTCLOC'
-    subseslist_fpath = path.join(basedir, 'code', 'subseslist_jun16.txt')
+    subseslist_fpath = path.join(basedir, 'code', 'subseslist_ret_normal.txt')
     subseslist = pd.read_csv(subseslist_fpath, sep=',', header=0, dtype='str')
     bids_folder_name = 'BIDS'
     force = True

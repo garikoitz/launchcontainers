@@ -28,7 +28,7 @@ start_scans=6
 # space
 space=fsnative
 # output analysis name
-out_name=final_v1
+out_name=final_v2
 # path to contrast yaml, you can define any kind of yaml under any place
 glm_yaml_path=${codedir}/contrast_votcloc_all.yaml
 # slice timing ref, default is 0.5 can change
@@ -48,7 +48,7 @@ mkdir -p "$LOG_DIR"
 line_number=0
 
 # Read the file line by line
-while IFS=$',' read -r sub ses
+while IFS=$',' read -r sub ses RUN _;
 do
     # Increment line counter
     ((line_number++))
@@ -58,32 +58,34 @@ do
         continue
     fi
 	current_time=$(date +"%Y-%m-%d_%H-%M-%S")
+	if [ "$RUN" = "True" ]; then
+		# Define log paths
+		qsub_log_out="${LOG_DIR}/sub-${sub}_ses-${ses}_${current_time}.o"
+		qsub_log_err="${LOG_DIR}/sub-${sub}_ses-${ses}_${current_time}.e"
 
-    # Define log paths
-    qsub_log_out="${LOG_DIR}/sub-${sub}_ses-${ses}_${current_time}.o"
-    qsub_log_err="${LOG_DIR}/sub-${sub}_ses-${ses}_${current_time}.e"
 
-	echo "### Runing SURFACE_glm on SUBJECT: $sub $ses SESSION ###"
-	cmd="qsub -q short.q \
-		-N S-${sub}_T-${ses} \
-		-o $qsub_log_out \
-    	-e $qsub_log_err \
-		-l mem_free=20G \
-		-v basedir=${basedir} \
-		-v sub=${sub} \
-		-v ses=${ses} \
-		-v fp_name=${fp_name} \
-		-v task=${task} \
-		-v start_scans=${start_scans} \
-		-v space=${space} \
-		-v out_name=${out_name} \
-		-v glm_yaml_path=${glm_yaml_path} \
-		-v slice_timing=${slice_timing} \
-		-v codedir=$codedir \
-		-v dry_run=$dry_run \
-		$codedir/cli_glm_api.sh "
+		echo "### Runing SURFACE_glm on SUBJECT: $sub $ses SESSION ###"
+		cmd="qsub -q long.q \
+			-N S-${sub}_T-${ses} \
+			-o $qsub_log_out \
+			-e $qsub_log_err \
+			-l mem_free=20G \
+			-v basedir=${basedir} \
+			-v sub=${sub} \
+			-v ses=${ses} \
+			-v fp_name=${fp_name} \
+			-v task=${task} \
+			-v start_scans=${start_scans} \
+			-v space=${space} \
+			-v out_name=${out_name} \
+			-v glm_yaml_path=${glm_yaml_path} \
+			-v slice_timing=${slice_timing} \
+			-v codedir=$codedir \
+			-v dry_run=$dry_run \
+			$codedir/cli_glm_api.sh "
 
-	echo $cmd
-	eval $cmd
+		echo $cmd
+		eval $cmd
+	fi
 done < "$subseslist_path"
 

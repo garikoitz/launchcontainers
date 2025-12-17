@@ -1,24 +1,47 @@
-'''
+#!/usr/bin/env python3
+"""
+DICOM Symlink Organizer
+-----------------------
+Reorganizes DICOM data by creating symlinks with a standardized structure.
+
+Part of the MRIworkflow project.
+
+Create from src: dcm folder
+
+to targ: project/dicom folder with structure: sub-xx/ses-yy
+
 This script is used to create symlink from project folder to lab folder
 
 First, you need to have your labnote prepared, which will be under /basedir/VOTCLOC_subses_list.xlsx
+    the information we get from the labnote is:
+    1. sub-xx
+    2. ses-yy
+    3. date
+    4. time_start for each protocol
 
-Then, the script will read the xlsx file and generate a dict which will map the datetime with the session
+Feature 1: The script will read the xlsx file and generate a dict which will map the datetime with the session
 
-Then, the script will do a dicom meta data read from the lab MRI and generate a dict which will map
-the datetime with the ~/lab/MRI/VOTCLOC_22324/DATA/images/ folders
+Feature 2: The script will screening the dcm folder under  ~/lab/MRI/VOTCLOC_22324/DATA/images/ and will
+get the datatime and parse the corresponding sub-xx and ses-yy
 
-In the meantime the script will take consideration with several cases:
-1. multiple sessions uploaded to the same folder
-2. different level of folder structure
-.... to be continue
+    This script will take consideration with several cases:
+    1. multiple sessions uploaded to the same folder
+    2. different level of folder structure
+    .... to be continue
 
-'''
-from __future__ import annotations
+Then the script will provide a mapping from lab note to the dcm folder name to match the sessions
+
+The output of this script will be a dataframe to check, after manual check, we can create the symlink
+
+This script will serve as the first step for the dcm to nifti conversion with heudiconv,
+
+Prepare heudiconv
+
+"""
 
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -31,7 +54,9 @@ app = typer.Typer()
 @app.command()
 def dcm_dir_summary(
     lab_project_dir: Path,
-    exclude: list[str] = typer.Option(default=[]),
+    output_dir: Path,
+    exclude: list[str] = typer.Option(default=[])
+    
 ):
     '''
     This script is used to walk the dcm session folder and to get:
@@ -51,15 +76,18 @@ def dcm_dir_summary(
         d for d in os.listdir(lab_project_dir)
         if os.path.isdir(os.path.join(lab_project_dir, d))
     ]
-    # get all the dir under the basedir, for every subdir inside it we will walk the dir
+    # get all the dir under the basedir, for every sesdir inside it we will walk the dir
     # the walk dir looping is at the subdir level (i.e., there are 10 subdirs, it will do 10 iter)
     for ses_dir_name in session_dirs:
         ses_dir_path = lab_project_dir / ses_dir_name
         print(f'Working on {ses_dir_path}')
         # get the number of subdirs under images/xx/
-        protocal_count = 0
+        # there is no qmri in the folder, will count it as 1
+        protocal_count = 1
+        functional_protocols = 0
+        dwi_protocols = 0
         # get if the session is having correct number of functional dcms
-        func_correct = 1
+        ses_correct = 1
         # this needs to be a set
         acq_dates = []
         # don't read any dir name with manual test multisite and pilot
@@ -74,12 +102,18 @@ def dcm_dir_summary(
                     else:
                         depth = len(rel_from_top.split(os.sep)) + 1
                     protocal_count += 1
+                    if 'floc' in dirpath.lower() or 'ret' in dirpath.lower():
+                        functional_protocols += 1
+                    if 'dmri' in dirpath.lower():
+                        dwi_protocols += 1
+                    if 'Phoenix' in dirpath:
+                        protocal_count -= 1
                     # filter if the dcm transfer is correct
                     if len(file_names) > 209:
                         print(
                             f'WARNING !!! the number of file_names of this ses is not correct {ses_dir_name}',
                         )
-                        func_correct = 0
+                        ses_correct = 0
                     # get the acq date
                     if 'Phoenix' not in dirpath:
                         dcm = pydicom.dcmread(os.path.join(dirpath, file_names[0]))
@@ -94,32 +128,33 @@ def dcm_dir_summary(
                 print(f'WARNING different date time in one dir, error {ses_dir_name}')
                 func_corr = 0
                 acq_date = set(acq_dates)
-
+            protocal_count = protocal_count - functional_protocols + functional_protocols/4 - dwi_protocols + dwi_protocols/2
             rows.append({
                 'lab_project_dir': lab_project_dir,
                 'dir_name': ses_dir_name,
                 'levels_from_top': depth,
                 'number_of_protocal': protocal_count,
+                'numer_of_func': functional_protocols/4,
                 'example_file_name': file_names[0],
-                'session_correct': func_correct,
+                'session_correct': ses_correct,
                 'acq_date': acq_date,
                 'acq_time': acq_time,
             })
 
-    output_dir = '/bcbl/home/public/Gari/VOTCLOC/main_exp/dicom'
     dcm_sum_df = pd.DataFrame(
         rows, columns=[
             'lab_project_dir',
             'dir_name',
             'levels_from_top',
             'number_of_protocal',
+            'numer_of_func',
             'example_file_name',
             'session_correct',
             'acq_date',
             'acq_time',
         ],
     )
-    dcm_sum_df.to_csv(os.path.join(output_dir, 'base_dicom_check_oct-29.csv'), index=False)
+    dcm_sum_df.to_csv(output_dir, index=False)
     return dcm_sum_df
 
 
@@ -187,7 +222,7 @@ def read_lab_note(lab_note_path: Path):
     return subses_date
 
 
-def process_session(name: str):
+def guess_subsesid_from_dcm(name: str):
     '''
     Function to parse the dir name and filter it to the BIDS format
 
@@ -198,114 +233,142 @@ def process_session(name: str):
     if re.match(r'^sub-\d{2}_ses-(.*)$', name, re.IGNORECASE):
         m = re.search(r'^sub-(\d{2})_ses-(.*)', name, re.IGNORECASE)
     # if it is Sx(Txx(_with some extension)) format
-    else:
+    elif re.search(r'S(\d{1,2})_?T(\d{1,3}(_[A-Za-z0-9]+)?)', name, re.IGNORECASE):
         # ) If it starts with SxxTxx[_suffix]
-        m = re.search(r'S(\d{1,2})_?T?(\d{1,3}(_[A-Za-z0-9]+)?)', name, re.IGNORECASE)
+        m = re.search(r'S(\d{1,2})_?T(\d{1,3}(_?[A-Za-z0-9]+)?)', name, re.IGNORECASE)
+    else:
+        m = re.search(r'S(\d{2})', name, re.IGNORECASE)
     # now process with the subid and sesid
-
     sub = f'{int(m.group(1)):02d}'
-
-    ses_info = m.group(2)
-
-    if ses_info is None:
-        # there is no sesinnfo
-        ses = 'No'
-    elif len(ses_info) <= 2:
-        # there are suffix and moreinfo
-        ses = f'{int(ses_info):02d}'
-    elif len(ses_info) > 2:
-        m2 = re.match(r'(\d+)_?-?(.*)', ses_info)
-        if m2:
-            ses, suffix = m2.groups()
-        else:
-            ses, suffix = 'No', None
-        # now give the ses with the suffix
-        if len(ses) > 2:
-            ses = f'{int(ses[:-2]):02d}{suffix}'
-        else:
-            ses = f'{int(ses):02d}{suffix}'
-
+    try:
+        ses_with_info = m.group(2).lower().replace('_', '').replace('-', '')
+    except:
+        ses_with_info = 'No'
+        
+    if len(ses_with_info)==1:
+        ses_with_info = f"{int(ses_with_info):02d}"
     # Else → keep original
-    name = f'sub-{sub}_ses-{ses}'
-    return name
+    name = f'sub-{sub}_ses-{ses_with_info}'
+    return sub, ses_with_info
 
 
 def get_ses_suffix(name: str):
     name = str(name).strip()
-    m = re.match(r'sub-\d{2}_ses-\d{2}(.*)', name)
-    if m:
-        suffix = m.group(1)
+    # m = re.match(r'sub-\d{2}_ses-\d{2}(.*)', name)
+    # if m:
+    # one special case for VOTCLOC_22324_S3T402   
+    if name =='402':
+        ses = '04'
+        suffix = '02'
+    else:
+        ses = name[:2]
+        suffix = name[2:]
     if suffix == '':
         label = 'normal'
     elif suffix in ['real', 're', 'july14redo', 'rerun']:
         label = 'rerun'
-    elif suffix in ['ME', 'acq-ME']:
+    elif suffix in ['ME', 'acq-ME', 'acqME']:
         label = 'ME'
     elif suffix in ['SE']:
         label = 'normal'
     else:
         label = 'seperate'
-    return suffix , label
-
+    return ses, suffix , label
 
 @app.command()
 def main():
     # # summarize the lab folder
     # lab_project_dir = Path("/export/home/tlei/lab/MRI/VOTCLOC_22324/DATA/images")
-    # exclude = ("manual","test", "multisite", "pilot", "ME","check")
-    # dcm_sum_df2 = dcm_dir_summary(lab_project_dir,exclude)
+    # exclude = ["manual","test", "multisite", "pilot", "ME","check", "Kepa"]
+    # output_path = Path('/bcbl/home/public/Gari/VOTCLOC/main_exp/dicom/base_dicom_check_Dec-5.csv')
+    # dcm_sum_df = dcm_dir_summary(lab_project_dir,output_path,exclude)
     # # apply set to all the list
     # # dcm_sum_df = dcm_sum_df.applymap(lambda x: set(x) if isinstance(x, tuple) else x)
     # # store the dcm_sum_df because it takes so many time...
-    output_dir = '/bcbl/home/public/Gari/VOTCLOC/main_exp/dicom'
-    # dcm_sum_df.to_csv(os.path.join(output_dir,"base_dicom_check_oct-29.csv"), index=False)
-    dcm_sum_df = pd.read_csv(os.path.join(output_dir, 'base_dicom_check_Nov-05.csv'))
     # # do the same thing for the manual subdir and store the output
-    # manual_lab_project_dir = Path("/export/home/tlei/lab/MRI/VOTCLOC_22324/DATA/images/manual")
-    # exclude = ("test", "multisite", "pilot","Kepa")
-    # manueal_dcm_sum_df = dcm_dir_summary(manual_lab_project_dir,exclude)
-    # # apply set to all the list
-    # # manueal_dcm_sum_df = manueal_dcm_sum_df.applymap(lambda x: set(x) if isinstance(x, tuple) else x)
-    # # store the dcm_sum_df because it takes so many time...
-    # output_dir = "/bcbl/home/public/Gari/VOTCLOC/main_exp/dicom"
-    # manueal_dcm_sum_df.to_csv(os.path.join(output_dir,"manual_dicom_check_oct-29.csv"), index=False)
-    manueal_dcm_sum_df = pd.read_csv(os.path.join(output_dir, 'manual_dicom_check_Nov-05.csv'))
-    # merge the 2 dcm summary
-    dcm_merged = pd.concat([dcm_sum_df, manueal_dcm_sum_df], ignore_index=True)
-    # summarize the lab note
-    lab_note_path = Path('/bcbl/home/public/Gari/VOTCLOC/main_exp/VOTCLOC_subses_list.xlsx')
-    lab_note_df = read_lab_note(lab_note_path)
 
-    # merge 2 df to get the corresponding correct sub and session for each dcm dir
-    # the info will be stored in a df
-    # according to the mapping df, create symlink and echo the session need manual correction
-    dcm_merged['_date_list'] = dcm_merged['acq_date'].apply(
-        lambda x: x if isinstance(x, set) else {x},
-    )
-    # this will not work because the reading of csv will not perceve the class set
-    dcm_mergedx = dcm_merged.explode('_date_list', ignore_index=True).rename(
-        columns={'_date_list': 'date'},
+    # read and merge the 2 dcm summary
+
+    output_dir = '/bcbl/home/public/Gari/VOTCLOC/main_exp/dicom'
+    dcm_dir = '/bcbl/home/public/Gari/VOTCLOC/main_exp/dicom'
+    dcm_sum_df = pd.read_csv(os.path.join(dcm_dir, 'base_dicom_check_Nov-05.csv'))
+    manual_dcm_sum_df = pd.read_csv(os.path.join(dcm_dir, 'manual_dicom_check_Nov-05.csv'))
+    dcm_merged = pd.concat([dcm_sum_df, manual_dcm_sum_df], ignore_index=True)
+    # first distinguish the origin of dcm either from base of manual
+    dcm_merged['origin'] = dcm_merged['lab_project_dir'].apply(
+        lambda x: 'manual' if 'manual' in str(x).lower() else 'base',
     )
     # apply the dir name parser to sub and ses
-    dcm_mergedx['sub_ses'] = dcm_mergedx['dir_name'].apply(process_session)
+    dcm_merged[['sub','ses_guess']] = dcm_merged['dir_name'].apply(guess_subsesid_from_dcm).apply(pd.Series)
+    # sep the ses_guess to ses and note
+    dcm_merged[['ses','suffix','note']] = dcm_merged['ses_guess'].apply(get_ses_suffix).apply(pd.Series)
+    # expand the acq_date if it is set and make it a list
+    dcm_merged['acq_date'] = dcm_merged['acq_date'].str.strip("{}").str.replace("'", '').str.split(',')
+    # give a note, if the session have multiple date, then mark it as 
+    dcm_merged.loc[ dcm_merged['acq_date'].apply(len)>1,'note'] = 'wrong'
+    dcm_merged.loc[ dcm_merged['session_correct']==0,'note'] = 'wrong'
+    dcm_expand = dcm_merged.explode('acq_date').reset_index(drop=True)
+    dcm_expand['date'] = dcm_expand['acq_date']
 
-    # now give label to each of the session
-    dcm_mergedx[['dcm_sub', 'dcm_ses']] = dcm_mergedx['sub_ses'].str.extract(
-        r'sub-(\d{2})_ses-(\d{2})',
-    )
-    dcm_mergedx[['ses_suffix', 'ses_label']] = dcm_mergedx['sub_ses'].apply(
-        lambda x: pd.Series(get_ses_suffix(x)),
+    # dcm_expand.loc[(dcm_expand['sub']=='05') & (dcm_expand['ses']=='08'),:]
+    # check the ones with suffix
+    # dcm_merged[dcm_merged['ses_guess'].apply(lambda x: len(x)>2)]
+
+    # summarize the lab note
+    lab_note_path = Path('/bcbl/home/public/Gari/VOTCLOC/main_exp/VOTCLOC_subses_list.xlsx')
+    lab_note = read_lab_note(lab_note_path)
+
+    # clean the ses we are not using
+    keywords = ['t', 'lost', 'wrong', 'ME', 'failed', 'No', 'bad','-']
+    pattern = '|'.join(keywords)
+    lab_note = lab_note[~lab_note['ses'].str.contains(pattern, case=False, na=False)]
+    # make sure the sub ses and date are all str
+    lab_note['sub'] = lab_note['sub'].astype(str).str.zfill(2)
+    lab_note['ses'] = lab_note['ses'].astype(str)
+    lab_note['date'] = lab_note['date'].astype(str).str.strip()
+    
+    dcm_expand['sub'] = dcm_expand['sub'].astype(str).str.zfill(2)
+    dcm_expand['ses'] = dcm_expand['ses'].astype(str)
+    dcm_expand['date'] = dcm_expand['date'].astype(str).str.strip()
+
+
+    #lab_note.loc[(lab_note['sub']=='05') & (lab_note['ses']=='08'),:]
+    # Convert to datetime
+    # dcm_expand['datetime'] = pd.to_datetime(dcm_expand['acq_date'] + ' ' + dcm_expand['acq_time'], format='mixed')
+
+    # lab_note['datetime'] = pd.to_datetime(lab_note['date'] + ' ' + lab_note['time_start'].apply(str),format='mixed')
+
+    # # THEN do merge_asof
+    # dcm_expand = dcm_expand.sort_values('datetime')
+    # lab_note = lab_note.sort_values('datetime')
+
+    # merged = pd.merge_asof(dcm_expand, lab_note, on='datetime',
+    #                     tolerance=pd.Timedelta('30min'), 
+    #                     direction='nearest',
+    #                     suffixes=('_dcm', '_lab'))
+
+    # merge 2 df to get the corresponding correct sub and session for each dcm dir
+    merged = pd.merge(
+        lab_note,
+        dcm_expand, 
+        on=['sub','date'], 
+        how = 'outer',
+        suffixes=('_from_note', '_from_dcm'),
+        indicator=True
     )
 
-    merged = dcm_mergedx.merge(
-        lab_note_df,
-        left_on=['dcm_sub', 'date'],
-        right_on=['sub', 'date'],
-        how='right',
-    )
+    # manual edit:
+    # sub-03_ses-04 Jan-29 DWI session
+ 
+    merged.sort_values(['sub','ses_from_note']).to_csv('/bcbl/home/public/Gari/VOTCLOC/main_exp/dcm_labnote_summary.csv', index=False)
+
+    #merged.loc[(merged['sub']=='03') & (merged['ses']=='04'),:]
 
     # start to getting the mapping info
-    sub_ses_group = merged.groupby(['sub', 'ses'])
+    # only get the both
+    merged= merged[merged['_merge']=='both']
+
+    sub_ses_group = merged.groupby(['sub', 'ses_from_note'])
     # create symlink
     force = True
     # after everything, rerun all the dcm conversion
@@ -321,17 +384,40 @@ def main():
             )
             try:
                 info = sub_ses_group.get_group((sub, ses))
-
+                # clean the duplicated, drop the manual part 
+                info=info.sort_values('origin')
+                info=info.drop_duplicates(subset=['sub','ses_from_note','date', 'note','number_of_protocal'], keep = 'first')
+                # drop the wrong upload sub-01_ses-01 with autoupload
+                idx_to_drop = info.index[
+                        (info['number_of_protocal']==26) ]
+                info = info.drop(idx_to_drop)
+ 
+                if len(info) > 1 or 'wrong' in info['note'].values:
+                    # if there are multiple dcm folder for the same session:
+                    if len(info) == 1 and info['note'].item() == 'wrong':
+                        errors.append((sub, ses))
+                    elif len(info) > 1:
+                        idx_to_drop = info.index[
+                                (info['note']=='wrong') ]
+                        info = info.drop(idx_to_drop)
+                        errors.append((sub, ses))
+                    
                 if len(info) > 1:
+                    print(f'sub-{sub}_ses-{ses}')
+                    print(info[['number_of_protocal', 'origin','note','dir_name']])
+
+                    # 1 if info is wrong, append it to error
+                    if info['note'].item() == 'wrong'
+                        errors.append((sub, ses))
+
                     # 1. auto upload and the manual mixed we drop the manual part and check
                     if len(info['lab_project_dir'].unique()) > 1:
                         idx_to_drop = info.index[
-                            ~ info['lab_project_dir'].apply(
-                                lambda p : str(p).endswith('images'),
+                                (info['number_of_protocal']<50)
                             )
                         ]
                         info = info.drop(idx_to_drop)
-                    # we need to compare the info
+                    # after drop the manual and autp upload part
                     if len(info) > 1:
                         print(f'$$need manual correction sub={sub},ses={ses}')
                         print(
