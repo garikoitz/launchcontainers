@@ -21,27 +21,13 @@ HOME_DIR="$baseP/singularity_home"
 # for prfprepare:
 license_path="$baseP/BIDS/.license"
 
-
-
-##### For each container
-#####
-
-### for prfanalyze-vista:
-step="prfanalyze-vista"
-version='2.2.1'
-qos="regular" # regular or test
-mem="10G"
-cpus="20"
-time="12:00:00" #time="00:10:00" 10:00:00
-task="retFF" # retCB retRW retFF
-# retfixRW retfixFF retfixRWblock01 retfixRWblock02 retfixRWblock
-
 # json input
 json_dir="$baseP/code/${step}_jsons"
 # subseslist dir:
 script_dir="/scratch/tlei/soft/launchcontainers/MR_pipelines/04_fMRI_ret"
 code_dir=$baseP/code
 sif_path="/scratch/tlei/containers/${step}_${version}.sif"
+
 log_note=$1
 subses_name=$2 
 subses_list_dir=$code_dir/$subses_name

@@ -27,6 +27,13 @@
 # current_time=$(date +"%Y-%m-%d_%H-%M-%S")
 module load Apptainer/1.2.4
 
+# Set local temp directory (not NFS)
+export APPTAINER_TMPDIR=/tmp/$SLURM_JOB_ID
+mkdir -p $APPTAINER_TMPDIR
+
+# Optional: set cache to local storage too
+export APPTAINER_CACHEDIR=/tmp/$USER/apptainer_cache
+mkdir -p $APPTAINER_CACHEDIR
 
 cmd="unset PYTHONPATH; singularity run \
 	-B /scratch:/scratch

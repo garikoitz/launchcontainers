@@ -40,20 +40,21 @@ def check_prfanalyze_errs(folder_path):
     allowed_prefixes = ('INFO:', 'real', 'user', 'sys')
     for err_file in err_files:
         err_file_path = os.path.join(folder_path, err_file)
-
-        with open(err_file_path) as f:
-            lines = f.readlines()
-        error_lines = []
-        for line in lines:
-            stripped_line = line.strip()
-            if not stripped_line:
-                continue
-            if not stripped_line.startswith(allowed_prefixes):
-                error_lines.append(stripped_line)
-        if error_lines:
-            print(f'\n {err_file} has problems ')
-            print(error_lines)
-
+        try:
+            with open(err_file_path) as f:
+                lines = f.readlines()
+            error_lines = []
+            for line in lines:
+                stripped_line = line.strip()
+                if not stripped_line:
+                    continue
+                if not stripped_line.startswith(allowed_prefixes):
+                    error_lines.append(stripped_line)
+            if error_lines:
+                print(f'\n {err_file} has problems ')
+                print(error_lines)
+        except Exception as e:
+            print(f'Could not read {err_file}: {e}')
 
 def check_prfanalyze_logs(folder_path):
     # Find all .out files in the folder

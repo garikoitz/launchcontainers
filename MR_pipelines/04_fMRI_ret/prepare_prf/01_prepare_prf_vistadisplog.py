@@ -198,7 +198,7 @@ def main():
     # for bcbl /bcbl/home/public/Gari/VOTCLOC/main_exp
     # for dipc it is /scratch/tlei/VOTCLOC
     basedir = '/scratch/tlei/VOTCLOC'
-    subseslist_fpath = path.join(basedir, 'code', 'subseslist_jun16.txt')
+    subseslist_fpath = path.join(basedir, 'code', 'subseslist_ret_normal.txt')
     subseslist = pd.read_csv(subseslist_fpath, sep=',', header=0, dtype='str')
     bids_folder_name = 'BIDS'
     force = True
