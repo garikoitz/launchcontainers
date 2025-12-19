@@ -80,7 +80,7 @@ FacesvsLEXPER:
 
 FacesvsAllnoFace:
   positive: ["face"]
-  negative: ["SC", "CS", "FF", "bodylimb"]
+  negative: ["SC", "CS", "FF", "bodylimb","RW"]
 
 LimbsvsNull:
   positive: ["bodylimb"]
@@ -100,7 +100,7 @@ LimbsvsLEXPER:
 
 LimbsvsAllnoLimbs:
   positive: ["bodylimb"]
-  negative: ["SC", "CS", "FF", "face"]
+  negative: ["SC", "CS", "FF", "face","RW"]
 
 RWvsCS:
   positive: ["RW"]

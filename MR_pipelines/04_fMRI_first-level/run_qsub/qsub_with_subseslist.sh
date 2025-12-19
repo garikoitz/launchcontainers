@@ -26,7 +26,7 @@ task=fLoc
 # start_scans: number of scans started:
 start_scans=6
 # space
-space=fsnative
+space=T1w
 # output analysis name
 out_name=final_v2
 # path to contrast yaml, you can define any kind of yaml under any place
