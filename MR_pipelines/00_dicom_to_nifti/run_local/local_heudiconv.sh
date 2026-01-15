@@ -26,10 +26,10 @@ script_dir=/export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/00_dicom_to
 subseslist_name=$2 #$codedir/00_heudiconv/subseslist_heudiconv.txt
 subseslist_path=$codedir/$2
 heuristicfile=$script_dir/heuristic/heuristic_${project}.py
-sing_path=/bcbl/home/public/Gari/singularity_images/heudiconv_1.3.2.sif
+sing_path=/bcbl/home/public/Gari/containers/heudiconv_1.3.4.sif
 
 analysis_name=$3 #may_launch_25ses
-logdir=${outputdir}/log_heudiconv/${analysis_name}_$(date +"%Y-%m-%d")/${step}
+logdir=${basedir}/log_heudiconv/${analysis_name}_$(date +"%Y-%m-%d")/${step}
 echo "The logdir is $logdir"
 echo "The outputdir is $outputdir"
 mkdir -p $logdir
@@ -39,7 +39,7 @@ echo "reading the subses"
 line_number=0
 # Read the file line by line
 # Loop through the subseslist
-while IFS=',' read -r sub ses; do
+while IFS=',' read -r sub ses ; do
     echo "line number is $line_number sub is $sub ses is $ses"
     ((line_number++))  # Increment line counter
 

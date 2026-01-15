@@ -13,6 +13,7 @@ echo "Get the codedir: ${codedir}"
 echo "Start scans is: ${start_scans}"
 echo "The mode is dry_run: ${dry_run}"
 echo "Output name is: ${out_name}"
+echo "output SPACE is ${space}"
 echo "Selected runs: ${selected_runs}"
 
 source ~/tlei/soft/miniconda3/etc/profile.d/conda.sh
