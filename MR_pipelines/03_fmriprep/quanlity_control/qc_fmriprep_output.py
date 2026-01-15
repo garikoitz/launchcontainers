@@ -462,13 +462,15 @@ def print_task_summary(results: list[SessionResult], task_pattern: str, task_nam
                     task_names = r.get_task_names()
                     if task_names:
                         console.print(
-                            f"      {r.session_id} (no {task_name} runs, has: {', '.join(sorted(task_names))})")
+                            f"      {r.session_id} (no {task_name} runs, has: {', '.join(sorted(task_names))})",
+                        )
                     else:
                         console.print(f'      {r.session_id} (no runs at all)')
 
         if incomplete_sessions:
             console.print(
-                f'\n    [yellow]Incomplete/Not enough runs ({len(incomplete_sessions)}):[/yellow]')
+                f'\n    [yellow]Incomplete/Not enough runs ({len(incomplete_sessions)}):[/yellow]',
+            )
             for r in sorted(incomplete_sessions, key=lambda x: x.session_id):
                 task_runs = r.get_runs_by_task(task_pattern)
                 expected = r.get_expected_run_count(task_pattern)
@@ -534,36 +536,42 @@ def print_cross_task_analysis(results: list[SessionResult]):
                 sessions_by_status['partial'].append(r)
 
     console.print(
-        f"\n  [bold green]Complete for both tasks:[/bold green] {len(sessions_by_status['complete_both'])}")
+        f"\n  [bold green]Complete for both tasks:[/bold green] {len(sessions_by_status['complete_both'])}",
+    )
 
     console.print(
-        f"\n  [bold red]Sessions with no data:[/bold red] {len(sessions_by_status['no_data'])}")
+        f"\n  [bold red]Sessions with no data:[/bold red] {len(sessions_by_status['no_data'])}",
+    )
     if sessions_by_status['no_data']:
         for r in sorted(sessions_by_status['no_data'], key=lambda x: x.session_id):
             console.print(f'    {r.session_id}')
 
     console.print(
-        f"\n  [bold red]Sessions missing BOTH tasks:[/bold red] {len(sessions_by_status['missing_both'])}")
+        f"\n  [bold red]Sessions missing BOTH tasks:[/bold red] {len(sessions_by_status['missing_both'])}",
+    )
     if sessions_by_status['missing_both']:
         for r in sorted(sessions_by_status['missing_both'], key=lambda x: x.session_id):
             console.print(f'    {r.session_id}')
 
     console.print(
-        f"\n  [bold yellow]Sessions missing ONLY ret:[/bold yellow] {len(sessions_by_status['missing_only_ret'])}")
+        f"\n  [bold yellow]Sessions missing ONLY ret:[/bold yellow] {len(sessions_by_status['missing_only_ret'])}",
+    )
     if sessions_by_status['missing_only_ret']:
         for r in sorted(sessions_by_status['missing_only_ret'], key=lambda x: x.session_id):
             ret_summary = r.get_task_summary('ret')
             console.print(f'    {r.session_id} (ret: {ret_summary})')
 
     console.print(
-        f"\n  [bold yellow]Sessions missing ONLY floc:[/bold yellow] {len(sessions_by_status['missing_only_floc'])}")
+        f"\n  [bold yellow]Sessions missing ONLY floc:[/bold yellow] {len(sessions_by_status['missing_only_floc'])}",
+    )
     if sessions_by_status['missing_only_floc']:
         for r in sorted(sessions_by_status['missing_only_floc'], key=lambda x: x.session_id):
             floc_summary = r.get_task_summary('floc')
             console.print(f'    {r.session_id} (floc: {floc_summary})')
 
     console.print(
-        f"\n  [bold cyan]Sessions with partial completion:[/bold cyan] {len(sessions_by_status['partial'])}")
+        f"\n  [bold cyan]Sessions with partial completion:[/bold cyan] {len(sessions_by_status['partial'])}",
+    )
     if sessions_by_status['partial']:
         for r in sorted(sessions_by_status['partial'], key=lambda x: x.session_id):
             ret_summary = r.get_task_summary('ret')

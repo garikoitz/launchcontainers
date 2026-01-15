@@ -204,7 +204,8 @@ def print_summary(results: list[PRFCheckResult], files_per_hemi: int):
             console.print(f'  [yellow]Incomplete hemispheres (L≠R): {incomplete_hemis}[/yellow]')
         if wrong_count > 0:
             console.print(
-                f'  [yellow]Wrong file count (L=R but ≠{files_per_hemi}): {wrong_count}[/yellow]')
+                f'  [yellow]Wrong file count (L=R but ≠{files_per_hemi}): {wrong_count}[/yellow]',
+            )
 
 
 def print_detailed_results(results: list[PRFCheckResult], files_per_hemi: int):

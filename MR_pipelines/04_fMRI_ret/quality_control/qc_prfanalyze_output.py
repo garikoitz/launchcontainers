@@ -223,7 +223,8 @@ def print_summary(results: list[SessionResult]):
     console.print('\n[bold]Summary:[/bold]')
     console.print(f'  Total sessions: {total_sessions}')
     console.print(
-        f'  [green]✓ Complete sessions: {complete_sessions}/{sessions_with_data}[/green]')
+        f'  [green]✓ Complete sessions: {complete_sessions}/{sessions_with_data}[/green]',
+    )
     console.print(f'  [red]✗ Incomplete sessions: {incomplete_sessions}[/red]')
 
     console.print('\n[bold]Runs:[/bold]')
