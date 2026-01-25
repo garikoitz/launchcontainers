@@ -15,7 +15,7 @@
 project=votcloc
 basedir=/bcbl/home/public/Gari/VOTCLOC/main_exp
 outputdir=$basedir/raw_nifti
-dcm_dir=/bcbl/data/MRI/VOTCLOC_22324/DATA/images #/base/dicom # or /bcbl/data/MRI/VOTCLOC_22324/DATA/images
+dcm_dir=/base/dicom #/base/dicom # or /bcbl/data/MRI/VOTCLOC_22324/DATA/images
 
 #### below are not going to be changed
 codedir=$basedir/code
@@ -25,7 +25,7 @@ script_dir=/export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/00_dicom_to
 subseslist_name=$2 #$codedir/00_heudiconv/subseslist_heudiconv.txt
 subseslist_path=$codedir/$2
 heuristicfile=$script_dir/heuristic/heuristic_${project}.py
-sing_path=/bcbl/home/public/Gari/singularity_images/heudiconv_1.3.2.sif
+sing_path=/bcbl/home/public/Gari/containers/heudiconv_1.3.4.sif
 
 analysis_name=$3 #may_launch_25ses
 logdir=${outputdir}/log_heudiconv/${analysis_name}_$(date +"%Y-%m-%d")/${step}
@@ -37,7 +37,7 @@ echo "reading the subses"
 # Initialize a line counter
 line_number=0
 # Read the file line by line
-while IFS=, read -r sub ses; do
+while IFS=, read -r sub ses _ ; do
     echo "line number is $line_number sub is $sub ses is $ses"
     # Increment line counter
     ((line_number++))
@@ -67,3 +67,4 @@ done < "$subseslist_path"
 
 cp "$0" "$logdir"
 cp "$script_dir/src_heudiconv_${step}.sh" "$logdir"
+cp "$subseslist_path" "$logdir/subseslist.txt"

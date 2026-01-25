@@ -47,7 +47,7 @@ function nordic_fmri(tbPath, src_dir, output_dir, sub, ses, nordic_scans_end, do
     system(['chmod -R 777 ', out_sesP]);
 
     % Detect all T1w.nii.gz files
-    funcmag_pattern = fullfile(src_sesP, ['*_magnitude.nii.gz']);
+    funcmag_pattern = fullfile(-, ['*_magnitude.nii.gz']);
     src_mags = dir(funcmag_pattern);
     % Get the number of runs
     num_runs = length(src_mags);
