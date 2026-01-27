@@ -419,7 +419,11 @@ def check_all_sessions(raw_data_dir: Path, subseslist_file: Optional[Path] = Non
     # Sort results by session_id for consistent output
     combined_results.sort(key=lambda x: x.session_id)
     
-    return combined_results
+    # Convert physical_results dict to list for export
+    all_physical_sessions = [result for result in physical_results.values()]
+    all_physical_sessions.sort(key=lambda x: (x.subject, x.session))
+    
+    return combined_results, all_physical_sessions
 
 
 def export_csv_summary(results: List[SessionCheck], output_file: Path):
@@ -477,13 +481,14 @@ def print_expected_session_check(results: List[SessionCheck]):
             console.print(f"  sub-{subject}/{session}")
 
 
-def export_session_lists(results: List[SessionCheck], output_dir: Path):
+def export_session_lists(results: List[SessionCheck], output_dir: Path, physical_sessions_data: List[SessionCheck] = None):
     """
-    Export three files: complete sessions, incomplete sessions, and missing sessions.
+    Export session lists files.
     
     Args:
-        results: List of session check results
+        results: List of combined session check results (for 11x10 expected sessions)
         output_dir: Directory to save the output files
+        physical_sessions_data: List of all physical session results (before combining)
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -497,6 +502,7 @@ def export_session_lists(results: List[SessionCheck], output_dir: Path):
     complete = [r for r in results if r.is_complete and r.exists]
     incomplete = [r for r in results if not r.is_complete and r.exists]
     
+    # ============= PART 1: Expected 11x10 Sessions =============
     # Export complete sessions
     complete_file = output_dir / "complete_sessions.txt"
     with open(complete_file, 'w') as f:
@@ -522,22 +528,59 @@ def export_session_lists(results: List[SessionCheck], output_dir: Path):
             f.write(f"{subject},{session.replace('ses-', '')}\n")
     console.print(f"[red]✗ Exported missing sessions ({len(missing_sessions)}): {missing_file}[/red]")
     
+    # ============= PART 2: All Physical Sessions =============
+    if physical_sessions_data:
+        # Export all physical sessions with their content details
+        all_physical_file = output_dir / "all_physical_sessions.txt"
+        with open(all_physical_file, 'w') as f:
+            f.write("sub,ses,DWI,func_floc,func_prf,t1,t2,levels\n")
+            for r in sorted(physical_sessions_data, key=lambda x: (x.subject, x.session)):
+                if not r.exists:
+                    continue
+                
+                # Check modalities
+                has_dwi, _ = r.has_dwi()
+                has_floc, _ = r.has_floc()
+                has_ret, _ = r.has_ret()
+                has_t1, _ = r.has_t1_mp2rage()
+                has_t2, _ = r.has_t2()
+                
+                # Format depth as integer
+                depth_str = str(int(r.dicom_depth)) if r.dicom_depth is not None else ""
+                
+                f.write(f"{r.subject},{r.session.replace('ses-', '')},"
+                       f"{str(has_dwi)},{str(has_floc)},{str(has_ret)},"
+                       f"{str(has_t1)},{str(has_t2)},{depth_str}\n")
+        
+        console.print(f"[cyan]📋 Exported all physical sessions ({len([r for r in physical_sessions_data if r.exists])}): {all_physical_file}[/cyan]")
+    
     # Summary file
     summary_file = output_dir / "session_summary.txt"
     with open(summary_file, 'w') as f:
         f.write("DICOM Session Check Summary\n")
         f.write("=" * 50 + "\n\n")
+        f.write("PART 1: Expected 11x10 Sessions\n")
+        f.write("-" * 50 + "\n")
         f.write(f"Expected sessions (11 subjects × 10 sessions): 110\n")
         f.write(f"Found sessions: {len(found_sessions)}\n")
         f.write(f"Complete sessions: {len(complete)}\n")
         f.write(f"Incomplete sessions: {len(incomplete)}\n")
         f.write(f"Missing sessions: {len(missing_sessions)}\n\n")
         
+        if physical_sessions_data:
+            physical_count = len([r for r in physical_sessions_data if r.exists])
+            f.write("PART 2: All Physical Sessions\n")
+            f.write("-" * 50 + "\n")
+            f.write(f"Total physical session directories: {physical_count}\n")
+            f.write(f"(includes ses-02part2, ses-04part1june26, etc.)\n\n")
+        
         f.write("Files generated:\n")
-        f.write(f"  - complete_sessions.txt: {len(complete)} sessions\n")
-        f.write(f"  - incomplete_sessions.txt: {len(incomplete)} sessions\n")
-        f.write(f"  - missing_sessions.txt: {len(missing_sessions)} sessions\n")
-        f.write(f"  - session_data.txt: TXT format with modality flags\n")
+        f.write(f"  - complete_sessions.txt: {len(complete)} sessions (from expected 110)\n")
+        f.write(f"  - incomplete_sessions.txt: {len(incomplete)} sessions (from expected 110)\n")
+        f.write(f"  - missing_sessions.txt: {len(missing_sessions)} sessions (from expected 110)\n")
+        f.write(f"  - session_data.txt: Expected sessions with modality flags\n")
+        if physical_sessions_data:
+            f.write(f"  - all_physical_sessions.txt: All {physical_count} physical session directories\n")
     console.print(f"[blue]ℹ Exported summary: {summary_file}[/blue]")
 
 
@@ -723,7 +766,7 @@ def main(
         console.print(f"  Parallel jobs: {n_jobs}")
         console.print(f"  Verbose mode: {verbose}\n")
     
-    results = check_all_sessions(raw_data_dir, subseslist, n_jobs, check_expected=True)
+    results, all_physical = check_all_sessions(raw_data_dir, subseslist, n_jobs, check_expected=True)
     
     if not results:
         console.print("[yellow]No sessions found to check.[/yellow]")
@@ -752,7 +795,7 @@ def main(
     
     # Export files if output directory specified
     if output_dir:
-        export_session_lists(results, output_dir)
+        export_session_lists(results, output_dir, physical_sessions_data=all_physical)
         
         # Export CSV summary
         csv_file = output_dir / "session_data.txt"
