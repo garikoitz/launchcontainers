@@ -1,0 +1,159 @@
+Checking DICOM file counts and modalities
+  Raw data dir: /export/home/tlei/public/Gari/VOTCLOC/main_exp/dicom_symlink
+  Parallel jobs: 30
+  Verbose mode: False
+
+  Checking DICOM counts... sub-11/ses-07 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100% 0:00:00
+✓ Checked: sub-01/ses-01
+✓ Checked: sub-01/ses-02
+✓ Checked: sub-01/ses-03
+✓ Checked: sub-01/ses-04
+✓ Checked: sub-01/ses-05
+✓ Checked: sub-01/ses-06
+✓ Checked: sub-01/ses-07
+✓ Checked: sub-01/ses-08
+✓ Checked: sub-01/ses-09
+✓ Checked: sub-01/ses-10
+✓ Checked: sub-02/ses-01
+✓ Checked: sub-02/ses-02
+✓ Checked: sub-02/ses-03
+✓ Checked: sub-02/ses-04
+✓ Checked: sub-02/ses-05
+✓ Checked: sub-02/ses-06
+ℹ Combined: sub-03/ses-01 (from ses-01, ses-012)
+✓ Checked: sub-03/ses-01
+✓ Checked: sub-03/ses-02
+✓ Checked: sub-03/ses-03
+ℹ Combined: sub-03/ses-04 (from ses-04, ses-0402, ses-04struct)
+✓ Checked: sub-03/ses-04
+✓ Checked: sub-03/ses-05
+✓ Checked: sub-03/ses-06
+✓ Checked: sub-03/ses-07
+✓ Checked: sub-03/ses-09
+✓ Checked: sub-03/ses-10
+✓ Checked: sub-04/ses-01
+✓ Checked: sub-04/ses-02
+✓ Checked: sub-04/ses-03
+✓ Checked: sub-04/ses-04
+✓ Checked: sub-04/ses-05
+✓ Checked: sub-04/ses-06
+✓ Checked: sub-04/ses-07
+✓ Checked: sub-04/ses-08
+✓ Checked: sub-04/ses-09
+✓ Checked: sub-04/ses-10
+✓ Checked: sub-05/ses-01
+✓ Checked: sub-05/ses-02
+✓ Checked: sub-05/ses-03
+ℹ Combined: sub-05/ses-04 (from ses-04, ses-04struct)
+✓ Checked: sub-05/ses-04
+✓ Checked: sub-05/ses-05
+✓ Checked: sub-05/ses-06
+✓ Checked: sub-05/ses-07
+✓ Checked: sub-05/ses-09
+✓ Checked: sub-05/ses-10
+✓ Checked: sub-06/ses-01
+✓ Checked: sub-06/ses-02
+✓ Checked: sub-06/ses-03
+✓ Checked: sub-06/ses-04
+✓ Checked: sub-06/ses-05
+✓ Checked: sub-06/ses-06
+✓ Checked: sub-06/ses-07
+✓ Checked: sub-06/ses-08
+✓ Checked: sub-06/ses-09
+✓ Checked: sub-06/ses-10
+ℹ Combined: sub-07/ses-01 (from ses-01, ses-01dwi)
+✓ Checked: sub-07/ses-01
+ℹ Combined: sub-07/ses-02 (from ses-02, ses-02struc)
+✓ Checked: sub-07/ses-02
+✓ Checked: sub-07/ses-03
+✓ Checked: sub-07/ses-04
+⚠ Checked: sub-07/ses-05 (has issues)
+✓ Checked: sub-07/ses-06
+✓ Checked: sub-07/ses-07
+✓ Checked: sub-07/ses-08
+✓ Checked: sub-07/ses-09
+✓ Checked: sub-07/ses-10
+✓ Checked: sub-08/ses-01
+✓ Checked: sub-08/ses-02
+✓ Checked: sub-08/ses-03
+✓ Checked: sub-08/ses-04
+✓ Checked: sub-08/ses-05
+✓ Checked: sub-08/ses-06
+✓ Checked: sub-08/ses-07
+✓ Checked: sub-08/ses-08
+✓ Checked: sub-08/ses-09
+✓ Checked: sub-08/ses-10
+✓ Checked: sub-09/ses-01
+✓ Checked: sub-09/ses-02
+✓ Checked: sub-09/ses-03
+✓ Checked: sub-09/ses-04
+✓ Checked: sub-09/ses-05
+✓ Checked: sub-09/ses-06
+✓ Checked: sub-09/ses-07
+✓ Checked: sub-09/ses-08
+✓ Checked: sub-09/ses-09
+✓ Checked: sub-09/ses-10
+✓ Checked: sub-10/ses-01
+ℹ Combined: sub-10/ses-02 (from ses-02, ses-02part2)
+✓ Checked: sub-10/ses-02
+ℹ Combined: sub-10/ses-03 (from ses-03, ses-03part2)
+✓ Checked: sub-10/ses-03
+ℹ Combined: sub-10/ses-04 (from ses-04part1june26, ses-04part2)
+✓ Checked: sub-10/ses-04
+ℹ Combined: sub-10/ses-06 (from ses-06, ses-06part2)
+✓ Checked: sub-10/ses-06
+✓ Checked: sub-10/ses-07
+✓ Checked: sub-10/ses-08
+✓ Checked: sub-10/ses-09
+✓ Checked: sub-10/ses-10
+✓ Checked: sub-11/ses-01
+✓ Checked: sub-11/ses-02
+✓ Checked: sub-11/ses-03
+✓ Checked: sub-11/ses-04
+✓ Checked: sub-11/ses-05
+✓ Checked: sub-11/ses-06
+✓ Checked: sub-11/ses-07
+✓ Checked: sub-11/ses-08
+✓ Checked: sub-11/ses-09
+✓ Checked: sub-11/ses-10
+
+Summary:
+  Total logical sessions: 103
+  Combined sessions: 9
+  ✓ Complete sessions: 102
+  ✗ Incomplete sessions: 1
+
+Modality Summary:
+┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┓
+┃ Modality        ┃ Complete Sessions ┃ Coverage       ┃
+┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━┩
+│ T1 MP2RAGE      │ 103               │ 103/103 (100%) │
+│ T2              │ 103               │ 103/103 (100%) │
+│ DWI             │ 102               │ 102/103 (99%)  │
+│ fLoc (≥10 runs) │ 103               │ 103/103 (100%) │
+│ Retinotopy      │ 103               │ 103/103 (100%) │
+└─────────────────┴───────────────────┴────────────────┘
+
+Detailed Session Reports:
+
+
+================================================================================
+✗ INCOMPLETE sub-07/ses-05
+================================================================================
+
+T1 MP2RAGE:
+
+T2:
+
+DWI:
+  ✗ Incomplete
+  b06_PA:
+  dir104_AP:
+    ✗ Pha: Missing
+
+fLoc:
+
+Retinotopy/PRF:
+  RETCB:
+  RETFF:
+  RETRW:

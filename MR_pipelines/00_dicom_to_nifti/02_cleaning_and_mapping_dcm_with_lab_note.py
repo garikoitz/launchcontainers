@@ -370,3 +370,9 @@ def main():
 
     merged.sort_values(['sub','ses_from_note']).to_csv('/bcbl/home/public/Gari/VOTCLOC/main_exp/dcm_bids_mapping_summary.csv', index=False)
 
+'''
+Note: sub-01_ses-01 under image folder have missing files
+sub-05_ses-04 have a 0212 session that have all the structural data
+sub-03_ses--02 need to delete it
+sub-03_ses-032 is from manual, need to delete it from the csv
+'''
