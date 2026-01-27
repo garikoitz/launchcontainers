@@ -123,11 +123,7 @@ def write_subseslist(df: pd.DataFrame, output_file: Path):
     output_df = df[['sub', 'ses']].copy()
     output_df = output_df.sort_values(['sub', 'ses'])
     
-    # Add prefixes for output
-    output_df['sub'] = 'sub-' + output_df['sub']
-    output_df['ses'] = 'ses-' + output_df['ses']
-    
-    # Write with comma separator
+    # Write with comma separator - NO prefixes, just IDs
     output_df.to_csv(output_file, sep=',', index=False)
 
 
