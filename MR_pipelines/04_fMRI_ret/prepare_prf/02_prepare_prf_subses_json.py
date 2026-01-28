@@ -125,7 +125,7 @@ if __name__ == '__main__':
     code_dir = os.path.join(basedir, 'code')
     
     # example: prfprepare prfanalyze-vista prfresult 
-    steps = [ 'prfanalyze-vista'] 
+    steps = ['prfprepare'] 
     force = True
 
     for step in steps:
@@ -133,7 +133,7 @@ if __name__ == '__main__':
         print(f'STEP: {step}')
         print(f'{"="*60}')
         
-        subseslist_path = os.path.join(code_dir, 'subseslist_ret_normal.txt')
+        subseslist_path = os.path.join(code_dir, 'subseslist.txt')
         output_dir = os.path.join(code_dir, f'{step}_jsons')
         template_json = os.path.join(code_dir, '04b_prf', f'{step}.json')
 

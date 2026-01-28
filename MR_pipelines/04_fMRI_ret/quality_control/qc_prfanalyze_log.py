@@ -82,7 +82,7 @@ def check_prfanalyze_logs(folder_path):
                     print(f"subses:sub-{sub}_ses-{ses}, has error task {task}")
 
 # Example usage:
-folder = '/scratch/tlei/VOTCLOC/dipc_prfprepare_logs/fix_all_ses_prepare_2025-12-03'
+folder = '/scratch/tlei/VOTCLOC/dipc_prfprepare_logs/missing_righthemi_2026-01-28'
 
 check_prfprepare_logs(folder)
 

@@ -16,9 +16,13 @@ folder structure:
 
 Need to prepare the folder structure to the above format: symlink for fmriprep and freesurfer
 
+00: before prfprepare, put custom.zip under fsaverage/cusomLabel
+the prfprepare use mri_surf2surf to covert the annots
+
 First we need to prepare the log files using the prepare_prf/01_prepare_prf_vistadisplpg.py
 (Note here: if in the vistadisplog, you are having retfixRW instead of retRW for the Wordcenter condition,
-you need to create a copy/ not a symlink of the orig bids file to make the prf thing work )
+you need to create a copy not a symlink of the orig bids file to make the prf thing work )
+
 for the WC condition, you need to create correct name under fmriprep and bids subsesfunc dir, so that the 
 stimuli name can be picked properly
 
