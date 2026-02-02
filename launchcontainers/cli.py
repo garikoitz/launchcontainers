@@ -68,7 +68,7 @@ def get_parser():
     parser.add_argument(
         '--log-dir', '-l',
         type=str,
-        default=None,
+        default='./logs',
         help='Directory to write lc.log and dask.log into (default: <workdir>/logs)',
     )
     subparsers = parser.add_subparsers(

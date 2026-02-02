@@ -58,7 +58,7 @@ def gen_cmd_prefix(lc_config):
     # define the mount cmd
     path_mount_cmd = ''
     for mount in mount_options:
-        path_mount_cmd += f'--bind {mount}:{mount} '
+        path_mount_cmd += f'--bind {mount}:{mount}:rw '
     # this prefix will give you:
     # first module load apptainer
     # then unset python path
@@ -246,6 +246,7 @@ def gen_RTP2_cmd(
             f'--env MCR_CACHE_ROOT=/flywheel/v0/output '
             f'--env MRTRIX_TMPFILE_DIR=/flywheel/v0/output/tmp '
             f'--env PWD=/flywheel/v0 '
+            f'--env TMPDIR=/flywheel/v0/work '
             f'{container_name} '
             f'-c python run.py 1> {logfilename}.log 2> {logfilename}.err  '
         )
