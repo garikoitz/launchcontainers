@@ -22,12 +22,16 @@ bids_dir_name=BIDS
 codedir=/export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/04_fMRI_first-level
 
 # analysis name of fmriprep #'beforeMar05_US' there is only one analysis now
-fp_name=25.1.4_t2_pial_dummyscan_5
+fp_name=25.1.4_t2-fs_dummyscans-5_bold2anat-t2w_forcebbr
+# space
+space=T1w
+
+
 
 # path to contrast yaml, you can define any kind of yaml under any place
-glm_yaml_path=${codedir}/contrast_votcloc_all.yaml
+glm_yaml_path=${codedir}/contrast_lexper.yaml
 # slice timing ref, default is 0.5 can change
-slice_timing=(0.5)
+slice_timing=0.5
 use_smoothed=False
 
 # cli input of sub and ses
@@ -38,12 +42,11 @@ task=$3
 # number of dummy scans
 start_scans=$4
 # output analysis name
-out_name=new_fmriprep
+out_name=final_v2_test
 
 # if only run for check
 dry_run=$5
 
-space=fsnative
 # log dir
 LOG_DIR=$basedir/l1_surfaces_log/analysis-${out_name}
 mkdir -p "$LOG_DIR"
@@ -63,6 +66,7 @@ echo "get the codedir": ${codedir}
 echo "Start scans is ": ${start_scans}
 echo "The mode is dry_run" ${dry_run}
 echo "output name is ${out_name}"
+echo "output SPACE is ${space}"
 source ~/tlei/soft/miniconda3/etc/profile.d/conda.sh
 conda activate votcloc
 echo "going to run python"

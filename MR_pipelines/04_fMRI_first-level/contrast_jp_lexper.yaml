@@ -1,0 +1,126 @@
+AllvsNull:
+  positive: ["body", "limb", "word", "FF", "CS", "CB", "SC", "adult", "child"]
+  negative: []
+
+PERvsNull:
+  positive: ["SC","CB"]
+  negative: []
+
+LEXvsNull:
+  positive: ["CS", "FF"]
+  negative: []
+
+PERvsLEX:
+  positive: ["SC","CB"]
+  negative: ["CS", "FF"]
+
+RWvsLEX:
+  positive: ["word"]
+  negative: ["CS", "FF"]
+
+RWvsPER:
+  positive: ["word"]
+  negative: ["SC","CB"]
+
+RWvsNull:
+  positive: ["word"]
+  negative: []
+
+RWvsLEXPER:
+  positive: ["word"]
+  negative: ["CS", "FF", "SC","CB"]
+
+RWvsAllnoWordnoLEX:
+  positive: ["word"]
+  negative: ["SC", "body"," limb", "adult", "child"]
+
+RWvsAllnoWord:
+  positive: ["word"]
+  negative: ["CS", "FF", "SC", "CB", "body", "limb", "adult", "child"]
+
+LEXvsAllnoLEXnoRW:
+  positive: ["CS", "FF"]
+  negative: ["SC", "body", "limb",  "adult", "child"]
+
+LEXvsAllnoLEXnoRWnoPER:
+  positive: ["CS", "FF"]
+  negative: ["body", "limb", "adult", "child"]
+
+PERvsAllnoPERnoRW:
+  positive: ["SC"]
+  negative: ["CS", "FF", "body", "limb",  "adult", "child"]
+
+PERvsAllnoPERnoRWnoLEX:
+  positive: ["SC"]
+  negative: ["body", "limb", "adult", "child"]
+
+CSvsFF:
+  positive: ["CS"]
+  negative: ["FF"]
+
+FFvsCS:
+  positive: ["FF"]
+  negative: ["CS"]
+
+FacesvsNull:
+  positive: [ "adult", "child"]
+  negative: []
+
+FacesvsLEX:
+  positive: [ "adult", "child"]
+  negative: ["CS", "FF"]
+
+FacesvsPER:
+  positive: [ "adult", "child"]
+  negative: ["SC","CB"]
+
+FacesvsLEXPER:
+  positive: [ "adult", "child"]
+  negative: ["SC", "CB", "CS", "FF"]
+
+FacesvsAllnoFace:
+  positive: [ "adult", "child"]
+  negative: ["SC", "CS", "FF", "body", "limb","RW"]
+
+LimbsvsNull:
+  positive: ["body", "limb"]
+  negative: []
+
+LimbsvsLEX:
+  positive: ["body", "limb"]
+  negative: ["CS", "FF"]
+
+LimbsvsPER:
+  positive: ["body", "limb"]
+  negative: ["SC","CB"]
+
+LimbsvsLEXPER:
+  positive: ["body", "limb"]
+  negative: ["SC", "CB", "CS", "FF"]
+LimbsvsAllnoLimbs:
+  positive: ["body", "limb"]
+  negative: ["SC", "CS", "FF",  "adult", "child","RW"]
+
+RWvsCS:
+  positive: ["RW"]
+  negative: ["CS"]
+
+RWvsFF:
+  positive: ["RW"]
+  negative: ["FF"]
+
+RWvsFace:
+  positive: ["RW"]
+  negative: [ "adult", "child"]
+
+RWvsLimbs:
+  positive: ["RW"]
+  negative: ["body", "limb"]
+
+RWvsSD:
+  positive: ["RW"]
+  negative: ["SC"]
+
+FacesvsLimbs:
+  positive: [ "adult", "child"]
+  negative: ["body", "limb"]

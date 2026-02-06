@@ -13,6 +13,7 @@ echo "Total runs: ${total_runs}"
 echo "Iterations per config: ${n_iterations}"
 echo "Random seed: ${seed}"
 echo "Output name: ${out_name}"
+echo "Output SPACE: ${space}"
 echo "=================================================="
 
 source ~/tlei/soft/miniconda3/etc/profile.d/conda.sh

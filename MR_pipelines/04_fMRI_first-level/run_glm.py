@@ -247,9 +247,9 @@ def replace_prefix_and_suffix(val):
 
 
 def glm_l1(
-    conc_gii_data_std, design_matrix_std, contrasts,
-    bids_dir, task, space, hemi, subject, session,
-    output_name, use_smoothed=False, sm=None, randrun_idx=None
+    conc_data_std, design_matrix_std, contrasts,
+    bids_dir, task, space, subject, session,
+    output_name, use_smoothed=False, sm=None, randrun_idx=None, hemi=None
 ):
     print('------- glm start running')
     # Define output directory
@@ -263,8 +263,10 @@ def glm_l1(
 
     plot_design_matrix(design_matrix_std)
     plt.savefig(os.path.join(outdir, 'design_matrix.png'))
+    plt.close()
+    
     # Loop across hemispheres
-    Y = np.transpose(conc_gii_data_std)
+    Y = np.transpose(conc_data_std)
     X = np.asarray(design_matrix_std)
 
     labels, estimates = run_glm(Y, X, n_jobs=-1)
@@ -277,7 +279,11 @@ def glm_l1(
             contrast_objs[contrast_id] = []
 
         # Define a name template for output statistical maps (stat-X is replaced later on)
-        outname_base_run = f'sub-{subject}_ses-{session}_task-{task}_hemi-{hemi}_space-{space}_contrast-{contrast_id}_stat-X_statmap.func.gii'
+        if hemi:
+            outname_base_run = f'sub-{subject}_ses-{session}_task-{task}_hemi-{hemi}_space-{space}_contrast-{contrast_id}_stat-X_statmap.func.gii'
+        else:
+            outname_base_run = f'sub-{subject}_ses-{session}_task-{task}_space-{space}_contrast-{contrast_id}_stat-X_statmap.nii.gz'
+        
         if use_smoothed:
             outname_base_run = outname_base_run.replace(
                 '_statmap', f'_desc-smoothed{sm}_statmap',
@@ -302,38 +308,51 @@ def glm_l1(
         p_value = contrast.p_value()
         variance = contrast.effect_variance()
 
-        # Save the value maps as GIFTIs
+        # Save the value maps
         # Effect size
         outname = outname_base_run.replace('stat-X', 'stat-effect')
-        save_statmap_to_gifti(betas, outname)
+        if hemi:
+            save_statmap_to_gifti(betas, outname)
+        else:
+            # For volumetric, save as NIfTI (not implemented yet)
+            print(f"WARNING: Volumetric output not implemented, skipping {outname}")
 
         # t-value
         outname = outname_base_run.replace('stat-X', 'stat-t')
-        save_statmap_to_gifti(t_value, outname)
+        if hemi:
+            save_statmap_to_gifti(t_value, outname)
+        else:
+            print(f"WARNING: Volumetric output not implemented, skipping {outname}")
         
         if not randrun_idx:
             # z-score
             outname = outname_base_run.replace('stat-X', 'stat-z')
-            save_statmap_to_gifti(z_score, outname)
+            if hemi:
+                save_statmap_to_gifti(z_score, outname)
 
             # p-value
             outname = outname_base_run.replace('stat-X', 'stat-p')
-            save_statmap_to_gifti(p_value, outname)
+            if hemi:
+                save_statmap_to_gifti(p_value, outname)
 
             # variance
             outname = outname_base_run.replace('stat-X', 'stat-variance')
-            save_statmap_to_gifti(variance, outname)
+            if hemi:
+                save_statmap_to_gifti(variance, outname)
 
     finished = 1
-    print(f'glm for {hemi} finished')
+    if hemi:
+        print(f'glm for hemi-{hemi} finished')
+    else:
+        print(f'glm for volumetric data finished')
     return finished
 
 
 def prepare_glm_input(
-        bids_dir, fmriprep_dir, label_dir, contrast_fpath,
-        subject, session, output_name, task, start_scans, hemi, space, slice_time_ref,
-        run_list,
-        use_smoothed, sm, apply_label_as_mask: None,
+        bids_dir, fmriprep_dir, fp_layout, label_dir, contrast_fpath,
+        subject, session, output_name, task, start_scans, space, 
+        slice_time_ref, run_list,
+        use_smoothed, sm, apply_label_as_mask, hemi=None
 ):
     '''
     This function is looping for each run of the task to get:
@@ -341,7 +360,7 @@ def prepare_glm_input(
     2. events.tsv
     3. the confounds
 
-    2+3 will help tp create design_matrix
+    2+3 will help to create design_matrix
 
     to generate:
     1. the processed timeseries
@@ -352,92 +371,138 @@ def prepare_glm_input(
     design_matrix
     procesed timeseries
     '''
-    # Final output dictionary for GLM contrast results (to be combined across runslater)
-    gii_allrun = []
+    
+    # Determine if we're working with surface or volumetric data
+    is_surface = space in ['fsnative', 'fsaverage']
+    
+    # Final output dictionary for GLM contrast results (to be combined across runs later)
+    data_allrun = []  # Changed name to be more general
     frame_time_allrun = []
     events_allrun = []
     confounds_allrun = []
     store_l1 = []
+    
     # Loop over runs
     for idx, run_num in enumerate(run_list):
-        print('Processing run', run_num)
+        print(f'Processing run {run_num}')
 
-        # Load GIFTI data and z-score it
-        run = (
-            'run-' + run_num
-        )  # Run string in filename (define as empty string "" if no run label)
-        func_name = (
-            f'sub-{subject}_ses-{session}_task-{task}_{run}_hemi-{hemi}_space-{space}_bold.func.gii'
-        )
-        # If you smoothed data beforehand, make sure to point this to your smoothed file name!
-        print(f'smooth is {use_smoothed}')
+        # Query for functional data using BIDS layout
+        query_params = {
+            'subject': subject,
+            'session': session,
+            'task': task,
+            'run': run_num,
+            'space': space,
+            'suffix': 'bold',
+            'extension': '.func.gii' if is_surface else '.nii.gz'
+        }
+        
+        # Add hemi only for surface spaces
+        if is_surface and hemi:
+            query_params['hemi'] = hemi
+        
+        # Add smoothing descriptor if needed
         if use_smoothed:
-            func_name = func_name.replace('_bold', f'_desc-smoothed{sm}_bold')
-        nii_path = op.join(
-            fmriprep_dir, f'sub-{subject}',
-            f'ses-{session}' , 'func', func_name,
-        )
-        gii_data = load_surf_data(nii_path)
+            query_params['desc'] = f'smoothed{sm}'
+        elif not is_surface:
+            query_params['desc'] = 'preproc'
+        
+        # Query functional files
+        func_files = fp_layout.get(**query_params)
+        
+        if not func_files:
+            print(f"WARNING: No functional file found for run {run_num}")
+            print(f"Query parameters: {query_params}")
+            continue
+        
+        func_file = func_files[0].path
+        print(f"Found functional file: {func_file}")
+        
+        # Load data based on file type
+        if is_surface:
+            # Surface data - load GIFTI
+            data = load_surf_data(func_file)
+            data_float = np.vstack(data[:, :]).astype(float)
+        else:
+            # Volumetric data - load NIfTI
+            img = nib.load(func_file)
+            data_array = img.get_fdata()
+            
+            # Reshape: (x, y, z, time) -> (voxels, time)
+            original_shape = data_array.shape[:3]
+            n_timepoints = data_array.shape[3]
+            data_float = data_array.reshape(-1, n_timepoints).astype(float)
+            
+            print(f"Volumetric data shape: {original_shape} with {n_timepoints} timepoints")
+            print(f"Reshaped to: {data_float.shape}")
 
-        # remove the first 6 volumns of all runs and then concat them
-        gii_data_float = np.vstack(gii_data[:, :]).astype(float)
-        print(f'length of orig gii is {np.shape(gii_data_float)[1]}')
-        # remove prescan
-        gii_remove_first_several = gii_data_float[:, start_scans::]
-        print(f'length of removed gii is {np.shape(gii_remove_first_several)[1]}')
-        gii_data_std = stats.zscore(gii_remove_first_several, axis=1)
-        n_vertices = np.shape(gii_data_std)[0]
+        print(f'Length of original data is {np.shape(data_float)[1]}')
+        
+        # Remove prescan (first start_scans volumes)
+        data_remove_first_several = data_float[:, start_scans:]
+        print(f'Length of removed data is {np.shape(data_remove_first_several)[1]}')
+        
+        # Z-score the data
+        data_std = stats.zscore(data_remove_first_several, axis=1)
+        n_features = np.shape(data_std)[0]  # n_vertices for surface, n_voxels for volume
 
+        # Apply mask if specified
         if apply_label_as_mask:
-            # freesurfer label file
-            label_path = (f'{label_dir}/{apply_label_as_mask}')
-            surf_mask = load_surf_data(label_path)
-
-            mask = np.zeros((n_vertices, 1))
-            mask[surf_mask] = 1
-
-            gii_data_std = gii_data_std * mask
-            gii_data_float = gii_data_float * mask
-            # gii_data=nilearn.masking.apply_mask(nii_path, surf_mask, dtype='f',
-            # smoothing_fwhm=None, ensure_finite=True)
+            if is_surface:
+                # For surface data, use FreeSurfer label
+                label_path = f'{label_dir}/{apply_label_as_mask}'
+                surf_mask = load_surf_data(label_path)
+                
+                mask = np.zeros((n_features, 1))
+                mask[surf_mask] = 1
+                
+                data_std = data_std * mask
+                data_float = data_float * mask
+            else:
+                # For volumetric data, would need a volumetric mask
+                print("WARNING: Volumetric masking not implemented yet")
 
         # Get shape of data
-        n_scans = np.shape(gii_data_std)[1]
-        gii_allrun.append(gii_data_std)
+        n_scans = np.shape(data_std)[1]
+        data_allrun.append(data_std)
+        
         # Use the volumetric data just to get the events and confounds file
         img_filters = [('desc', 'preproc')]
-        # specify session
+        # Specify session
         img_filters.append(('ses', session))
-        # If multiple runs are present, then add the run number to filter to specify
-        if len(run) > 0:
-            img_filters.append(('run', run_num))
-        l1 = first_level_from_bids(
-            bids_dir,
-            task,
-            space_label='T1w',
-            sub_labels=[subject],
-            slice_time_ref=slice_time_ref,
-            hrf_model='spm',
-            drift_model=None,  # Do not high_pass since we use fMRIPrep's cosine regressors
-            drift_order=0,  # Do not high_pass since we use fMRIPrep's cosine regressors
-            high_pass=None,  # Do not high_pass since we use fMRIPrep's cosine regressors
-            img_filters=img_filters,
-            derivatives_folder=fmriprep_dir,
-        )
+        # If multiple runs are present, then add the run number to filter
+        img_filters.append(('run', run_num))
+        try:
+            l1 = first_level_from_bids(
+                bids_dir,
+                task,
+                space_label='T1w',
+                sub_labels=[subject],
+                slice_time_ref=slice_time_ref,
+                hrf_model='spm',
+                drift_model=None,  # Do not high_pass since we use fMRIPrep's cosine regressors
+                drift_order=0,
+                high_pass=None,
+                img_filters=img_filters,
+                derivatives_folder=fmriprep_dir,
+            )
+        except (TypeError, FileNotFoundError, IndexError) as e:
+            print(f"WARNING: Error processing run {run_num}: {e}")
+            print(f"Skipping run {run_num}...")
+            continue
 
         # Extract information from the prepared model
         t_r = l1[0][0].t_r
         events = l1[2][0][0]  # Dataframe of events information
-        confounds = l1[3][0][0]  # Dataframe of confounds
+        confounds = l1[3][0][0]  # Dataframe of confounds    
         events.loc[:, 'onset'] = events['onset'] + idx * (n_scans) * t_r
-        # events_allrun.append(events)
 
-        # get rid of rest so that the setting would be the same as spm
+        # Get rid of rest so that the setting would be the same as spm
         events_nobaseline = events[events.loc[:, 'trial_type'] != 'baseline']
         events_allrun.append(events_nobaseline)
         store_l1.append(l1)
+        
         # From the confounds file, extract only those of interest
-        # Start with the motion and acompcor regressors
         motion_keys = [
             'framewise_displacement',
             'rot_x',
@@ -457,9 +522,6 @@ def prepare_glm_input(
         cosine_keys = [key for key in confounds.keys() if 'cosine' in key]
 
         # Pull out the confounds we want to keep
-        # confound_keys_keep = (
-        #     motion_keys + a_compcor_keys + cosine_keys
-        # )
         confound_keys_keep = (
             motion_keys + a_compcor_keys + cosine_keys + non_steady_state_keys
         )
@@ -470,26 +532,28 @@ def prepare_glm_input(
             confounds_keep['framewise_displacement'],
         )
         confounds_keep = confounds_keep.iloc[start_scans:]
-        print(f'the length of confounds is {len(confounds_keep)}')
+        print(f'The length of confounds is {len(confounds_keep)}')
         confounds_allrun.append(confounds_keep)
+        
         # Create the design matrix
         # Start by getting times of scans
         frame_times = t_r * ((np.arange(n_scans) + slice_time_ref) + idx * n_scans)
-        # Now use Nilearn to create the design matrix from the events files
         frame_time_allrun.append(frame_times)
 
-    conc_gii_data_std = np.concatenate(gii_allrun, axis=1)
+    # Concatenate data across runs
+    conc_data_std = np.concatenate(data_allrun, axis=1)
     concat_frame_times = np.concatenate(frame_time_allrun, axis=0)
     concat_events = pd.concat(events_allrun, axis=0)
 
     # Applying the function to the entire DataFrame
     concat_events = concat_events.applymap(replace_prefix_and_suffix)
     concat_confounds = pd.concat(confounds_allrun, axis=0)
-    print(f'There are those columns in the concat_confoudns: \n {concat_confounds.columns}')
+    print(f'There are those columns in the concat_confounds: \n {concat_confounds.columns}')
     print(concat_confounds.head(20))
     nonan_confounds = concat_confounds.dropna(axis=1, how='any')
-    print(f'\n\nThere are those columns in the FINAL concat_confoudns: \n {nonan_confounds.columns}')
+    print(f'\n\nThere are those columns in the FINAL concat_confounds: \n {nonan_confounds.columns}')
     print(nonan_confounds.head(20)) 
+    
     # Construct the design matrix
     design_matrix = make_first_level_design_matrix(
         concat_frame_times,
@@ -499,19 +563,15 @@ def prepare_glm_input(
         add_regs=nonan_confounds,
     )
 
-    # set the design matrix's NaN value to 0?
-
-    # z-score the design matrix to standardize it
-    # edited Feb 17 2025, it seems that before the code to form design_matrix std
-    # is a to form a array, here I changed it to a dataframe?
+    # Z-score the design matrix to standardize it
     design_matrix_std = design_matrix.apply(stats.zscore, axis=0)
-    # add constant in to standardized design matrix since you cannot z-score a constant
+    # Add constant in to standardized design matrix since you cannot z-score a constant
     design_matrix_std['constant'] = np.ones(len(design_matrix_std)).astype(int)
 
     contrasts = load_contrasts(contrast_fpath, design_matrix)
-    print(f'\n the basic contrast we have are: {design_matrix.columns}')
+    print(f'\nThe basic contrast we have are: {design_matrix.columns}')
 
-    return conc_gii_data_std, design_matrix_std, contrasts
+    return conc_data_std, design_matrix_std, contrasts
 
 
 def load_contrasts(yaml_file, design_matrix):
@@ -599,38 +659,44 @@ def generate_run_groups(layout, subject, session, task, selected_runs=None):
 
 
 def process_run_list(
-        bids_dir, fmriprep_dir, label_dir, contrast_fpath,
-        subject, session, output_name, task, start_scans, hemi, space, slice_time_ref,
-        run_list, use_smoothed, sm, apply_label_as_mask, dry_run, randrun_idx=None):
+        bids_dir, fmriprep_dir, fp_layout, label_dir, contrast_fpath,
+        subject, session, output_name, task, start_scans, space, slice_time_ref,
+        run_list, use_smoothed, sm, apply_label_as_mask, dry_run, 
+        randrun_idx=None, hemi=None):
     """Process a single run list and perform GLM"""
-    print('Processing hemi', hemi)
-    print('Processing runs are : ', run_list)
-    conc_gii_data_std, design_matrix_std, contrasts = prepare_glm_input(
-        bids_dir, fmriprep_dir, label_dir, contrast_fpath,
-        subject, session, output_name, task, start_scans, hemi, space, slice_time_ref,
-        run_list, use_smoothed, sm, apply_label_as_mask,
+    if hemi:
+        print(f'Processing hemi-{hemi}')
+    else:
+        print('Processing volumetric data')
+        
+    print('Processing runs are:', run_list)
+    
+    conc_data_std, design_matrix_std, contrasts = prepare_glm_input(
+        bids_dir, fmriprep_dir, fp_layout, label_dir, contrast_fpath,
+        subject, session, output_name, task, start_scans, space, slice_time_ref,
+        run_list, use_smoothed, sm, apply_label_as_mask, hemi
     )
-    print(f'Contrasts we are using is : {contrasts.keys()}')
+    print(f'Contrasts we are using is: {contrasts.keys()}')
     print(f'----------before going to the glm_l1, smooth is {use_smoothed}')
 
     if not dry_run:
         finished = glm_l1(
-            conc_gii_data_std, design_matrix_std, contrasts,
-            bids_dir, task, space, hemi, subject, session,
-            output_name, use_smoothed, sm, randrun_idx
+            conc_data_std, design_matrix_std, contrasts,
+            bids_dir, task, space, subject, session,
+            output_name, use_smoothed, sm, randrun_idx, hemi
         )
     else:
-        print('dry run mode, you will see the designmatrix and the confoudns')
+        print('dry run mode, you will see the designmatrix and the confounds')
         finished = 1
     
     return finished
 
 
 def run_power_analysis(
-        bids_dir, fmriprep_dir, label_dir, contrast_fpath,
+        bids_dir, fmriprep_dir, fp_layout, label_dir, contrast_fpath,
         subject, session, base_output_name, task, start_scans, space, slice_time_ref,
         use_smoothed, sm, apply_label_as_mask, dry_run,
-        total_runs, n_iterations, seed):
+        total_runs, n_iterations, seed, hemi=None):
     """
     Run power analysis: 100 GLMs (10 iterations × 10 run configurations)
     """
@@ -638,16 +704,17 @@ def run_power_analysis(
     print("="*70)
     print("STARTING POWER ANALYSIS MODE")
     print(f"Subject: {subject}, Session: {session}")
+    if hemi:
+        print(f"Hemisphere: {hemi}")
     print(f"Total configurations: {total_runs} (1 to {total_runs} runs)")
     print(f"Iterations per configuration: {n_iterations}")
-    print(f"Total GLMs to run: {total_runs * n_iterations * 2}")  # × 2 for L and R hemispheres
+    print(f"Total GLMs to run: {total_runs * n_iterations}")
     print(f"Random seed: {seed}")
     print("="*70)
     print()
     
-    hemis = ['L', 'R']
     total_glms_completed = 0
-    total_glms = total_runs * n_iterations * len(hemis)
+    total_glms = total_runs * n_iterations
     
     # Loop through num_of_runs from 1 to total_runs
     for num_of_runs in range(1, total_runs + 1):
@@ -673,20 +740,17 @@ def run_power_analysis(
             # Create output name for this specific iteration
             iter_output_name = f"{base_output_name}/power_analysis_{num_of_runs}_run/iter_{iter_num:02d}"
             
-            # Process both hemispheres
-            for hemi in hemis:
-                print(f"  Processing hemisphere: {hemi}")
-                
-                finished = process_run_list(
-                    bids_dir, fmriprep_dir, label_dir, contrast_fpath,
-                    subject, session, iter_output_name, task, start_scans, 
-                    hemi, space, slice_time_ref,
-                    run_list, use_smoothed, sm, apply_label_as_mask, dry_run, randrun_idx
-                )
-                
-                total_glms_completed += 1
-                progress = (total_glms_completed / total_glms) * 100
-                print(f"  Progress: {total_glms_completed}/{total_glms} ({progress:.1f}%)")
+            finished = process_run_list(
+                bids_dir, fmriprep_dir, fp_layout, label_dir, contrast_fpath,
+                subject, session, iter_output_name, task, start_scans, 
+                space, slice_time_ref,
+                run_list, use_smoothed, sm, apply_label_as_mask, dry_run, 
+                randrun_idx, hemi
+            )
+            
+            total_glms_completed += 1
+            progress = (total_glms_completed / total_glms) * 100
+            print(f"  Progress: {total_glms_completed}/{total_glms} ({progress:.1f}%)")
     
     print("\n" + "="*70)
     print("POWER ANALYSIS COMPLETED!")
@@ -727,26 +791,62 @@ def main():
     print("Creating BIDS layout...")
     layout = BIDSLayout(bids_dir, validate=False)
     print("BIDS layout created!")
+
+    # Create fmriprep BIDS layout once and reuse
+    print("Creating fmriprep layout...")
+    fp_layout = BIDSLayout(fmriprep_dir, validate=False)
+    print("fmriprep layout created!")
     
+    # Determine if surface or volumetric based on space
+    is_surface = space in ['fsnative', 'fsaverage']
+
     if power_analysis:
-        # Run power analysis mode (100 GLMs)
-        run_power_analysis(
-            bids_dir, fmriprep_dir, label_dir, contrast_fpath,
-            subject, session, output_name, task, start_scans, space, slice_time_ref,
-            use_smoothed, sm, apply_label_as_mask, dry_run,
-            total_runs, n_iterations, seed
-        )
+        if is_surface:
+            # For surface data, process both hemispheres
+            hemis = ['L', 'R']
+            for hemi in hemis:
+                print(f"\n{'#'*70}")
+                print(f"# Processing hemisphere: {hemi}")
+                print(f"{'#'*70}\n")
+                run_power_analysis(
+                    bids_dir, fmriprep_dir, fp_layout, label_dir, contrast_fpath,
+                    subject, session, output_name, task, start_scans, space, slice_time_ref,
+                    use_smoothed, sm, apply_label_as_mask, dry_run,
+                    total_runs, n_iterations, seed, hemi
+                )
+        else:
+            # For volumetric data, no hemisphere
+            run_power_analysis(
+                bids_dir, fmriprep_dir, fp_layout, label_dir, contrast_fpath,
+                subject, session, output_name, task, start_scans, space, slice_time_ref,
+                use_smoothed, sm, apply_label_as_mask, dry_run,
+                total_runs, n_iterations, seed, hemi=None
+            )
     else:
         # Regular mode - single GLM
         print("Running in regular mode (single GLM)")
         run_list, randrun_idx = generate_run_groups(layout, subject, session, task, selected_runs)
         
-        hemis = ['L', 'R']
-        for hemi in hemis:
+        if is_surface:
+            # For surface data, process both hemispheres
+            hemis = ['L', 'R']
+            for hemi in hemis:
+                print(f"\n{'#'*70}")
+                print(f"# Processing hemisphere: {hemi}")
+                print(f"{'#'*70}\n")
+                finished = process_run_list(
+                    bids_dir, fmriprep_dir, fp_layout, label_dir, contrast_fpath,
+                    subject, session, output_name, task, start_scans, space, slice_time_ref,
+                    run_list, use_smoothed, sm, apply_label_as_mask, dry_run, 
+                    randrun_idx, hemi
+                )
+        else:
+            # For volumetric data, no hemisphere
             finished = process_run_list(
-                bids_dir, fmriprep_dir, label_dir, contrast_fpath,
-                subject, session, output_name, task, start_scans, hemi, space, slice_time_ref,
-                run_list, use_smoothed, sm, apply_label_as_mask, dry_run, randrun_idx
+                bids_dir, fmriprep_dir, fp_layout, label_dir, contrast_fpath,
+                subject, session, output_name, task, start_scans, space, slice_time_ref,
+                run_list, use_smoothed, sm, apply_label_as_mask, dry_run, 
+                randrun_idx, hemi=None
             )
     
     return

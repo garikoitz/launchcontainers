@@ -1,20 +1,33 @@
 #!/usr/bin/env bash
 
-# Configuration /export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/01_prepare_nifti/prepare_func
-script_dir=/export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/01_prepare_nifti/prepare_func
-analysis_name='runrerun_02'
+# Configuration /export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/01_prepare_nifti/prepare_dwi
+nordic_modality=$1 # dwi or fmri
+if [ "$nordic_modality" != "dwi" ] && [ "$nordic_modality" != "fmri" ]
+then
+    echo "The nordic modality should be dwi or fmri"
+    exit 1
+fi
+
+if [ "$nordic_modality" == "dwi" ]
+then
+    script_dir=/export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/01_prepare_nifti/prepare_dwi
+else
+    script_dir=/export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/01_prepare_nifti/prepare_func
+fi
+
+analysis_name=$2
 # variable pass to the matlab
 TB_PATH="/export/home/tlei/tlei/toolboxes"
 SRC_DIR="/bcbl/home/public/Gari/VOTCLOC/main_exp/raw_nifti"
-OUTPUT_DIR="/bcbl/home/public/Gari/VOTCLOC/main_exp/BIDS_new"
+OUTPUT_DIR="/bcbl/home/public/Gari/VOTCLOC/main_exp/BIDS"
 codedir=/bcbl/home/public/Gari/VOTCLOC/main_exp/code
-subseslist_name=$1
+subseslist_name=$3
 subseslist_path=$codedir/$subseslist_name
 
 # nordic parameters (must match your MATLAB signature)
-NORDIC_END=1
+NORDIC_END=0
 FORCE=true
-DONORDIC=true
+DONORDIC=false
 DOTSNR=false
 
 # Ensure output dir exists
@@ -22,7 +35,7 @@ mkdir -p "${OUTPUT_DIR}"
 
 
 # define the log dir
-logdir=${OUTPUT_DIR}/log_nordic_fmri/${analysis_name}_$(date +"%Y-%m-%d")
+logdir=${OUTPUT_DIR}/log_nordic_${nordic_modality}/${analysis_name}_$(date +"%Y-%m-%d")
 echo "The logdir is $logdir"
 echo "The outputdir is $OUTPUT_DIR"
 mkdir -p $logdir
@@ -44,7 +57,7 @@ do
     error_file="${logdir}/nordic_${sub}_${ses}_${now}.e"
     echo "=== Running sub-${sub} ses-${ses} ==="
     #echo "script dir defined is $script_dir"
-    cmd="bash $script_dir/src_nordic_fmri.sh ${TB_PATH} \
+    cmd="bash $script_dir/src_nordic_${nordic_modality}.sh ${TB_PATH} \
     ${SRC_DIR} \
     ${OUTPUT_DIR} \
     ${sub} \

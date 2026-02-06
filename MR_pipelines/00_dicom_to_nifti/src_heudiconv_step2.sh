@@ -12,15 +12,6 @@
 # The above copyright notice and this permission notice shall be included in all copies or substantial
 # portions of the Software.
 
-
-# basedir=/bcbl/home/public/Gari/VOTCLOC/VSS
-# dicom_dirname=dicom
-# outputdir=$basedir/BIDS
-# sing_path=/bcbl/home/public/Gari/singularity_images
-# sub='05'
-# ses='day6BCBL'
-# heuristicfile=$basedir/code/00_dicom_to_nifti/heuristic/heuristic_BCBL.py
-
 module load apptainer/latest
 echo "Now the singularity is loaded, it is: "
 module list
@@ -34,7 +25,7 @@ cmd="singularity run --cleanenv --no-home --containall \
 	    	--bind /bcbl:/bcbl \
 			--bind /export:/export \
         	${sing_path} \
-			-d ${dcm_dir}/sub-{subject}_ses-{session}/*/*.dcm \
+			-d ${dcm_dir}/sub-{subject}/ses-{session}/*/*/*/*.dcm \
 	    	--subjects ${sub} \
 			--ses ${ses} \
 			-o ${outputdir} \
