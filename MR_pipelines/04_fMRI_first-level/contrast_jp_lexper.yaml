@@ -1,0 +1,31 @@
+AllvsNull:
+  positive: ["body", "limb", "word", "FF", "CS", "CB", "SC", "adult", "child"]
+  negative: []
+
+PERvsNull:
+  positive: ["SC","CB"]
+  negative: []
+
+LEXvsNull:
+  positive: ["CS", "FF"]
+  negative: []
+
+PERvsLEX:
+  positive: ["SC","CB"]
+  negative: ["CS", "FF"]
+
+RWvsLEX:
+  positive: ["word"]
+  negative: ["CS", "FF"]
+
+RWvsPER:
+  positive: ["word"]
+  negative: ["SC","CB"]
+
+RWvsNull:
+  positive: ["word"]
+  negative: []
+
+RWvsLEXPER:
+  positive: ["word"]
+  negative: ["CS", "FF", "SC","CB"]

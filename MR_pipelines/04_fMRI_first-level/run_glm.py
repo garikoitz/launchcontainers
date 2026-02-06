@@ -406,8 +406,6 @@ def prepare_glm_input(
             query_params['desc'] = f'smoothed{sm}'
         elif not is_surface:
             query_params['desc'] = 'preproc'
-        else:
-            continue
         
         # Query functional files
         func_files = fp_layout.get(**query_params)
@@ -474,25 +472,29 @@ def prepare_glm_input(
         img_filters.append(('ses', session))
         # If multiple runs are present, then add the run number to filter
         img_filters.append(('run', run_num))
-        
-        l1 = first_level_from_bids(
-            bids_dir,
-            task,
-            space_label='T1w',
-            sub_labels=[subject],
-            slice_time_ref=slice_time_ref,
-            hrf_model='spm',
-            drift_model=None,  # Do not high_pass since we use fMRIPrep's cosine regressors
-            drift_order=0,
-            high_pass=None,
-            img_filters=img_filters,
-            derivatives_folder=fmriprep_dir,
-        )
+        try:
+            l1 = first_level_from_bids(
+                bids_dir,
+                task,
+                space_label='T1w',
+                sub_labels=[subject],
+                slice_time_ref=slice_time_ref,
+                hrf_model='spm',
+                drift_model=None,  # Do not high_pass since we use fMRIPrep's cosine regressors
+                drift_order=0,
+                high_pass=None,
+                img_filters=img_filters,
+                derivatives_folder=fmriprep_dir,
+            )
+        except (TypeError, FileNotFoundError, IndexError) as e:
+            print(f"WARNING: Error processing run {run_num}: {e}")
+            print(f"Skipping run {run_num}...")
+            continue
 
         # Extract information from the prepared model
         t_r = l1[0][0].t_r
         events = l1[2][0][0]  # Dataframe of events information
-        confounds = l1[3][0][0]  # Dataframe of confounds
+        confounds = l1[3][0][0]  # Dataframe of confounds    
         events.loc[:, 'onset'] = events['onset'] + idx * (n_scans) * t_r
 
         # Get rid of rest so that the setting would be the same as spm
@@ -666,6 +668,7 @@ def process_run_list(
         print(f'Processing hemi-{hemi}')
     else:
         print('Processing volumetric data')
+        
     print('Processing runs are:', run_list)
     
     conc_data_std, design_matrix_std, contrasts = prepare_glm_input(

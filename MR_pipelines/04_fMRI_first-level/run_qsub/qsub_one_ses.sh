@@ -14,13 +14,13 @@
 # Email: yl4874@nyu.edu
 # GitHub: https://github.com/yongninglei
 # -----------------------------------------------------------------------------
-basedir=/bcbl/home/public/Gari/VOTCLOC/main_exp
+basedir=/bcbl/home/public/Gari/VOTCLOC/Japan_27ses_dp/VSS
 bids_dir_name=BIDS
 
 # directory stores the run_glm.py code
 codedir=/export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/04_fMRI_first-level
 # analysis name of fmriprep #'beforeMar05_US' there is only one analysis now
-fp_name=beforeMar05_US
+fp_name=Gari7
 # task
 task=fLoc
 # start_scans: number of scans started:
@@ -28,13 +28,13 @@ start_scans=6
 # space
 space=fsnative
 # output analysis name
-out_name=run_all_fLoc
+out_name=new_glm_code
 # path to contrast yaml, you can define any kind of yaml under any place
-glm_yaml_path=${codedir}/contrast_votcloc_all.yaml
+glm_yaml_path=${codedir}/contrast_jp_lexper.yaml
 # slice timing ref, default is 0.5 can change
 slice_timing=(0.5)
 use_smoothed=False
-dry_run=True
+dry_run=False
 
 # log dir
 LOG_DIR=$basedir/l1_surfaces_log/analysis-${out_name}
