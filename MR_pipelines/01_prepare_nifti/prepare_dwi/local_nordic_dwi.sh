@@ -27,8 +27,8 @@ subseslist_path=$codedir/$subseslist_name
 # nordic parameters (must match your MATLAB signature)
 NORDIC_END=0
 FORCE=true
-DONORDIC=true
-DOTSNR=true
+DONORDIC=false
+DOTSNR=false
 
 # Ensure output dir exists
 mkdir -p "${OUTPUT_DIR}"

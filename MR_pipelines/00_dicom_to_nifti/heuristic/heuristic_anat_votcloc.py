@@ -53,27 +53,27 @@ def infotodict(seqinfo):
     )
 
     # dwi
-    # nordic dwi
-    dwi_floc1d5_rpe = create_key(
-        'sub-{subject}/{session}/dwi/sub-{subject}_{session}_acq-floc1d5isodir6_dir-PA_run-{item:02d}_magnitude',
+    # dwi
+    dwi_votcloc_rpe = create_key(
+        'sub-{subject}/{session}/dwi/sub-{subject}_{session}_acq-votcloc1d5_dir-PA_run-{item:02d}_magnitude',
     )
-    dwi_floc1d5 = create_key(
-        'sub-{subject}/{session}/dwi/sub-{subject}_{session}_acq-floc1d5isodir104_dir-AP_run-{item:02d}_magnitude',
+    dwi_votcloc = create_key(
+        'sub-{subject}/{session}/dwi/sub-{subject}_{session}_acq-votcloc1d5_dir-AP_run-{item:02d}_magnitude',
     )
-    dwi_floc1d5_rpe_pha = create_key(
-        'sub-{subject}/{session}/dwi/sub-{subject}_{session}_acq-floc1d5isodir6_dir-PA_run-{item:02d}_phase',
+    dwi_votcloc_rpe_pha = create_key(
+        'sub-{subject}/{session}/dwi/sub-{subject}_{session}_acq-votcloc1d5_dir-PA_run-{item:02d}_phase',
     )
-    dwi_floc1d5_pha = create_key(
-        'sub-{subject}/{session}/dwi/sub-{subject}_{session}_acq-floc1d5isodir104_dir-AP_run-{item:02d}_phase',
+    dwi_votcloc_pha = create_key(
+        'sub-{subject}/{session}/dwi/sub-{subject}_{session}_acq-votcloc1d5_dir-AP_run-{item:02d}_phase',
     )
 
     info = {
         t1_i1: [], t1_i2: [], t1_un: [], t1_w: [], t2_w: [],
         fmap_AP: [], fmap_PA: [],
-        dwi_floc1d5_rpe: [], dwi_floc1d5: [],
-        dwi_floc1d5_rpe_pha: [], dwi_floc1d5_pha: [],
-
+        dwi_votcloc_rpe: [], dwi_votcloc: [],
+        dwi_votcloc_rpe_pha: [], dwi_votcloc_pha: [],
     }
+    
     last_run = len(seqinfo)
 
     for s in seqinfo:
@@ -99,18 +99,17 @@ def infotodict(seqinfo):
                 if ('PA' in s.protocol_name) :
                     info[fmap_PA].append(s.series_id)
         # dwi
-        # only take the mag
         if (('M' in s.image_type) or ('Pha' not in s.series_description)) and ('SBRef' not in s.series_description):
             if ('dMRI' in s.series_description) or ('1d5iso' in s.series_description):
                 if ('PA' in s.series_description) and (s.series_files == 6):
-                    info[dwi_floc1d5_rpe].append(s.series_id)
+                    info[dwi_votcloc_rpe].append(s.series_id)
                 if ('AP' in s.series_description) and (s.series_files == 105):
-                    info[dwi_floc1d5].append(s.series_id)
+                    info[dwi_votcloc].append(s.series_id)
 
         if (('P' in s.image_type) or ('Pha' in s.series_description)) and ('SBRef' not in s.series_description):
             if ('dMRI' in s.series_description) or ('1d5iso' in s.series_description):
                 if ('PA' in s.series_description) and (s.series_files == 6):
-                    info[dwi_floc1d5_rpe_pha].append(s.series_id)
+                    info[dwi_votcloc_rpe_pha].append(s.series_id)
                 if ('AP' in s.series_description) and (s.series_files == 105):
-                    info[dwi_floc1d5_pha].append(s.series_id)
+                    info[dwi_votcloc_pha].append(s.series_id)
     return info

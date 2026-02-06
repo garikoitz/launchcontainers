@@ -12,7 +12,6 @@ from rich.table import Table
 app = typer.Typer()
 console = Console()
 
-
 def get_expected_combinations() -> List[Tuple[str, str]]:
     """Generate all expected sub/ses combinations."""
     combinations = []

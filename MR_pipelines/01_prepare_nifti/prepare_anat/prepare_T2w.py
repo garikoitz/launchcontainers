@@ -13,8 +13,8 @@ bids_dir = os.path.join(basedir, 'BIDS')
 rl = BIDSLayout(raw_nifti_dir, derivatives=False, validate=False)
 bl = BIDSLayout(bids_dir, derivatives=False, validate=False)
 # ask for a certain sub and ses
-subs=['09']
-sess=['01']
+subs=[f'{str(i).zfill(2)}' for i in range(1,12)]
+sess=[f'{str(i).zfill(2)}' for i in range(1,11)]  
 
 def copy_t2(sub,ses,rl,bl):
     # get the raw_nifti T2, and get the BIDS T1
