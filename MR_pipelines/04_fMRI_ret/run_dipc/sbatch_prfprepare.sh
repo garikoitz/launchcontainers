@@ -38,7 +38,7 @@ json_dir="$baseP/code/${step}_jsons"
 # subseslist dir:
 script_dir="/home/tlei/soft/launchcontainers/MR_pipelines/04_fMRI_ret"
 code_dir=$baseP/code
-subses_list_dir=$code_dir/subseslist.txt
+subses_list_dir=$code_dir/subseslist_ret_wc_clean.txt
 sif_path="/scratch/tlei/containers/${step}_${version}.sif"
 log_note=$1
 # log dir

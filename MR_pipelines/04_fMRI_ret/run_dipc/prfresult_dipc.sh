@@ -26,12 +26,18 @@
 # fi
 # current_time=$(date +"%Y-%m-%d_%H-%M-%S")
 
-module load Apptainer/1.2.4
+module load Apptainer/1.3.5
+
+export APPTAINNER_TMPDIR=/scratch/tlei/apptainer_tmp
+export APPTAINER_CACHEDIR=/scratch/tlei/apptainer_cache
+
+rm -rf ~/.apptainer/cache
+mkdir -p /tmp/apptainer/mnt/session 2>/dev/null || true
 
 cmd="unset PYTHONPATH; singularity run \
 	-B /scratch:/scratch
 	-B /data:/data
-	-H $baseP/singularity_home \
+	-H $baseP/singularity_home_gari \
     -B $baseP/BIDS/derivatives:/flywheel/v0/data/derivatives \
     -B $baseP/BIDS:/flywheel/v0/BIDS  \
 	-B $json_path:/flywheel/v0/config.json \

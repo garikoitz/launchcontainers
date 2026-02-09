@@ -25,10 +25,16 @@
 # 	mkdir -p $HOME_DIR
 # fi
 # current_time=$(date +"%Y-%m-%d_%H-%M-%S")
-module load Apptainer/1.2.4
+module load Apptainer/1.3.5
 
+# export APPTAINNER_TMPDIR=/scratch/tlei/apptainer_tmp
+# export APPTAINER_CACHEDIR=/scratch/tlei/apptainer_cache
 
-cmd="unset PYTHONPATH; singularity run \
+# rm -rf ~/.apptainer/cache
+
+mkdir -p /tmp/apptainer/mnt/session 2>/dev/null || true
+
+cmd="unset PYTHONPATH; apptainer run \
 	-B /scratch:/scratch
 	-B /data:/data
 	-H $baseP/singularity_home \

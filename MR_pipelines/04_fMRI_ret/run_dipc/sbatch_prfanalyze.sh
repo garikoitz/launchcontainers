@@ -16,7 +16,7 @@
 # Define base paths
 baseP="/scratch/tlei/VOTCLOC"
 
-HOME_DIR="$baseP/singularity_home"
+HOME_DIR="$baseP/singularity_home_gari"
 # container specific
 # for prfprepare:
 license_path="$baseP/BIDS/.license"
@@ -33,7 +33,7 @@ qos="regular" # regular or test
 mem="10G"
 cpus="20"
 time="12:00:00" #time="00:10:00" 10:00:00
-task="retfixRW" # retCB retRW retFF
+task="retfixRWblock" # retCB retRW retFF
 # retfixRW retfixFF retfixRWblock01 retfixRWblock02 retfixRWblock
 
 # json input
@@ -43,7 +43,7 @@ script_dir="/home/tlei/soft/launchcontainers/MR_pipelines/04_fMRI_ret"
 code_dir=$baseP/code
 sif_path="/scratch/tlei/containers/${step}_${version}.sif"
 log_note=$1
-subses_list_dir=$code_dir/subseslist_jun16.txt
+subses_list_dir=$code_dir/subseslist_ret_wc_clean.txt
 # log dir
 LOG_DIR="$baseP/dipc_${step}_logs/${log_note}_$(date +"%Y-%m-%d")"
 # Ensure directories exist
