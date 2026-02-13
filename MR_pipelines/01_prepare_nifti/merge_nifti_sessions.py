@@ -71,11 +71,14 @@ def merge_sessions(
     sub: str = typer.Option(..., "--sub", "-s"),
     ses_first: str = typer.Option(..., "--ses-first"),
     ses_second: str = typer.Option(..., "--ses-second"),
-    log_dir: Path = typer.Option("logs", "--log-dir", "-l"),
+    log_dir: Path = typer.Option("log_merge_nifti", "--log-dir", "-l"),
     dry_run: bool = typer.Option(True, "--dry-run/--execute"),
 ):
     """Merge two session halves into one session."""
-    
+
+    if not log_dir.is_absolute():
+        log_dir = bids_dir / log_dir
+
     # Create log directory
     log_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')

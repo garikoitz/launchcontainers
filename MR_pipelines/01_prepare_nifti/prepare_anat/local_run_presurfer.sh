@@ -13,12 +13,12 @@
 # portions of the Software.
 step=presurfer
 basedir=/bcbl/home/public/Gari/VOTCLOC/main_exp
-bids_dirname=BIDS
+bids_dirname=BIDS_new
 
 # toolbox path that stores all the matlab toolboxes
 tbPath=/export/home/tlei/tlei/toolboxes
 src_dir=$basedir/raw_nifti
-analysis_name=batchS9
+analysis_name=rerun02
 outputdir=${basedir}/${bids_dirname}
 force=false # if overwrite exsting file
 
