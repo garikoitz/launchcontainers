@@ -30,14 +30,15 @@ outputdir=$basedir/raw_nifti
 dcm_dir=/base/dicom 
 script_dir=/export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/00_dicom_to_nifti
 subseslist_path=$codedir/$2
-heuristicfile=$script_dir/heuristic/heuristic_all_${project}.py
+heuristicfile=$script_dir/heuristic/heuristic_anat_${project}.py
 sing_path=/bcbl/home/public/Gari/containers/heudiconv_1.3.4.sif
 
-logdir=${outputdir}/log_heudiconv_sge/${analysis_name}_$(date +"%Y-%m-%d")/${step}
+logdir=${outputdir}/log_heudiconv/${analysis_name}_$(date +"%Y-%m-%d")/${step}
 echo "The logdir is $logdir"
 echo "The outputdir is $outputdir"
 mkdir -p $logdir
-
+# copy the subseslist to the logdir for record
+cp $subseslist_path $logdir
 echo "reading the subses"
 # Initialize a line counter
 line_number=0
