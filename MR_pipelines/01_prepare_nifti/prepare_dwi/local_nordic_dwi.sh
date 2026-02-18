@@ -26,19 +26,18 @@ subseslist_path=$codedir/$subseslist_name
 
 # nordic parameters (must match your MATLAB signature)
 NORDIC_END=0
-FORCE=true
-DONORDIC=false
-DOTSNR=false
+FORCE=false
+DONORDIC=true
 
 # Ensure output dir exists
 mkdir -p "${OUTPUT_DIR}"
-
-
 # define the log dir
 logdir=${OUTPUT_DIR}/log_nordic_${nordic_modality}/${analysis_name}_$(date +"%Y-%m-%d")
 echo "The logdir is $logdir"
 echo "The outputdir is $OUTPUT_DIR"
 mkdir -p $logdir
+# copy the subseslist to the logdir for record
+cp $subseslist_path $logdir
 # Loop through sub/ses list and invoke single-job script
 while IFS=',' read -r sub ses
 do
@@ -64,7 +63,6 @@ do
     ${ses} \
     ${NORDIC_END} \
     ${DONORDIC} \
-    ${DOTSNR} \
     ${FORCE} \
     ${script_dir} "
     eval $cmd  > ${log_file} 2> ${error_file}
