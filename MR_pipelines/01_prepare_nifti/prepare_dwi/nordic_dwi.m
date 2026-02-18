@@ -34,13 +34,14 @@ function nordic_dwi(tbPath, src_dir, output_dir, sub, ses, nordic_scans_end, doN
     addpath(genpath(nordicpath));
     setenv('FSLOUTPUTTYPE', 'NIFTI_GZ');
 
-    % Dynamic desc label based on doNORDIC
+    % Dynamic acq label based on doNORDIC
+    % CHANGED: acq-* replacement instead of desc- prefix
     if doNORDIC
-        desc_label = 'desc-nordic';
+        acq_label = 'nordic';
     else
-        desc_label = 'desc-magonly';
+        acq_label = 'magonly';
     end
-    fprintf('Output desc label: %s\n', desc_label);
+    fprintf('Output acq label: acq-%s\n', acq_label);
 
     % Setup directories
     src_sesP = fullfile(src_dir, sub, ses, 'dwi');
@@ -87,9 +88,8 @@ function nordic_dwi(tbPath, src_dir, output_dir, sub, ses, nordic_scans_end, doN
         for src_magI = 1:length(src_mags)
             fn_magn_in  = fullfile(src_mags(src_magI).folder, src_mags(src_magI).name);
             fn_phase_in = strrep(fn_magn_in, '_magnitude', '_phase');
-            % Output: _magnitude -> _desc-nordic_dwi
-            fn_out      = fullfile(out_sesP, strrep(src_mags(src_magI).name, ...
-                          '_magnitude', ['_' desc_label '_dwi']));
+            % CHANGED: output name uses rename helper (acq-* -> acq-nordic, _magnitude -> _dwi)
+            fn_out      = fullfile(out_sesP, rename_mag_to_output(src_mags(src_magI).name, acq_label));
 
             if ~(exist(strrep(fn_out, '.nii.gz', 'magn.nii'), 'file') || exist(fn_out, 'file')) || force
 
@@ -137,7 +137,7 @@ function nordic_dwi(tbPath, src_dir, output_dir, sub, ses, nordic_scans_end, doN
 
     %% Step 4: Create BIDS-compliant output files
     disp('### Step 4: Creating BIDS-compliant output files');
-    fprintf('doNORDIC=%d, force=%d, desc_label=%s\n', doNORDIC, force, desc_label);
+    fprintf('doNORDIC=%d, force=%d, acq_label=acq-%s\n', doNORDIC, force, acq_label);
     
     % Re-read src_mags
     src_mags = dir(dwimag_pattern);
@@ -145,9 +145,7 @@ function nordic_dwi(tbPath, src_dir, output_dir, sub, ses, nordic_scans_end, doN
     
     parfor src_magI = 1:length(src_mags)
         fn_magn_in  = fullfile(src_mags(src_magI).folder, src_mags(src_magI).name);
-        % Output: _magnitude -> _desc-{nordic|magonly}_dwi
-        fn_out      = fullfile(out_sesP, strrep(src_mags(src_magI).name, ...
-                      '_magnitude', ['_' desc_label '_dwi']));
+        fn_out      = fullfile(out_sesP, rename_mag_to_output(src_mags(src_magI).name, acq_label));
         gfactorFile = strrep(strrep(fn_out, '.nii.gz', '.nii'), ...
                       [sub '_ses'], ['gfactor_' sub '_ses']);
 
@@ -181,16 +179,16 @@ function nordic_dwi(tbPath, src_dir, output_dir, sub, ses, nordic_scans_end, doN
             
             gzip(gfactorFile);
             system(['rm -f ', gfactorFile, ' ', strrep(fn_out, '.nii.gz', 'phase.nii')]);
+            % CHANGED: gfactor rename uses _dwi -> _gfactor with new acq label
             system(['mv ', strrep(gfactorFile, '.nii', '.nii.gz'), ' ', ...
                    strrep(strrep(strrep(gfactorFile, '.nii', '.nii.gz'), ...
-                   ['_' desc_label '_dwi'], '_gfactor'), 'gfactor_', '')]);
+                   '_dwi', '_gfactor'), 'gfactor_', '')]);
             
             fprintf('NORDIC output finalized for %s\n', src_mags(src_magI).name);
 
         %% --- !doNORDIC: copy source to target ---
         elseif ~doNORDIC
             if ~exist(fn_out, 'file') || force
-                % Case 4: use orig if available, Case 3: use magnitude
                 if has_orig
                     copy_src = mag_orig_local;
                     fprintf('Case 4: Copying orig -> target for %s\n', src_mags(src_magI).name);
@@ -218,7 +216,6 @@ function nordic_dwi(tbPath, src_dir, output_dir, sub, ses, nordic_scans_end, doN
         end
         
         %% --- Copy sidecar files (JSON, bvec, bval) to output ---
-        % JSON: _magnitude.json -> _desc-{nordic|magonly}_dwi.json
         dst_json = strrep(fn_out, '.nii.gz', '.json');
         if ~exist(dst_json, 'file') || force
             src_json_local = strrep(fn_magn_in, '_magnitude.nii.gz', '_magnitude.json');
@@ -234,7 +231,6 @@ function nordic_dwi(tbPath, src_dir, output_dir, sub, ses, nordic_scans_end, doN
         
         % bvec and bval (only for files that have them, i.e. AP)
         if has_bvec_bval
-            % _magnitude.bvec -> _desc-{nordic|magonly}_dwi.bvec
             dst_bvec = strrep(fn_out, '.nii.gz', '.bvec');
             dst_bval = strrep(fn_out, '.nii.gz', '.bval');
             
@@ -274,6 +270,23 @@ function nordic_dwi(tbPath, src_dir, output_dir, sub, ses, nordic_scans_end, doN
     time_end = datetime('now');
     fprintf('Total time for %s, %s, %d runs: %s\n', sub, ses, num_runs, time_end - time_start);
     disp('DWI NORDIC finished!!');
+end
+
+
+%% ========== NEW: Rename magnitude filename to output filename ==========
+% Replaces acq-<anything> with acq-<acq_label> and _magnitude with _dwi
+%
+% Example:
+%   rename_mag_to_output('sub-07_ses-01_acq-votcloc1d5_dir-PA_run-01_magnitude.nii.gz', 'nordic')
+%   -> 'sub-07_ses-01_acq-nordic_dir-PA_run-01_dwi.nii.gz'
+%
+%   rename_mag_to_output('sub-07_ses-01_acq-votcloc1d5_dir-AP_run-01_magnitude.bvec', 'magonly')
+%   -> 'sub-07_ses-01_acq-magonly_dir-AP_run-01_dwi.bvec'
+function out_name = rename_mag_to_output(mag_name, acq_label)
+    % Step 1: Replace acq-<anything>_ with acq-<acq_label>_
+    out_name = regexprep(mag_name, 'acq-[^_]+', ['acq-' acq_label]);
+    % Step 2: Replace _magnitude with _dwi
+    out_name = strrep(out_name, '_magnitude', '_dwi');
 end
 
 
