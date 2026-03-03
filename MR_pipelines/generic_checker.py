@@ -32,10 +32,14 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+import json
 
 import typer
 from rich.console import Console
 from rich.table import Table
+import scipy.io
+import h5py
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 app = typer.Typer(help="Check analysis folder integrity against expected file specs.")
 console = Console()
@@ -118,10 +122,12 @@ class GroupResult:
     expected_files: list[str]
     found_files: list[str] = field(default_factory=list)
     missing_files: list[str] = field(default_factory=list)
+    corrupted_files: list[str] = field(default_factory=list)
 
     @property
     def is_complete(self) -> bool:
-        return len(self.missing_files) == 0
+        return len(self.missing_files) == 0 and len(self.corrupted_files) == 0
+
 
 
 @dataclass
@@ -154,6 +160,10 @@ class SessionResult:
     @property
     def total_missing(self) -> int:
         return sum(len(g.missing_files) for g in self.groups.values())
+    
+    @property
+    def total_corrupted(self) -> int: 
+        return sum(len(g.corrupted_files) for g in self.groups.values())    
 
 
 # =============================================================================
@@ -172,7 +182,59 @@ def _check_file(session_dir: Path, fname: str, use_glob: bool) -> bool:
     else:
         return (session_dir / fname).exists()
 
+# add the helper function to check matfile
+def check_broken_mat(filepath: Path) -> tuple[bool, str]:
+    """Try scipy (v5-v7.2) then h5py (v7.3). Returns (is_valid, error_msg)."""
+    try:
+        data = scipy.io.loadmat(str(filepath))
+        # Force decompression — loadmat is lazy, corruption only surfaces on access
+        for key, val in data.items():
+            if not key.startswith("__"):
+                _ = val.shape if hasattr(val, "shape") else val
+        return True, ""
+    except Exception as e_scipy:
+        try:
+            with h5py.File(str(filepath), "r") as f:
+                def _read_all(obj):
+                    for key in obj:
+                        item = obj[key]
+                        if hasattr(item, "keys"):
+                            _read_all(item)
+                        else:
+                            _ = item[()]
+                _read_all(f)
+            return True, ""
+        except Exception:
+            return False, str(e_scipy)
+        
+# add the helper function to check if json is broken        
+def check_broken_json(filepath: Path) -> tuple[bool, str]:
+    """Check if a JSON file is valid and non-empty."""
+    try:
+        text = filepath.read_text()
+        data = json.loads(text)
+        if not data:
+            return False, "empty JSON object"
+        return True, ""
+    except json.JSONDecodeError as e:
+        return False, f"invalid JSON: {e}"
+    except Exception as e:
+        return False, str(e)
 
+# add the helper function to check if nii.gz is broken 
+def check_broken_nii(filepath: Path) -> tuple[bool, str]:
+    """Check if a .nii.gz is readable and has valid header + data."""
+    try:
+        import nibabel as nib
+        img = nib.load(str(filepath))
+        # Force header parse
+        _ = img.header.get_data_shape()
+        # Force data decompression
+        _ = img.get_fdata()
+        return True, ""
+    except Exception as e:
+        return False, str(e)        
+        
 def check_one_session(
     spec: AnalysisSpec,
     analysis_dir: Path,
@@ -201,10 +263,23 @@ def check_one_session(
 
     # Check file groups
     for group_label, expected_files in spec.get_expected_groups(session_dir).items():
-        found, missing = [], []
+        found, missing, corrupted = [], [], []
         for fname in expected_files:
+            fpath = session_dir / fname
             if _check_file(session_dir, fname, spec.uses_glob):
-                found.append(fname)
+                if fname.endswith(".mat"):
+                    valid, err = check_broken_mat(fpath)
+                elif fname.endswith(".json"):
+                    valid, err = check_broken_json(fpath)
+                elif fname.endswith(".nii.gz"):
+                    valid, err = check_broken_nii(fpath)
+                else:
+                    valid, err = True, ""
+
+                if not valid:
+                    corrupted.append(f"{fname} ({err})")
+                else:
+                    found.append(fname)
             else:
                 missing.append(fname)
 
@@ -213,12 +288,13 @@ def check_one_session(
             expected_files=expected_files,
             found_files=found,
             missing_files=missing,
+            corrupted_files=corrupted,  # <-- ADD
         )
 
     return result
 
 
-def run_integrity_check(
+def run_integrity_check_single(
     spec: AnalysisSpec,
     analysis_dir: Path,
     subses_list: list[tuple[str, str]],
@@ -237,7 +313,47 @@ def run_integrity_check(
             results.append(check_one_session(spec, analysis_dir, sub, ses))
     return results
 
+def run_integrity_check_parallel(
+    spec: AnalysisSpec,
+    analysis_dir: Path,
+    subses_list: list[tuple[str, str]],
+    max_workers: int = 30,
+) -> list[SessionResult]:
+    """Run integrity check across all sub/ses pairs in parallel (I/O-bound)."""
+    
+    def _check(sub_raw: str, ses_raw: str) -> SessionResult:
+        sub = f"sub-{sub_raw}" if not sub_raw.startswith("sub-") else sub_raw
+        ses = f"ses-{ses_raw}" if not ses_raw.startswith("ses-") else ses_raw
+        return check_one_session(spec, analysis_dir, sub, ses)
 
+    # Preserve original order in results
+    results: list[SessionResult | None] = [None] * len(subses_list)
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_idx = {
+            executor.submit(_check, sub, ses): idx
+            for idx, (sub, ses) in enumerate(subses_list)
+        }
+
+        with typer.progressbar(
+            length=len(subses_list),
+            label=f"Checking {spec.name} integrity",
+            show_pos=True,
+        ) as progress:
+            for future in as_completed(future_to_idx):
+                idx = future_to_idx[future]
+                try:
+                    results[idx] = future.result()
+                except Exception as e:
+                    sub, ses = subses_list[idx]
+                    console.print(f"[red]Error checking sub-{sub}/ses-{ses}: {e}[/red]")
+                    # Insert a failed placeholder so indexing stays intact
+                    results[idx] = SessionResult(
+                        sub=f"sub-{sub}", ses=f"ses-{ses}", session_dir_exists=False
+                    )
+                progress.update(1)
+
+    return results  # type: ignore[return-value]
 # =============================================================================
 # 4. OUTPUT WRITERS
 # =============================================================================
@@ -345,17 +461,38 @@ def write_detailed_log(
             f.write(
                 f"      Groups: {r.complete_groups}/{r.num_groups} complete  |  "
                 f"Missing files: {r.total_missing}\n"
+                f"Corrupted files: {r.total_corrupted}\n"
             )
 
             for glabel, gresult in sorted(r.groups.items()):
                 if gresult.is_complete:
                     continue
-                f.write(f"      [{glabel}] — {len(gresult.missing_files)} missing:\n")
-                for mf in gresult.missing_files:
-                    f.write(f"        - {mf}\n")
+                if gresult.missing_files:
+                    f.write(f"      [{glabel}] — {len(gresult.missing_files)} missing:\n")
+                    for mf in gresult.missing_files:
+                        f.write(f"        - {mf}\n")
+                if gresult.corrupted_files:  # <-- ADD
+                    f.write(f"      [{glabel}] — {len(gresult.corrupted_files)} corrupted:\n")
+                    for cf in gresult.corrupted_files:
+                        f.write(f"        ! {cf}\n")
 
             f.write("\n")
 
+# add function to write corrupted file list only for review and remove later            
+def write_corrupted_list(
+    results: list[SessionResult],
+    output_path: Path,
+    spec: AnalysisSpec,
+    analysis_dir: Path,
+) -> None:
+    """Write full absolute paths of all corrupted .mat files, one per line."""
+    with open(output_path, "w") as f:
+        for r in results:
+            session_dir = spec.get_session_dir(analysis_dir, r.sub, r.ses)
+            for gresult in r.groups.values():
+                for cf in gresult.corrupted_files:
+                    fname = cf.split(" (")[0]
+                    f.write(f"{session_dir / fname}\n")
 
 # =============================================================================
 # 5. RICH CONSOLE OUTPUT
@@ -372,6 +509,7 @@ def print_summary(results: list[SessionResult], spec: AnalysisSpec) -> None:
     )
     total_groups = sum(r.num_groups for r in results)
     complete_groups = sum(r.complete_groups for r in results)
+    total_corrupted = sum(r.total_corrupted for r in results)
 
     table = Table(title=f"{spec.name.upper()} Integrity Summary")
     table.add_column("sub", style="cyan")
@@ -379,16 +517,27 @@ def print_summary(results: list[SessionResult], spec: AnalysisSpec) -> None:
     table.add_column("RUN", justify="center")
     table.add_column("Groups", justify="center")
     table.add_column("Missing", justify="center")
+    table.add_column("Corrupted", justify="center")
 
     for r in results:
         style = "green" if r.is_complete else "red bold"
+
         if not r.session_dir_exists:
-            groups_str, missing_str = "no dir", "—"
+            groups_str = "no dir"
+            missing_str = "—"
+            corrupted_str = "—"
         elif r.num_groups == 0:
-            groups_str, missing_str = "0", "—"
+            groups_str = "0"
+            missing_str = "—"
+            corrupted_str = "—"
         else:
             groups_str = f"{r.complete_groups}/{r.num_groups}"
             missing_str = str(r.total_missing) if r.total_missing > 0 else "0"
+            corrupted_str = (
+                f"[red bold]{r.total_corrupted}[/red bold]"
+                if r.total_corrupted > 0
+                else "0"
+            )
 
         table.add_row(
             r.sub.replace("sub-", ""),
@@ -396,6 +545,7 @@ def print_summary(results: list[SessionResult], spec: AnalysisSpec) -> None:
             f"[{style}]{r.is_complete}[/{style}]",
             groups_str,
             missing_str,
+            corrupted_str,
         )
 
     console.print(table)
@@ -406,6 +556,8 @@ def print_summary(results: list[SessionResult], spec: AnalysisSpec) -> None:
     )
     if total_groups > 0:
         console.print(f"Groups: {complete_groups}/{total_groups} complete overall")
+    if total_corrupted > 0:
+        console.print(f"[red bold]Corrupted .mat files: {total_corrupted}[/red bold]")
     if n_no_dir > 0:
         console.print(f"[yellow]Missing session dirs: {n_no_dir}[/yellow]")
     if n_no_groups > 0:
@@ -435,18 +587,26 @@ def print_detailed_results(
         console.print(
             f"  [cyan]{r.sub}/{r.ses}[/cyan] "
             f"({r.complete_groups}/{r.num_groups} groups complete, "
-            f"{r.total_missing} files missing)"
+            f"{r.total_missing} files missing, "
+            f"{r.total_corrupted} corrupted)"
         )
         for glabel, gresult in sorted(r.groups.items()):
             if gresult.is_complete:
                 if verbose:
                     console.print(f"    [green]✓ {glabel}[/green]")
                 continue
-            console.print(
-                f"    [red]✗ {glabel}[/red] — {len(gresult.missing_files)} missing:"
-            )
-            for mf in gresult.missing_files:
-                console.print(f"      - {mf}")
+            if gresult.missing_files:
+                console.print(
+                    f"    [red]✗ {glabel}[/red] — {len(gresult.missing_files)} missing:"
+                )
+                for mf in gresult.missing_files:
+                    console.print(f"      - {mf}")
+            if gresult.corrupted_files: 
+                console.print(
+                    f"    [magenta]⚠ {glabel}[/magenta] — {len(gresult.corrupted_files)} corrupted:"
+                )
+                for cf in gresult.corrupted_files:
+                    console.print(f"      - {cf}")
     console.print()
 
 
@@ -902,8 +1062,6 @@ class BIDSDWISpec(AnalysisSpec):
 # =============================================================================
 # 10. ANALYSIS SPEC: fMRIPrep
 # =============================================================================
-
-
 class FMRIPrepSpec(AnalysisSpec):
     """fMRIPrep derivatives: analysis_dir / sub-XX / ses-XX / {anat,func,figures}"""
 
@@ -1116,7 +1274,11 @@ def check(
         True, "--show-distribution/--no-distribution",
         help="Show group count distribution.",
     ),
+    max_workers: int = typer.Option(
+        30, "--workers", "-j", help="Parallel workers for I/O (default: 30)."
+    ),
 ) -> None:
+
     """Check analysis integrity against expected file/folder specs."""
 
     if analysis_type not in SPEC_REGISTRY:
@@ -1164,8 +1326,10 @@ def check(
     console.print(f"Dir: {analysis_dir}")
     console.print(f"Sessions: {len(pairs)}\n")
 
-    results = run_integrity_check(spec, analysis_dir, pairs)
-
+    if max_workers:
+        results = run_integrity_check_parallel(spec, analysis_dir, pairs, max_workers)
+    else:
+        results = run_integrity_check_single(spec, analysis_dir, pairs)
     # Output
     print_summary(results, spec)
     if show_distribution:
@@ -1177,6 +1341,11 @@ def check(
     detail_path = output_dir / f"{spec.name}_detailed.log"
     write_brief_csv(results, brief_path)
     write_detailed_log(results, spec, detail_path)
+    # write the corrupted txt
+    corrupted_path = output_dir / f"{spec.name}_corrupted.txt"
+    write_corrupted_list(results, corrupted_path, spec, analysis_dir)
+    if any(r.total_corrupted > 0 for r in results):
+        console.print(f"[bold]Corrupted list:[/bold] {corrupted_path}")
 
     matrix_path = output_dir / f"{spec.name}_matrix.csv"
     write_matrix_csv(results, matrix_path)
