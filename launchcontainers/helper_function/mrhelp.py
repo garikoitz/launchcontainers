@@ -14,39 +14,12 @@
 # The above copyright notice and this permission notice shall be included in all copies or
 # substantial portions of the Software.
 # """
+"""
+This code will actually storing the pratical helpful information that
+can be used in each steps of MRI analysis
+
+TODO: summarize all the things
+
+"""
+
 from __future__ import annotations
-
-import logging
-import os
-
-from launchcontainers import cli as lc_parser
-from launchcontainers import utils as do
-logger = logging.getLogger(__name__)
-
-
-def copy_example_configs(copy_configs):
-    # Ensure the directory exists
-    if not os.path.exists(copy_configs):
-        os.makedirs(copy_configs)
-
-    do.copy_configs(copy_configs)
-    print('\n Step 0; Copy example_configs to the specified place')
-
-    return
-
-
-def main():
-    parser_namespace, parse_dict = lc_parser.get_parser()
-
-    # Check if download_configs argument is provided
-
-    print('You are copying configs to target place')
-    copy_configs = parser_namespace.output
-    # Check if download_configs argument is provided
-    if copy_configs:
-        copy_example_configs(copy_configs)
-
-
-# #%%
-if __name__ == '__main__':
-    main()

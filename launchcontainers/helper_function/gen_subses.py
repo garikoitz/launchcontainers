@@ -17,11 +17,12 @@
 from __future__ import annotations
 
 import logging
-import os
 from pathlib import Path
+
 from launchcontainers import cli as lc_parser
-from launchcontainers import utils as do
+
 logger = logging.getLogger(__name__)
+
 
 def gen_subseslist(basedir: str, output_name: str, output_dir=None) -> None:
     """
@@ -59,7 +60,7 @@ def gen_subseslist(basedir: str, output_name: str, output_dir=None) -> None:
 
             # Check for modality folders
             anat = (ses_dir / "anat").is_dir()
-            dwi  = (ses_dir / "dwi").is_dir()
+            dwi = (ses_dir / "dwi").is_dir()
             func = (ses_dir / "func").is_dir()
 
             # Append row
@@ -67,21 +68,20 @@ def gen_subseslist(basedir: str, output_name: str, output_dir=None) -> None:
                 f.write(f"{subj},{ses},True,{anat},{dwi},{func}\n")
 
 
-
 def main():
     parser_namespace, parse_dict = lc_parser.get_parser()
 
     # Check if download_configs argument is provided
 
-    print('You are copying configs to target place')
+    print("You are copying configs to target place")
     basedir = parser_namespace.basedir
-    output_name=parser_namespace.name
-    output_dir=parser_namespace.output_dir
+    output_name = parser_namespace.name
+    output_dir = parser_namespace.output_dir
     # Check if download_configs argument is provided
     if basedir:
         gen_subseslist(basedir, output_name, output_dir)
 
 
 # #%%
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

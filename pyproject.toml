@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "launchcontainers"
-version = "0.4.3"
+version = "0.4.6"
 description = "A Python based soft to launch neuroimaging containers on clusters"
 authors = [ "Garikoitz Lerma-Usabiaga",
             "Leandro Lecca",
@@ -12,23 +12,26 @@ authors = [ "Garikoitz Lerma-Usabiaga",
             "Yongning Lei"
             ]
 # Acknowledgments
-# I would like to thank Iñigo Tellaetxe from CompNeuroLabBilbao for his help on packaging this repository
+# We would like to thank Iñigo Tellaetxe from CompNeuroLabBilbao for his help on packaging this repository
 
 maintainers = ["Garikoitz Lerma-Usabiaga", "Yongning Lei"]
 readme = "README.md"
 repository = "https://github.com/garikoitz/launchcontainers"
 license = "MIT"
-keywords = ["HPC", "MRI","nilearn", "RTP2","DWI","dMRI"]
+keywords = ["HPC", "MRI","nilearn", "RTP2","DWI","dMRI","fMRI","fMRIprep","PRF"]
 classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     ]
-packages = [{include = "launchcontainers"}]
+packages = [{include = "launchcontainers"},
+            {include = "analysis_checker"},  ]
+
 [tool.poetry.scripts]
 # the main function
 lc = "launchcontainers.cli:main"
+checker = "analysis_checker.check_analysis_integrity:main"
 
 [tool.poetry.dependencies]
 # nilearn
@@ -66,9 +69,13 @@ heudiconv = ">=1.3.2"
 setuptools = "^67.0.0"
 typer = ">=0.15.3"
 openpyxl = ">=3.1.5"
+h5py = ">=3.0"
+rich = ">=13.0"
+pre-commit = "*"
 
 [tool.poetry.dev-dependencies]
 nox-poetry = "*"
+types-PyYAML = "*"
 # Testing
 pytest = "*"
 pytest-cov = "*"
