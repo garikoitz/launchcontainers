@@ -788,11 +788,12 @@ def check(
     ),
     analysis_type: str = typer.Argument(
         ...,
-        help="Analysis type (see analysis_checker/__init__.py)",
+        help="Analysis type: prfprepare, prfanalyze, bids, "
+        "bidsdwi, bidsfuncsbref, bidsscantsv, fmriprep, glm, rtp",
     ),
-    subseslist: list[str] | None = typer.Option(
+    subses: list[str] | None = typer.Option(
         None,
-        "--subseslist",
+        "--subses",
         "-s",
         help="Sub,ses pairs: -s 01,02 -s 03,04",
     ),
@@ -800,7 +801,7 @@ def check(
         None,
         "--subseslist-file",
         "-f",
-        help="CSV with sub,ses columns",
+        help="CSV/txt with sub,ses columns",
     ),
     output_dir: Path = typer.Option(
         Path("."),
@@ -834,8 +835,8 @@ def check(
 
     spec = SPEC_REGISTRY[analysis_type]
 
-    if subseslist:
-        pairs = [parse_subses(s) for s in subseslist]
+    if subses:
+        pairs = [parse_subses(s) for s in subses]
     elif subseslist_file:
         if not subseslist_file.exists():
             console.print(f"[red]Error:[/red] File not found: {subseslist_file}")
