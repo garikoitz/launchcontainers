@@ -15,7 +15,7 @@ import json
 import os
 
 
-def gen_batch_json(subseslist_path, template_json, output_dir, step, tasks, force):
+def gen_batch_json(subseslist_path, template_json, output_dir, step, tasks, model, force):
     # Load the template JSON
     with open(template_json) as f:
         template = json.load(f)
@@ -74,7 +74,7 @@ def gen_batch_json(subseslist_path, template_json, output_dir, step, tasks, forc
                     config['sessionName'] = f'{ses}'
                     config['tasks'] = f'{task}'
                     # Save new JSON file
-                    json_filename = f'{output_dir}/{task}_sub-{sub}_ses-{ses}.json'
+                    json_filename = f'{output_dir}/{task}_{model}_sub-{sub}_ses-{ses}.json'
                     with open(json_filename, 'w') as f:
                         json.dump(config, f, indent=4)
 
@@ -127,13 +127,13 @@ if __name__ == '__main__':
     # example: prfprepare prfanalyze-vista prfresult 
     steps = [ 'prfanalyze-vista'] 
     force = True
-
+    model = "og" # "one_gaussian" or "css"
     for step in steps:
         print(f'\n{"="*60}')
         print(f'STEP: {step}')
         print(f'{"="*60}')
         
-        subseslist_path = os.path.join(code_dir, 'subseslist_ret_normal.txt')
+        subseslist_path ='/scratch/tlei/VOTCLOC/code/prfprepare_sbref_fmap_ready.txt' #os.path.join(code_dir, 'subseslist_ret_normal.txt')
         output_dir = os.path.join(code_dir, f'{step}_jsons')
         template_json = os.path.join(code_dir, '04b_prf', f'{step}.json')
 
@@ -155,5 +155,5 @@ if __name__ == '__main__':
 
         # Generate batch JSONs
         print(f'\nGenerating JSON files...')
-        gen_batch_json(subseslist_path, template_json, output_dir, step, tasks, force)
+        gen_batch_json(subseslist_path, template_json, output_dir, step, tasks, model,force)
         print(f'✓ Completed {step}')

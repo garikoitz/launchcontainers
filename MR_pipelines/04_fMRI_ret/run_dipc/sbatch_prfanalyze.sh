@@ -20,7 +20,7 @@ HOME_DIR="$baseP/singularity_home"
 # container specific
 # for prfprepare:
 license_path="$baseP/BIDS/.license"
-
+model="og" # "one_gaussian" or "css"
 
 
 ##### For each container
@@ -32,8 +32,8 @@ version='2.2.1'
 qos="regular" # regular or test
 mem="10G"
 cpus="20"
-time="12:00:00" #time="00:10:00" 10:00:00
-task="retfixRW" # retCB retRW retFF
+time="20:00:00" #time="00:10:00" 10:00:00
+task="retCB" # retCB retRW retFF
 # retfixRW retfixFF retfixRWblock01 retfixRWblock02 retfixRWblock
 
 # json input
@@ -43,7 +43,8 @@ script_dir="/scratch/tlei/soft/launchcontainers/MR_pipelines/04_fMRI_ret"
 code_dir=$baseP/code
 sif_path="/scratch/tlei/containers/${step}_${version}.sif"
 log_note=$1
-subses_list_dir=$code_dir/subseslist_jun16.txt
+subses_name=$2
+subses_list_dir=$code_dir/${subses_name}
 # log dir
 LOG_DIR="$baseP/dipc_${step}_logs/${log_note}_$(date +"%Y-%m-%d")"
 # Ensure directories exist
@@ -66,7 +67,7 @@ tail -n +2 $subses_list_dir | while IFS=',' read -r sub ses _; do
         --qos=${qos} \
         -o "$LOG_DIR/%J_%x_${sub}-${ses}_${now}.o" \
         -e "$LOG_DIR/%J_%x_${sub}-${ses}_${now}.e" \
-        --export=ALL,baseP=${baseP},license_path=${license_path},version=${version},sub=${sub},ses=${ses},json_path=$json_dir/${task}_sub-${sub}_ses-${ses}.json,sif_path=$sif_path \
+        --export=ALL,baseP=${baseP},license_path=${license_path},version=${version},sub=${sub},ses=${ses},json_path=$json_dir/${task}_${model}_sub-${sub}_ses-${ses}.json,sif_path=$sif_path \
         $script_dir/run_dipc/${step}_dipc.sh "
 
     # Print and execute the command
