@@ -1,19 +1,28 @@
 """
-analysis_specs/prf_prepare.py
-==============================
+analysis_checker/prf_prepare.py
+================================
 PRF prepare output spec.
 
 Expected structure:
     analysis_dir / sub-XX / ses-XX / func / <files>
 
-Three file groups per session:
-  maskinfo         — fixed list of per-hemi ROI mask JSONs (L and R differ)
-  events-{task}    — per-task per-run event TSVs (discovered)
-  bold-{task}      — per-task per-run per-hemi surface BOLD (discovered)
+─── Groups per session (8 total) ────────────────────────────────────────────
+  maskinfo-L          all left-hemi ROI maskinfo JSONs   (fixed list)
+  maskinfo-R          all right-hemi ROI maskinfo JSONs  (fixed list)
+  bold-{task}         run-01 / run-02 / run-0102avg × hemi-L / hemi-R  (3 groups)
+  events-{task}       run-01 / run-02 only                              (3 groups)
+
+─── Task categories (must not be mixed) ─────────────────────────────────────
+  without-fix:  retFF  retRW  retCB
+  with-fix:     retfixFF  retfixRW  retfixRWblock  retfixRWblock01  retfixRWblock02
+
+  Exactly 3 tasks expected, all from the same category.
+  If tasks from both categories are found → flagged as a mix error.
 
 ─── To change expected outputs ──────────────────────────────────────────────
-[DEV] Edit MASKINFO_SUFFIXES_HEMI_L / _HEMI_R, EXPECTED_RUNS, or BOLD_HEMIS.
-      No changes needed in the engine or registry.
+[DEV] Edit MASKINFO_SUFFIXES_HEMI_L / _HEMI_R to update ROI lists.
+[DEV] Edit TASKS_NO_FIX / TASKS_FIX to update valid task name sets.
+[DEV] Edit BOLD_RUNS / EVENTS_RUNS / BOLD_HEMIS to change run/hemi structure.
 """
 
 from __future__ import annotations
@@ -21,14 +30,26 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from .base import AnalysisSpec
-from .base import default_combinations
+from .base import AnalysisSpec, default_combinations
+
+
+# ── Valid task name sets ──────────────────────────────────────────────────────
+# [DEV] Add new task variants here
+TASKS_NO_FIX: set[str] = {"retFF", "retRW", "retCB"}
+TASKS_FIX: set[str] = {
+    "retfixFF",
+    "retfixRW",
+    "retfixRWblock",
+    "retfixRWblock01",
+    "retfixRWblock02",
+}
+ALL_VALID_TASKS: set[str] = TASKS_NO_FIX | TASKS_FIX
 
 
 class PRFPrepareSpec(AnalysisSpec):
-    # ── Maskinfo: explicit per-hemi suffix lists (ROI names differ L vs R) ──
+    # ── Maskinfo ROI lists ────────────────────────────────────────────────────
     # [DEV] Add / remove ROI entries here as atlases change
-    MASKINFO_SUFFIXES_HEMI_L = [
+    MASKINFO_SUFFIXES_HEMI_L: list[str] = [
         "_hemi-L_desc-hFEF-wang_maskinfo.json",
         "_hemi-L_desc-hV4-benson_maskinfo.json",
         "_hemi-L_desc-hV4-wang_maskinfo.json",
@@ -71,7 +92,7 @@ class PRFPrepareSpec(AnalysisSpec):
         "_hemi-L_desc-VO2-wang_maskinfo.json",
     ]
 
-    MASKINFO_SUFFIXES_HEMI_R = [
+    MASKINFO_SUFFIXES_HEMI_R: list[str] = [
         "_hemi-R_desc-G_oc-temp_lat-fusifor-prf_VOTC_maskinfo.json",
         "_hemi-R_desc-G_temporal_inf-prf_VOTC_maskinfo.json",
         "_hemi-R_desc-hFEF-wang_maskinfo.json",
@@ -114,8 +135,15 @@ class PRFPrepareSpec(AnalysisSpec):
         "_hemi-R_desc-VO2-wang_maskinfo.json",
     ]
 
-    EXPECTED_RUNS = ["01", "02", "0102avg"]
-    BOLD_HEMIS = ["hemi-L", "hemi-R"]
+    # ── Run / hemi structure ──────────────────────────────────────────────────
+    # [DEV] Edit these to change which runs / hemis are expected
+    BOLD_RUNS: list[str] = ["01", "02", "0102avg"]  # all 3 for bold nii.gz
+    EVENTS_RUNS: list[str] = ["01", "02"]  # only real runs for events
+    BOLD_HEMIS: list[str] = ["hemi-L", "hemi-R"]
+
+    # ── Expected number of tasks ──────────────────────────────────────────────
+    # [DEV] Change if your protocol uses a different number of tasks
+    EXPECTED_N_TASKS: int = 3
 
     @property
     def name(self) -> str:
@@ -125,22 +153,35 @@ class PRFPrepareSpec(AnalysisSpec):
     def description(self) -> str:
         n_mask = len(self.MASKINFO_SUFFIXES_HEMI_L) + len(self.MASKINFO_SUFFIXES_HEMI_R)
         return (
-            f"PRF prepare outputs — {n_mask} maskinfo (fixed) + "
-            f"events & bold per discovered task"
+            f"PRF prepare — {n_mask} maskinfo (L+R) + "
+            f"{self.EXPECTED_N_TASKS} tasks × "
+            f"({len(self.BOLD_RUNS)} runs × {len(self.BOLD_HEMIS)} hemis bold "
+            f"+ {len(self.EVENTS_RUNS)} runs events)"
         )
 
     def get_session_dir(self, analysis_dir: Path, sub: str, ses: str) -> Path:
         return analysis_dir / sub / ses / "func"
 
+    # ── Task discovery ────────────────────────────────────────────────────────
+
     def _discover_tasks(
         self,
         session_dir: Path,
         prefix: str,
-    ) -> tuple[set[str], set[str]]:
-        """Scan directory to discover which event tasks and bold tasks exist."""
-        event_tasks: set[str] = set()
+    ) -> tuple[set[str], set[str], list[str]]:
+        """
+        Scan func/ directory to find which tasks exist.
+
+        Returns
+        -------
+        bold_tasks  : set of task names that have at least one bold .nii.gz
+        event_tasks : set of task names that have at least one events .tsv
+        mix_errors  : list of human-readable error strings if fix/nofix mixed
+        """
         bold_tasks: set[str] = set()
+        event_tasks: set[str] = set()
         task_pattern = re.compile(re.escape(prefix) + r"_task-([^_]+)_run-")
+
         for f in session_dir.iterdir():
             if not f.is_file():
                 continue
@@ -148,38 +189,82 @@ class PRFPrepareSpec(AnalysisSpec):
             if not m:
                 continue
             task = m.group(1)
-            if f.name.endswith("_events.tsv"):
-                event_tasks.add(task)
-            elif f.name.endswith("_bold.nii.gz"):
+            if task not in ALL_VALID_TASKS:
+                continue  # ignore unknown tasks
+            if f.name.endswith("_bold.nii.gz"):
                 bold_tasks.add(task)
-        return event_tasks, bold_tasks
+            elif f.name.endswith("_events.tsv"):
+                event_tasks.add(task)
+
+        # ── Fix / no-fix mix check ────────────────────────────────────────────
+        mix_errors: list[str] = []
+        has_nofix = bool(bold_tasks & TASKS_NO_FIX)
+        has_fix = bool(bold_tasks & TASKS_FIX)
+        if has_nofix and has_fix:
+            nofix_found = sorted(bold_tasks & TASKS_NO_FIX)
+            fix_found = sorted(bold_tasks & TASKS_FIX)
+            mix_errors.append(
+                f"Mixed fix/no-fix tasks detected — "
+                f"no-fix: {nofix_found}, fix: {fix_found}. "
+                f"All tasks must be from the same category."
+            )
+
+        # ── Wrong task count check ────────────────────────────────────────────
+        if len(bold_tasks) != self.EXPECTED_N_TASKS and len(bold_tasks) > 0:
+            mix_errors.append(
+                f"Expected {self.EXPECTED_N_TASKS} tasks, "
+                f"found {len(bold_tasks)}: {sorted(bold_tasks)}"
+            )
+
+        return bold_tasks, event_tasks, mix_errors
+
+    # ── Group construction ────────────────────────────────────────────────────
 
     def get_expected_groups(self, session_dir: Path) -> dict[str, list[str]]:
+        """
+        Build 8 groups:
+          maskinfo-L    — all left ROI maskinfo JSONs
+          maskinfo-R    — all right ROI maskinfo JSONs
+          bold-{task}   — 6 files (3 runs × 2 hemis)      [× 3 tasks]
+          events-{task} — 2 files (run-01, run-02)         [× 3 tasks]
+
+        If fix/no-fix mixing or wrong task count is detected, a special
+        "task-mix-error" group is added so the error surfaces in the report.
+        """
         # session_dir = .../sub-XX/ses-XX/func/
         sub = session_dir.parent.parent.name
         ses = session_dir.parent.name
         prefix = f"{sub}_{ses}"
+
         groups: dict[str, list[str]] = {}
 
-        # Maskinfo (always fixed)
-        groups["maskinfo"] = [
-            f"{prefix}{s}"
-            for s in self.MASKINFO_SUFFIXES_HEMI_L + self.MASKINFO_SUFFIXES_HEMI_R
-        ]
+        # ── 1. Maskinfo groups (always fixed, split by hemi) ──────────────────
+        groups["maskinfo-L"] = [f"{prefix}{s}" for s in self.MASKINFO_SUFFIXES_HEMI_L]
+        groups["maskinfo-R"] = [f"{prefix}{s}" for s in self.MASKINFO_SUFFIXES_HEMI_R]
 
-        event_tasks, bold_tasks = self._discover_tasks(session_dir, prefix)
+        # ── 2. Discover tasks ─────────────────────────────────────────────────
+        if not session_dir.is_dir():
+            return groups
 
-        for task in sorted(event_tasks):
-            groups[f"events-{task}"] = [
-                f"{prefix}_task-{task}_run-{run}_events.tsv"
-                for run in self.EXPECTED_RUNS
-            ]
+        bold_tasks, event_tasks, mix_errors = self._discover_tasks(session_dir, prefix)
 
+        # Surface mix/count errors as a fake group so engine reports them
+        # as "missing" files — one error message per entry
+        if mix_errors:
+            groups["task-validation"] = mix_errors  # will all appear as "missing"
+
+        # ── 3. Bold groups (run-01 / run-02 / run-0102avg × hemi-L / hemi-R) ──
         for task in sorted(bold_tasks):
             groups[f"bold-{task}"] = [
                 f"{prefix}_task-{task}_run-{run}_{hemi}_bold.nii.gz"
-                for run in self.EXPECTED_RUNS
+                for run in self.BOLD_RUNS
                 for hemi in self.BOLD_HEMIS
+            ]
+
+        # ── 4. Events groups (run-01 / run-02 only, no avg) ───────────────────
+        for task in sorted(event_tasks):
+            groups[f"events-{task}"] = [
+                f"{prefix}_task-{task}_run-{run}_events.tsv" for run in self.EVENTS_RUNS
             ]
 
         return groups
