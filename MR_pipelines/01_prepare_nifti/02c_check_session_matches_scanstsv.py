@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-check_session.py
+02c_check_session_matches_scanstsv.py
 
 Walks every sub-*/ses-* directory under a BIDS root and validates each
 session's scans.tsv against the actual files on disk.
@@ -8,12 +8,15 @@ session's scans.tsv against the actual files on disk.
 Mapping (BIDS file → scans.tsv entry):
   anat/ _T1w.nii.gz             → _T1_uni.nii.gz
   anat/ _T2w.nii.gz             → _T2w.nii.gz
-  fmap/ _epi.nii.gz             → _epi.nii.gz
+  fmap/ _epi.nii.gz             → _epi.nii.gz ; run is one digit only (e.g. run-1, not run-01)
   func/ _bold.nii.gz            → _magnitude.nii.gz
   func/ _sbref.nii.gz           → _sbref.nii.gz
+
   dwi/  _dwi.nii.gz             → _magnitude.nii.gz
-  dwi/  acq-magonly or
-        acq-nordic *.nii.gz     → acq-floc1d5isodir104_* (or vice versa)
+  dwi/  acq-magonly_dir-PA or
+        acq-nordic_dir-PA*.nii.gz     → acq-floc1d5isodir6_* (or vice versa)
+  dwi/  acq-magonly_dir-AP or
+        acq-nordic_dir-AP*.nii.gz     → acq-floc1d5isodir104_* (or vice versa)
 
 Ignored tasks: task-WC, task-*retfix*
 
@@ -53,7 +56,20 @@ def should_ignore(filename: str) -> bool:
 
 # ── DWI acq equivalence ───────────────────────────────────────────────────────
 DWI_BIDS_ACQS = {'magonly', 'nordic'}
-DWI_TSV_ACQ   = 'floc1d5isodir104'
+
+# dir-PA  →  floc1d5isodir6
+# dir-AP  →  floc1d5isodir104
+DWI_DIR_TO_TSV_ACQ: dict[str, str] = {
+    'PA': 'floc1d5isodir6',
+    'AP': 'floc1d5isodir104',
+}
+
+def dwi_tsv_acq_for(filename: str) -> Optional[str]:
+    """Return the expected scans.tsv acq label for a DWI BIDS file, based on dir-XX."""
+    m = re.search(r'_dir-([^_]+)', filename)
+    if m:
+        return DWI_DIR_TO_TSV_ACQ.get(m.group(1).upper())
+    return None
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -91,6 +107,10 @@ def run_of(fn: str) -> int:
     m = re.search(r'_run-(\d+)', fn)
     return int(m.group(1)) if m else -1
 
+def task_of(fn: str) -> str:
+    m = re.search(r'_task-([^_]+)', fn)
+    return m.group(1) if m else ''
+
 def series_group(fn: str) -> str:
     mod  = fn.split('/')[0]
     task = re.search(r'_task-([^_]+)', fn)
@@ -105,12 +125,14 @@ def series_group(fn: str) -> str:
     ]))
 
 def is_dwi_bids_acq(name: str) -> bool:
+    """True when the BIDS file uses one of the known raw DWI acq labels (magonly / nordic)."""
     m = re.search(r'_acq-([^_]+)', name)
     return m is not None and m.group(1) in DWI_BIDS_ACQS
 
 def is_dwi_tsv_acq(name: str) -> bool:
+    """True when the scans.tsv filename uses one of the known TSV acq labels (isodir6 / isodir104)."""
     m = re.search(r'_acq-([^_]+)', name)
-    return m is not None and DWI_TSV_ACQ in m.group(1)
+    return m is not None and any(v in m.group(1) for v in DWI_DIR_TO_TSV_ACQ.values())
 
 def tsv_name_for(bids_name: str, mod: str) -> Optional[str]:
     """BIDS filename → expected scans.tsv filename. None = skip."""
@@ -124,9 +146,18 @@ def tsv_name_for(bids_name: str, mod: str) -> Optional[str]:
         if '_sbref.nii.gz' in bids_name: return bids_name
     if mod == 'dwi':
         if '_dwi.nii.gz' in bids_name:
-            return bids_name.replace('_dwi.nii.gz', '_magnitude.nii.gz')
-        if is_dwi_bids_acq(bids_name):
-            return re.sub(r'_acq-[^_]+', f'_acq-{DWI_TSV_ACQ}', bids_name)
+            # Step 1: swap suffix _dwi → _magnitude (scans.tsv always uses _magnitude)
+            tsv_name = bids_name.replace('_dwi.nii.gz', '_magnitude.nii.gz')
+            # Step 2: if the acq label is a raw scanner label (magonly / nordic),
+            #         replace it with the direction-appropriate TSV label
+            if is_dwi_bids_acq(bids_name):
+                tsv_acq = dwi_tsv_acq_for(bids_name)
+                if tsv_acq is None:
+                    return None   # unknown dir-XX, skip
+                tsv_name = re.sub(r'_acq-[^_]+', f'_acq-{tsv_acq}', tsv_name)
+            # If the acq label is already a TSV label (floc1d5isodir6 / floc1d5isodir104),
+            # the suffix swap above is sufficient — no acq substitution needed.
+            return tsv_name
     return None
 
 def bids_candidates_for_tsv(tsv_fn: str) -> list[str]:
@@ -143,11 +174,62 @@ def bids_candidates_for_tsv(tsv_fn: str) -> list[str]:
         if '_sbref.nii.gz'     in bn: return [bn]
     if mod == 'dwi':
         if '_magnitude.nii.gz' in bn:
-            # could be _dwi.nii.gz OR acq-magonly/acq-nordic
-            dwi_ver  = bn.replace('_magnitude.nii.gz', '_dwi.nii.gz')
-            acq_vers = [re.sub(r'_acq-[^_]+', f'_acq-{a}', bn) for a in DWI_BIDS_ACQS]
-            return [dwi_ver] + acq_vers
+            # scans.tsv uses _magnitude.nii.gz but on-disk BIDS files always end
+            # in _dwi.nii.gz — swap the suffix first, then build all acq variants.
+            base_dwi = bn.replace('_magnitude.nii.gz', '_dwi.nii.gz')
+
+            # keep the TSV acq label as-is (e.g. acq-floc1d5isodir6_dir-PA_dwi)
+            tsv_acq_candidate = base_dwi
+
+            # also try the raw scanner acq labels (acq-magonly, acq-nordic),
+            # preserving the dir-XX tag in each candidate
+            raw_acq_candidates = [
+                re.sub(r'_acq-[^_]+', f'_acq-{a}', base_dwi)
+                for a in DWI_BIDS_ACQS
+            ]
+
+            return [tsv_acq_candidate] + raw_acq_candidates
     return []
+
+
+# ── time comparison ───────────────────────────────────────────────────────────
+
+def times_match(t1: str, t2: str, max_diff_sec: int = 30) -> bool:
+    """
+    Compare two BIDS-style AcquisitionTime strings.
+
+    Each SBRef should have been acquired just before its corresponding bold
+    run (typically a few seconds to ~1 minute apart). This function checks
+    that the absolute difference between two acquisition times is within an
+    acceptable window, used to verify sbref↔bold pairing.
+
+    Parameters
+    ----------
+    t1 : str
+        AcquisitionTime string from the sbref JSON, e.g. "14:04:15.487500"
+    t2 : str
+        AcquisitionTime string from the bold JSON,  e.g. "14:04:29.487500"
+    max_diff_sec : int
+        Maximum allowed difference in seconds to consider the sbref and bold
+        as a matched pair. Default is 30 s; raise to ~180 s if your protocol
+        has a longer gap between SBRef and the start of the bold acquisition.
+
+    Returns
+    -------
+    bool
+        True if |t1 - t2| <= max_diff_sec, False otherwise.
+    """
+    if t1 is None or t2 is None:
+        return False
+
+    try:
+        dt1 = datetime.strptime(parse_hms(t1), "%H:%M:%S")
+        dt2 = datetime.strptime(parse_hms(t2), "%H:%M:%S")
+    except ValueError:
+        return False
+
+    diff = abs((dt1 - dt2).total_seconds())
+    return diff <= max_diff_sec
 
 
 # ── per-session check ─────────────────────────────────────────────────────────
@@ -158,6 +240,10 @@ SCAN_PATTERNS = {
     'func': ['*_bold.nii.gz', '*_sbref.nii.gz'],
     'dwi':  ['*_dwi.nii.gz', '*_magnitude.nii.gz'],
 }
+
+# Maximum seconds between an sbref and its paired bold run
+SBREF_BOLD_MAX_DIFF_SEC = 180
+
 
 def check_session(ses_dir: Path, mode: int) -> tuple[list[str], list[dict]]:
     """
@@ -309,6 +395,114 @@ def check_session(ses_dir: Path, mode: int) -> tuple[list[str], list[dict]]:
     if mode == 2:
         console.print(run_table)
         console.print()
+
+    # ── sbref ↔ bold pairing check ────────────────────────────────────────────
+    # For every func bold run, verify that a same-task sbref exists in scans.tsv
+    # whose acquisition time is within SBREF_BOLD_MAX_DIFF_SEC seconds.
+    # The run numbers are NOT required to match (aborted-scan scenario).
+    func_dir = ses_dir / 'func'
+    if func_dir.exists():
+        if mode == 2:
+            sbref_table = Table(show_header=True, header_style="bold magenta",
+                                title=f"SBRef ↔ Bold pairing (max Δt = {SBREF_BOLD_MAX_DIFF_SEC}s)")
+            sbref_table.add_column("",         width=2, justify="center")
+            sbref_table.add_column("Bold run",  no_wrap=False)
+            sbref_table.add_column("Bold time", width=10)
+            sbref_table.add_column("Paired SBRef",  no_wrap=False)
+            sbref_table.add_column("SBRef time", width=10)
+            sbref_table.add_column("Δt (s)",     width=8, justify="right")
+            sbref_table.add_column("Note")
+
+        # Collect all sbref entries from scans.tsv (func only, non-ignored)
+        sbref_entries: list[dict] = []
+        for _, row in df.iterrows():
+            fn = row['filename']
+            if fn.startswith('func/') and '_sbref.nii.gz' in fn and not should_ignore(fn):
+                sbref_entries.append({
+                    'filename': fn,
+                    'run':      run_of(fn),
+                    'task':     task_of(fn),
+                    'acq_time': str(row['acq_time']),
+                })
+
+        # Check each bold file
+        for bold_file in sorted(func_dir.glob('*_bold.nii.gz')):
+            bname = bold_file.name
+            if should_ignore(bname):
+                continue
+
+            bold_run  = run_of(bname)
+            bold_task = task_of(bname)
+
+            bold_js   = read_json(json_for(bold_file))
+            bold_time = bold_js.get('AcquisitionTime')
+
+            # Candidate sbrefs: same task (run number may differ)
+            candidates = [e for e in sbref_entries if e['task'] == bold_task]
+
+            if not candidates:
+                err = f"{label}: NO SBREF — no sbref found in scans.tsv for task-{bold_task} (bold run-{bold_run:02d})"
+                errors.append(err)
+                records.append({'label': label,
+                                'check': f'func/{bname}',
+                                'status': 'SBREF_MISSING'})
+                if mode == 2:
+                    sbref_table.add_row(
+                        "[red]✗[/red]", f"func/{bname}",
+                        parse_hms(bold_time) if bold_time else "—",
+                        "—", "—", "—",
+                        "[red]no sbref for this task[/red]")
+                continue
+
+            # Find the best-matching sbref by temporal proximity
+            best        = None
+            best_diff   = float('inf')
+            best_stime  = None
+            for cand in candidates:
+                cand_time = cand['acq_time']
+                # Compute raw diff in seconds for ranking
+                try:
+                    dt_b = datetime.strptime(parse_hms(bold_time), "%H:%M:%S") if bold_time else None
+                    dt_s = datetime.strptime(parse_hms(cand_time), "%H:%M:%S")
+                    diff = abs((dt_b - dt_s).total_seconds()) if dt_b else float('inf')
+                except ValueError:
+                    diff = float('inf')
+                if diff < best_diff:
+                    best       = cand
+                    best_diff  = diff
+                    best_stime = cand_time
+
+            matched = times_match(best_stime, bold_time, SBREF_BOLD_MAX_DIFF_SEC) if best else False
+            bold_time_str  = parse_hms(bold_time)  if bold_time  else "—"
+            sbref_time_str = parse_hms(best_stime) if best_stime else "—"
+            diff_str       = f"{int(best_diff)}" if best_diff < float('inf') else "—"
+            paired_name    = f"func/{best['filename'].split('/')[-1]}" if best else "—"
+
+            if not matched:
+                err = (f"{label}: SBREF MISMATCH — bold func/{bname} (run-{bold_run:02d}, "
+                       f"{bold_time_str}) has no sbref within {SBREF_BOLD_MAX_DIFF_SEC}s "
+                       f"(closest: {paired_name} @ {sbref_time_str}, Δt={diff_str}s)")
+                errors.append(err)
+                records.append({'label': label,
+                                'check': f'func/{bname}',
+                                'status': 'SBREF_TIME_MISMATCH'})
+                if mode == 2:
+                    sbref_table.add_row(
+                        "[red]✗[/red]", f"func/{bname}", bold_time_str,
+                        paired_name, sbref_time_str, diff_str,
+                        f"[red]Δt > {SBREF_BOLD_MAX_DIFF_SEC}s[/red]")
+            else:
+                records.append({'label': label,
+                                'check': f'func/{bname}',
+                                'status': 'OK'})
+                if mode == 2:
+                    sbref_table.add_row(
+                        "[green]✓[/green]", f"func/{bname}", bold_time_str,
+                        paired_name, sbref_time_str, diff_str, "")
+
+        if mode == 2:
+            console.print(sbref_table)
+            console.print()
 
     return errors, records
 

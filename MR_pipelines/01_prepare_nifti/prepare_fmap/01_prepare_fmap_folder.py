@@ -175,7 +175,7 @@ def main():
     code_dir = '/bcbl/home/public/Gari/VOTCLOC/main_exp/code'
     subseslist = pd.read_csv(
         os.path.join(
-            code_dir, 'subseslist_newfunc_01.txt',
+            code_dir, 'subseslist_sub12.txt',
         ), sep=',', dtype='str',
     )
     # This step will only need once

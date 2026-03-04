@@ -13,8 +13,8 @@
 # portions of the Software.
 # """
 #### user customize
-project=votcloc
-basedir=/bcbl/home/public/Gari/VOTCLOC/main_exp
+project=bibalance
+basedir=/bcbl/home/home_n-z/tlei/BIBALANCE_MRI
 unset step
 
 ###
@@ -31,10 +31,10 @@ outputdir=$basedir/raw_nifti
 dcm_dir=/base/dicom 
 script_dir=/export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/00_dicom_to_nifti
 subseslist_path=$codedir/$2
-heuristicfile=$script_dir/heuristic/heuristic_anat_${project}.py
+heuristicfile=$script_dir/heuristic/heuristic_all_${project}.py
 sing_path=/bcbl/home/public/Gari/containers/heudiconv_1.3.4.sif
 
-logdir=${outputdir}/log_heudiconv_local/${analysis_name}_$(date +"%Y-%m-%d")/${step}
+logdir=${outputdir}/log_heudiconv/${analysis_name}_$(date +"%Y-%m-%d")/${step}
 echo "The logdir is $logdir"
 echo "The outputdir is $outputdir"
 mkdir -p $logdir
@@ -44,7 +44,7 @@ echo "reading the subses"
 line_number=0
 # Read the file line by line
 # Loop through the subseslist
-while IFS=',' read -r sub ses ; do
+while IFS=',' read -r sub ses _; do
     echo "line number is $line_number sub is $sub ses is $ses"
     ((line_number++))  # Increment line counter
 

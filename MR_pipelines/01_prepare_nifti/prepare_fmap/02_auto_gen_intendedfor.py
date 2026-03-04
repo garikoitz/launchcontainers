@@ -74,11 +74,11 @@ criteria = ['First', 'Closest']
 
 
 def main():
-    basedir = '/bcbl/home/public/Gari/VOTCLOC/main_exp/BIDS_new'
+    basedir = '/bcbl/home/public/Gari/VOTCLOC/main_exp/BIDS'
     code_dir = '/bcbl/home/public/Gari/VOTCLOC/main_exp/code'
     subseslist = pd.read_csv(
         os.path.join(
-            code_dir, 'subseslist_newfunc_02.txt',
+            code_dir, 'subseslist_sub12.txt',
         ), sep=',', dtype='str',
     )
     # force = True
