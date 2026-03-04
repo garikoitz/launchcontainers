@@ -661,6 +661,28 @@ def print_summary(results: list[SessionResult], spec: AnalysisSpec) -> None:
     if n_no_groups:
         console.print(f"[yellow]Empty session dirs: {n_no_groups}[/yellow]")
 
+def print_all_groups(results: list[SessionResult], spec: AnalysisSpec) -> None:
+    """Print group breakdown for every session, complete or not."""
+    for r in results:
+        status = "[green]✓[/green]" if r.is_complete else "[red]✗[/red]"
+        console.print(f"\n{status} [cyan]{r.sub}/{r.ses}[/cyan]")
+
+        if not r.session_dir_exists:
+            console.print("  [yellow]directory missing[/yellow]")
+            continue
+
+        for glabel, gresult in sorted(r.groups.items()):
+            group_status = "[green]✓[/green]" if gresult.is_complete else "[red]✗[/red]"
+            console.print(
+                f"  {group_status} {glabel} "
+                f"({len(gresult.found_files)}/{len(gresult.expected_files)} files)"
+            )
+            if gresult.missing_files:
+                for mf in gresult.missing_files:
+                    console.print(f"      [red]- {mf}[/red]")
+            if gresult.corrupted_files:
+                for cf in gresult.corrupted_files:
+                    console.print(f"      [magenta]! {cf}[/magenta]")
 
 def print_detailed_results(
     results: list[SessionResult],
@@ -812,6 +834,9 @@ def check(
     verbose: bool = typer.Option(
         False, "--verbose", "-v", help="Show complete groups too"
     ),
+    debug: bool = typer.Option(
+        False, "--debug", "-d", help="Show all groups (verbose + debug)"
+    ),
     show_distribution: bool = typer.Option(
         True, "--show-distribution/--no-distribution"
     ),
@@ -880,7 +905,10 @@ def check(
     print_summary(results, spec)
     if show_distribution:
         print_group_distribution(results)
-    print_detailed_results(results, verbose)
+    if debug:
+        print_all_groups(results, spec)
+    else:
+        print_detailed_results(results, verbose)
 
     output_dir.mkdir(parents=True, exist_ok=True)
 

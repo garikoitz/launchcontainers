@@ -195,17 +195,16 @@ class PRFPrepareSpec(AnalysisSpec):
                 bold_tasks.add(task)
             elif f.name.endswith("_events.tsv"):
                 event_tasks.add(task)
-
+        all_tasks = bold_tasks | event_tasks
         # ── Fix / no-fix mix check ────────────────────────────────────────────
         mix_errors: list[str] = []
-        has_nofix = bool(bold_tasks & TASKS_NO_FIX)
-        has_fix = bool(bold_tasks & TASKS_FIX)
+        has_nofix = bool(all_tasks & TASKS_NO_FIX)
+        has_fix = bool(all_tasks & TASKS_FIX)
         if has_nofix and has_fix:
-            nofix_found = sorted(bold_tasks & TASKS_NO_FIX)
-            fix_found = sorted(bold_tasks & TASKS_FIX)
             mix_errors.append(
                 f"Mixed fix/no-fix tasks detected — "
-                f"no-fix: {nofix_found}, fix: {fix_found}. "
+                f"no-fix: {sorted(all_tasks & TASKS_NO_FIX)}, "
+                f"fix: {sorted(all_tasks & TASKS_FIX)}. "
                 f"All tasks must be from the same category."
             )
 
@@ -221,39 +220,21 @@ class PRFPrepareSpec(AnalysisSpec):
     # ── Group construction ────────────────────────────────────────────────────
 
     def get_expected_groups(self, session_dir: Path) -> dict[str, list[str]]:
-        """
-        Build 8 groups:
-          maskinfo-L    — all left ROI maskinfo JSONs
-          maskinfo-R    — all right ROI maskinfo JSONs
-          bold-{task}   — 6 files (3 runs × 2 hemis)      [× 3 tasks]
-          events-{task} — 2 files (run-01, run-02)         [× 3 tasks]
-
-        If fix/no-fix mixing or wrong task count is detected, a special
-        "task-mix-error" group is added so the error surfaces in the report.
-        """
-        # session_dir = .../sub-XX/ses-XX/func/
-        sub = session_dir.parent.parent.name
-        ses = session_dir.parent.name
+        sub    = session_dir.parent.parent.name
+        ses    = session_dir.parent.name
         prefix = f"{sub}_{ses}"
-
         groups: dict[str, list[str]] = {}
 
-        # ── 1. Maskinfo groups (always fixed, split by hemi) ──────────────────
+        # 1. Maskinfo (always fixed)
         groups["maskinfo-L"] = [f"{prefix}{s}" for s in self.MASKINFO_SUFFIXES_HEMI_L]
         groups["maskinfo-R"] = [f"{prefix}{s}" for s in self.MASKINFO_SUFFIXES_HEMI_R]
 
-        # ── 2. Discover tasks ─────────────────────────────────────────────────
         if not session_dir.is_dir():
             return groups
 
         bold_tasks, event_tasks, mix_errors = self._discover_tasks(session_dir, prefix)
 
-        # Surface mix/count errors as a fake group so engine reports them
-        # as "missing" files — one error message per entry
-        if mix_errors:
-            groups["task-validation"] = mix_errors  # will all appear as "missing"
-
-        # ── 3. Bold groups (run-01 / run-02 / run-0102avg × hemi-L / hemi-R) ──
+        # 2. Bold groups
         for task in sorted(bold_tasks):
             groups[f"bold-{task}"] = [
                 f"{prefix}_task-{task}_run-{run}_{hemi}_bold.nii.gz"
@@ -261,13 +242,29 @@ class PRFPrepareSpec(AnalysisSpec):
                 for hemi in self.BOLD_HEMIS
             ]
 
-        # ── 4. Events groups (run-01 / run-02 only, no avg) ───────────────────
+        # 3. Events groups
         for task in sorted(event_tasks):
             groups[f"events-{task}"] = [
-                f"{prefix}_task-{task}_run-{run}_events.tsv" for run in self.EVENTS_RUNS
+                f"{prefix}_task-{task}_run-{run}_events.tsv"
+                for run in self.EVENTS_RUNS
             ]
 
+        # 4. Validate group count — expected 8 (2 maskinfo + 3 bold + 3 events)
+        expected_n_groups = 2 + self.EXPECTED_N_TASKS * 2
+        if len(groups) != expected_n_groups:
+            mix_errors.append(
+                f"Expected {expected_n_groups} groups total, "
+                f"got {len(groups)}: {list(groups.keys())}"
+            )
+
+        # 5. Surface all errors as a validation group
+        # Each error string becomes a "missing file" in the report
+        if mix_errors:
+            groups["[validation-errors]"] = mix_errors
+
         return groups
+
+
 
     def get_default_combinations(self) -> list[tuple[str, str]]:
         return default_combinations()
