@@ -20,12 +20,12 @@ import re
 from datetime import datetime
 from pathlib import Path
 
-from .check_analysis_integrity import AnalysisSpec
-from .check_analysis_integrity import default_combinations
-from .check_analysis_integrity import json_for
-from .check_analysis_integrity import parse_hms
-from .check_analysis_integrity import read_json
-from .check_analysis_integrity import times_match
+from .base import AnalysisSpec
+from .base import default_combinations
+from .base import json_for
+from .base import parse_hms
+from .base import read_json
+from .base import times_match
 
 
 # =============================================================================

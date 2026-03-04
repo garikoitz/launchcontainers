@@ -10,8 +10,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .check_analysis_integrity import AnalysisSpec
-from .check_analysis_integrity import default_combinations
+from .base import AnalysisSpec
+from .base import default_combinations
 
 
 class RTPSpec(AnalysisSpec):
