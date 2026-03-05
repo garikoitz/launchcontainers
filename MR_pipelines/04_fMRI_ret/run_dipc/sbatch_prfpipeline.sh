@@ -39,7 +39,7 @@ version='2.2.1'
 qos="regular" # regular or test
 mem="32G"
 cpus="20"
-time="10:00:00" #time="00:10:00" 10:00:00
+time="20:00:00" #time="00:10:00" 10:00:00
 task="retFF" # retCB retRW retFF
 # retfixRW retfixFF retfixRwblock01 retfixRWblock02
 
@@ -59,9 +59,9 @@ json_dir="$baseP/code/${step}_jsons"
 script_dir="/scratch/tlei/soft/launchcontainers/MR_pipelines/04_fMRI_ret"
 code_dir=$baseP/code
 sif_path="/scratch/tlei/containers/${step}_${version}.sif"
-
 log_note=$1
-subses_list_dir=$code_dir/subseslist_jun16.txt
+subses_name=$2
+subses_list_dir=$code_dir/${subses_name}
 # log dir
 LOG_DIR="$baseP/dipc_${step}_logs/${log_note}_$(date +"%Y-%m-%d")"
 # Ensure directories exist

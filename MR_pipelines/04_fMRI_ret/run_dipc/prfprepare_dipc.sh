@@ -29,7 +29,7 @@
 # fi
 # current_time=$(date +"%Y-%m-%d_%H-%M-%S")
 
-module load Apptainer/1.2.4
+module load Apptainer/1.3.5
 
 cmd="unset PYTHONPATH; singularity run \
 	-B /scratch:/scratch

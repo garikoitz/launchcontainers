@@ -1,0 +1,9 @@
+this code is used to fix the func and sbref mismatch problem
+
+we can check at the raw_nifti folder and also the BIDS folder
+
+it will match the _bold/_magnitude with the corresponding sbref based on the task, run_num, and acq_time
+
+it will rename the run_num of mismatched sbref and _bold
+
+this will be the necessary check for running fMRIprep, otherwise it might influence the result

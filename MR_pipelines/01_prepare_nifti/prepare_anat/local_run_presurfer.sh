@@ -18,7 +18,7 @@ bids_dirname=BIDS
 # toolbox path that stores all the matlab toolboxes
 tbPath=/export/home/tlei/tlei/toolboxes
 src_dir=$basedir/raw_nifti
-analysis_name=batchS9
+analysis_name=sub12
 outputdir=${basedir}/${bids_dirname}
 force=false # if overwrite exsting file
 
@@ -36,7 +36,7 @@ echo "reading the subses"
 # Initialize a line counter
 line_number=0
 # Read the file line by line
-while IFS=',' read -r sub ses
+while IFS=',' read -r sub ses _
 do
     echo "line number is $line_number sub is $sub ses is $ses"
     # Increment line counter

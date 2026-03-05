@@ -169,6 +169,7 @@ host_options:
       manager: sge
       mount_options: ['/bcbl', '/tmp','/scratch']
       envextra: []
+      job_name: votcloc
       # config the cluster
       # Total number of cores per job (it was core for BCBL)
       cores: 8
