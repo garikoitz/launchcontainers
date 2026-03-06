@@ -821,8 +821,11 @@ def summarize_incomplete_by_task(
             with open(out_file, "w", newline="") as f:
                 writer = csv.writer(f, delimiter=",")
                 writer.writerow(["sub", "ses", "RUN"])
-                for sub, ses, run in sorted(entries):
-                    writer.writerow([sub.replace("sub-", ""), ses.replace("ses-", ""), True])
+                seen=set()
+                for sub, ses, _ in sorted(entries):
+                    if (sub, ses) not in seen:
+                        seen.add((sub, ses))
+                        writer.writerow([sub.replace("sub-", ""), ses.replace("ses-", ""), True])
             console.print(f"  [dim]Wrote {out_file}[/dim]")
 
 # =============================================================================

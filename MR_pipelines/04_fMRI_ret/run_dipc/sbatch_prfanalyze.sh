@@ -20,7 +20,7 @@ HOME_DIR="$baseP/singularity_home"
 # container specific
 # for prfprepare:
 license_path="$baseP/BIDS/.license"
-model="og" # "one_gaussian" or "css"
+model="css" # "one_gaussian" or "css"
 
 
 ##### For each container
@@ -33,7 +33,7 @@ qos="regular" # regular or test
 mem="10G"
 cpus="20"
 time="20:00:00" #time="00:10:00" 10:00:00
-task="retCB" # retCB retRW retFF
+task="retRW" # retCB retRW retFF
 # retfixRW retfixFF retfixRWblock01 retfixRWblock02 retfixRWblock
 
 # json input
