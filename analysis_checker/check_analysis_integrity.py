@@ -760,6 +760,70 @@ def print_group_distribution(results: list[SessionResult]) -> None:
         table.add_row(str(n), str(counts[n]))
     console.print(table)
 
+# a more detailed summary for prfanalyze
+def summarize_incomplete_by_task(
+    results: list[SessionResult], output_dir: Path
+) -> None:
+    # task -> set of (sub, ses) for print dedup
+    task_subses: defaultdict[str, set] = defaultdict(set)
+    # task -> list of (sub, ses, run) for txt
+    task_entries: defaultdict[str, list] = defaultdict(list)
+    # missing dirs
+    missing_dirs: list[tuple[str, str]] = []
+
+    for r in results:
+        if not r.session_dir_exists:
+            missing_dirs.append((r.sub, r.ses))
+            continue
+        if r.is_complete:
+            continue
+        for glabel, gresult in r.groups.items():
+            if gresult.is_complete:
+                continue
+            parts = glabel.split("_")
+            task = next((p.split("task-")[-1] for p in parts if p.startswith("task-")), None)
+            run  = next((p.split("run-" )[-1] for p in parts if p.startswith("run-" )), None)
+            if task and run:
+                task_subses[task].add((r.sub, r.ses))
+                task_entries[task].append((r.sub, r.ses, run))
+
+    # ── Console print ──────────────────────────────────────────────────────
+    console.print("\n[bold cyan]Incomplete by Task:[/bold cyan]")
+    if task_subses:
+        for task, subses_set in sorted(task_subses.items()):
+            subses_strs = ", ".join(
+                f"[yellow]{sub}_{ses}[/yellow]"
+                for sub, ses in sorted(subses_set)
+            )
+            console.print(f"  [bold]{task}[/bold]: {subses_strs}")
+    else:
+        console.print("  [green]None[/green]")
+
+    if missing_dirs:
+        console.print("\n[bold red]Missing Session Directories:[/bold red]")
+        for sub, ses in sorted(missing_dirs):
+            console.print(f"  [red]{sub}_{ses}[/red]")
+
+    # ── Summary counts ─────────────────────────────────────────────────────
+    console.print("\n[bold cyan]Summary:[/bold cyan]")
+    console.print(f"  Tasks with incomplete sessions : [red]{len(task_subses)}[/red]")
+    console.print(f"  Unique incomplete sub/ses      : [red]{len(set().union(*task_subses.values()) if task_subses else [])}[/red]")
+    console.print(f"  Missing session directories    : [red]{len(missing_dirs)}[/red]")
+    total_runs = sum(len(v) for v in task_entries.values())
+    console.print(f"  Total incomplete runs          : [red]{total_runs}[/red]")
+
+    # ── Write per-task txt files ───────────────────────────────────────────
+    if output_dir is not None:
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        for task, entries in sorted(task_entries.items()):
+            out_file = output_dir / f"incomplete_task-{task}.txt"
+            with open(out_file, "w", newline="") as f:
+                writer = csv.writer(f, delimiter=",")
+                writer.writerow(["sub", "ses", "RUN"])
+                for sub, ses, run in sorted(entries):
+                    writer.writerow([sub.replace("sub-", ""), ses.replace("ses-", ""), True])
+            console.print(f"  [dim]Wrote {out_file}[/dim]")
 
 # =============================================================================
 # 7. SPEC REGISTRY + CLI
@@ -907,7 +971,7 @@ def check(
         print_group_distribution(results)
     if debug:
         print_all_groups(results, spec)
-    else:
+    if verbose:
         print_detailed_results(results, verbose)
 
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -918,7 +982,9 @@ def check(
     write_detailed_log(results, spec, detail_path)
     write_matrix_from_result(results, output_dir / f"{spec.name}_matrix_detailed.csv")
     write_matrix_from_brief_csv(brief_df, output_dir / f"{spec.name}_matrix_simple.csv")
-
+    
+    # additional summary for prfanalyze to break down incomplete by task
+    summarize_incomplete_by_task(results, output_dir)
     # [DEV] Add new conditional output writers here (copy this pattern)
     if any(r.total_corrupted > 0 for r in results):
         p = output_dir / f"{spec.name}_corrupted.txt"
