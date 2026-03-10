@@ -74,23 +74,14 @@ def anatrois(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout):
     # if have retest session and the src session id is specified, then
     # for each src_session_id, we will do the normal procedure
     # for each not src_session_id, we will create symlink to the src_session_id
-    if use_src_session is not None:
-        src_session_dpath = op.join(
-            analysis_dir,
-            'sub-' + sub,
-            'ses-' + use_src_session,
-        )
-        dst_session_dpath = op.join(
-            analysis_dir,
-            'sub-' + sub,
-            'ses-' + ses,
-        )
-    if use_src_session and (not ses == use_src_session):
-        logger.info(
-            '\n'
-            + '### GOing to create symlinks for repeated sessions\n',
-        )
+    if use_src_session is not None and ses != use_src_session:
+        # This is a retest session — symlink to the src session
+        src_session_dpath = op.join(analysis_dir, 'sub-' + sub, 'ses-' + use_src_session)
+        dst_session_dpath = op.join(analysis_dir, 'sub-' + sub, 'ses-' + ses)
+
+        logger.info('\n### Going to create symlinks for repeated sessions\n')
         force_symlink(src_session_dpath, dst_session_dpath, force)
+
         if not os.path.islink(dst_session_dpath):
             logger.warning(f'***Symbolic link missing: {dst_session_dpath}')
     # if not going to use 1 src session for retest, do the normal thing
