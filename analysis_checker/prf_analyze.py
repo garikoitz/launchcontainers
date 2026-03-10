@@ -119,6 +119,13 @@ class PRFAnalyzeSpec(AnalysisSpec):
             groups["[validation-errors]"] = validation_errors
 
         return groups
-
+    
+    def get_group_dimension(self, group_label: str) -> tuple[str, str] | None:
+        parts = group_label.split("_")
+        task = next((p.split("task-")[-1] for p in parts if p.startswith("task-")), None)
+        if task:
+            return ("task", task)
+        return None
+    
     def get_default_combinations(self) -> list[tuple[str, str]]:
         return default_combinations()

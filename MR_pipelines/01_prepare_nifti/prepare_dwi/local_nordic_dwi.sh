@@ -26,7 +26,7 @@ subseslist_path=$codedir/$subseslist_name
 
 # nordic parameters (must match your MATLAB signature)
 NORDIC_END=0
-FORCE=true
+FORCE=false
 DONORDIC=true
 
 # Ensure output dir exists
@@ -39,7 +39,7 @@ mkdir -p $logdir
 # copy the subseslist to the logdir for record
 cp $subseslist_path $logdir
 # Loop through sub/ses list and invoke single-job script
-while IFS=',' read -r sub ses
+while IFS=',' read -r sub ses _
 do
     echo "line number is $line_number sub is $sub ses is $ses"
     # Increment line counter

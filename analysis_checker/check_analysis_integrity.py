@@ -48,9 +48,9 @@ from rich.console import Console
 from rich.table import Table
 
 from .base import AnalysisSpec
-from .bids import BIDSDWISpec
-from .bids import BIDSFuncSBRefSpec
-from .bids import BIDSScanstsvSpec
+from .bids import DWINiiSpec
+from .bids import FuncSBRefSpec
+from .bids import ScanstsvSpec
 from .bids import BIDSSpec
 from .fmriprep import FMRIPrepSpec
 from .glm import GLMSpec
@@ -761,15 +761,22 @@ def print_group_distribution(results: list[SessionResult]) -> None:
     console.print(table)
 
 # a more detailed summary for prfanalyze
-def summarize_incomplete_by_task(
-    results: list[SessionResult], output_dir: Path
+def summarize_incomplete_by_dimension(
+    results: list[SessionResult],
+    spec: AnalysisSpec,
+    output_dir: Path,
 ) -> None:
-    # task -> set of (sub, ses) for print dedup
-    task_subses: defaultdict[str, set] = defaultdict(set)
-    # task -> list of (sub, ses, run) for txt
-    task_entries: defaultdict[str, list] = defaultdict(list)
-    # missing dirs
-    missing_dirs: list[tuple[str, str]] = []
+    """
+    Generic dimensional summary for incomplete sessions.
+    Dimension is defined per-spec via get_group_dimension().
+    If spec returns None for all groups, prints a flat incomplete list instead.
+    """
+    # dim_value -> set of (sub, ses) for console dedup
+    dim_subses:   defaultdict[str, set]  = defaultdict(set)
+    # dim_value -> list of (sub, ses) for txt output
+    dim_entries:  defaultdict[str, list] = defaultdict(list)
+    missing_dirs: list[tuple[str, str]]  = []
+    dim_name = "group"  # fallback label
 
     for r in results:
         if not r.session_dir_exists:
@@ -780,22 +787,25 @@ def summarize_incomplete_by_task(
         for glabel, gresult in r.groups.items():
             if gresult.is_complete:
                 continue
-            parts = glabel.split("_")
-            task = next((p.split("task-")[-1] for p in parts if p.startswith("task-")), None)
-            run  = next((p.split("run-" )[-1] for p in parts if p.startswith("run-" )), None)
-            if task and run:
-                task_subses[task].add((r.sub, r.ses))
-                task_entries[task].append((r.sub, r.ses, run))
+            dim = spec.get_group_dimension(glabel)
+            if dim is not None:
+                dim_name, dim_val = dim
+                dim_subses[dim_val].add((r.sub, r.ses))
+                dim_entries[dim_val].append((r.sub, r.ses))
+            else:
+                # No dimension — bucket everything under the group label itself
+                dim_subses[glabel].add((r.sub, r.ses))
+                dim_entries[glabel].append((r.sub, r.ses))
 
     # ── Console print ──────────────────────────────────────────────────────
-    console.print("\n[bold cyan]Incomplete by Task:[/bold cyan]")
-    if task_subses:
-        for task, subses_set in sorted(task_subses.items()):
+    console.print(f"\n[bold cyan]Incomplete by {dim_name}:[/bold cyan]")
+    if dim_subses:
+        for dim_val, subses_set in sorted(dim_subses.items()):
             subses_strs = ", ".join(
                 f"[yellow]{sub}_{ses}[/yellow]"
                 for sub, ses in sorted(subses_set)
             )
-            console.print(f"  [bold]{task}[/bold]: {subses_strs}")
+            console.print(f"  [bold]{dim_name}-{dim_val}[/bold]: {subses_strs}")
     else:
         console.print("  [green]None[/green]")
 
@@ -805,27 +815,32 @@ def summarize_incomplete_by_task(
             console.print(f"  [red]{sub}_{ses}[/red]")
 
     # ── Summary counts ─────────────────────────────────────────────────────
-    console.print("\n[bold cyan]Summary:[/bold cyan]")
-    console.print(f"  Tasks with incomplete sessions : [red]{len(task_subses)}[/red]")
-    console.print(f"  Unique incomplete sub/ses      : [red]{len(set().union(*task_subses.values()) if task_subses else [])}[/red]")
-    console.print(f"  Missing session directories    : [red]{len(missing_dirs)}[/red]")
-    total_runs = sum(len(v) for v in task_entries.values())
-    console.print(f"  Total incomplete runs          : [red]{total_runs}[/red]")
+    console.print(f"\n[bold cyan]Summary:[/bold cyan]")
+    console.print(f"  {dim_name}s with incomplete sessions : [red]{len(dim_subses)}[/red]")
+    all_incomplete = set().union(*dim_subses.values()) if dim_subses else set()
+    console.print(f"  Unique incomplete sub/ses           : [red]{len(all_incomplete)}[/red]")
+    console.print(f"  Missing session directories         : [red]{len(missing_dirs)}[/red]")
+    total = sum(len(v) for v in dim_entries.values())
+    console.print(f"  Total incomplete groups             : [red]{total}[/red]")
 
-    # ── Write per-task txt files ───────────────────────────────────────────
+    # ── Write per-dimension txt files ──────────────────────────────────────
     if output_dir is not None:
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
-        for task, entries in sorted(task_entries.items()):
-            out_file = output_dir / f"incomplete_task-{task}.txt"
+        for dim_val, entries in sorted(dim_entries.items()):
+            out_file = output_dir / f"incomplete_{dim_name}-{dim_val}.txt"
             with open(out_file, "w", newline="") as f:
-                writer = csv.writer(f, delimiter=",")
+                writer = csv.writer(f)
                 writer.writerow(["sub", "ses", "RUN"])
-                seen=set()
-                for sub, ses, _ in sorted(entries):
+                seen: set = set()
+                for sub, ses in sorted(entries):
                     if (sub, ses) not in seen:
                         seen.add((sub, ses))
-                        writer.writerow([sub.replace("sub-", ""), ses.replace("ses-", ""), True])
+                        writer.writerow([
+                            sub.replace("sub-", ""),
+                            ses.replace("ses-", ""),
+                            True,
+                        ])
             console.print(f"  [dim]Wrote {out_file}[/dim]")
 
 # =============================================================================
@@ -837,9 +852,9 @@ SPEC_REGISTRY: dict[str, AnalysisSpec] = {
     "prfprepare": PRFPrepareSpec(),
     "prfanalyze": PRFAnalyzeSpec(),
     "bids": BIDSSpec(),
-    "bidsdwi": BIDSDWISpec(),
-    "bidsfuncsbref": BIDSFuncSBRefSpec(),
-    "bidsscantsv": BIDSScanstsvSpec(),
+    "dwinii": DWINiiSpec(),
+    "bidsfuncsbref": FuncSBRefSpec(),
+    "scanstsv": ScanstsvSpec(),
     "fmriprep": FMRIPrepSpec(),
     "glm": GLMSpec(),
     "rtp": RTPSpec(),
@@ -878,7 +893,7 @@ def check(
     analysis_type: str = typer.Argument(
         ...,
         help="Analysis type: prfprepare, prfanalyze, bids, "
-        "bidsdwi, bidsfuncsbref, bidsscantsv, fmriprep, glm, rtp",
+        "dwinii, funcsbref, scanstsv, fmriprep, glm, rtp",
     ),
     subses: list[str] | None = typer.Option(
         None,
@@ -987,7 +1002,8 @@ def check(
     write_matrix_from_brief_csv(brief_df, output_dir / f"{spec.name}_matrix_simple.csv")
     
     # additional summary for prfanalyze to break down incomplete by task
-    summarize_incomplete_by_task(results, output_dir)
+    summarize_incomplete_by_dimension(results, spec, output_dir)
+    
     # [DEV] Add new conditional output writers here (copy this pattern)
     if any(r.total_corrupted > 0 for r in results):
         p = output_dir / f"{spec.name}_corrupted.txt"
