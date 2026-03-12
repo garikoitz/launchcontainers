@@ -2,9 +2,9 @@ name: launchcontainers CI
 
 on:
   push:
-    branches: ["master", "data_cleaning"]
+    branches: ["main", "data_cleaning"]
   pull_request:
-    branches: ["master", "data_cleaning"]
+    branches: ["main", "data_cleaning"]
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -79,7 +79,7 @@ jobs:
   build-docs:
     runs-on: ubuntu-latest
     #needs: format   # wait for formatting to finish first
-    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/data_cleaning')
     steps:
       - uses: actions/checkout@v4
 
