@@ -26,6 +26,14 @@ logger = logging.getLogger(__name__)
 
 
 def copy_example_configs(copy_configs):
+    """
+    Copy packaged example configuration files into a destination directory.
+
+    Parameters
+    ----------
+    copy_configs : str
+        Destination directory that will receive the example files.
+    """
     # Ensure the directory exists
     if not os.path.exists(copy_configs):
         os.makedirs(copy_configs)
@@ -37,6 +45,9 @@ def copy_example_configs(copy_configs):
 
 
 def main():
+    """
+    Run the ``copy_configs`` helper from the shared launchcontainers parser.
+    """
     parser_namespace, parse_dict = lc_parser.get_parser()
 
     # Check if download_configs argument is provided
