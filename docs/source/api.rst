@@ -101,9 +101,6 @@ Checks And QC
    :members:
    :undoc-members: False
 
-.. automodule:: launchcontainers.quality_control.qc_rtp2pipeline_output
-   :members:
-   :undoc-members: False
 
 Helper Scripts
 --------------
