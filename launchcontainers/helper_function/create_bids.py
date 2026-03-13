@@ -31,6 +31,13 @@ logger = logging.getLogger(__name__)
 
 
 def main():
+    """
+    Create a fake BIDS tree and matching derivative skeleton for testing.
+
+    The helper reads a small configuration YAML plus a subject/session list and
+    creates empty files and folders that mimic the inputs expected by the rest
+    of the package.
+    """
     parser_namespace, parse_dict = lc_parser.get_parser()
 
     # Check if download_configs argument is provided

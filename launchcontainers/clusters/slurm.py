@@ -9,34 +9,40 @@ def gen_slurm_array_job_script(
     parse_namespace,
     log_dir,
     n_jobs,
-
 ):
     """
-    Alternative implementation using SLURM array jobs (more efficient).
+    Build the SLURM array-job script used for batch container launches.
 
-    Args:
-        Same as gen_slurm_job_script
+    Parameters
+    ----------
+    parse_namespace : argparse.Namespace
+        Parsed CLI arguments for run mode.
+    log_dir : str
+        Directory where scheduler stdout/stderr logs should be written.
+    n_jobs : int
+        Number of array tasks to request.
 
     Returns:
-        Single job ID for the array job (None if dry_run=True)
+        str
+            Full SLURM batch script text.
     """
     # read LC config yml from analysis dir
     analysis_dir = parse_namespace.workdir
-    lc_config_fpath = op.join(analysis_dir, 'lc_config.yaml')
+    lc_config_fpath = op.join(analysis_dir, "lc_config.yaml")
     lc_config = do.read_yaml(lc_config_fpath)
-    host = lc_config['general']['host']
-    jobqueue_config = lc_config['host_options'][host]
+    host = lc_config["general"]["host"]
+    jobqueue_config = lc_config["host_options"][host]
     # below is the job specific configs
-    job_name = jobqueue_config['job_name']
-    cores = jobqueue_config['cores']
-    memory = jobqueue_config['memory']
-    partition = jobqueue_config['partition']
+    job_name = jobqueue_config["job_name"]
+    cores = jobqueue_config["cores"]
+    memory = jobqueue_config["memory"]
+    partition = jobqueue_config["partition"]
     # qos is a DIPC specific command, it is defining the queue
-    qos = jobqueue_config['qos']
-    walltime = jobqueue_config['walltime']
+    qos = jobqueue_config["qos"]
+    walltime = jobqueue_config["walltime"]
 
     # Generate array job script
-    job_name = f'{job_name}_array'
+    job_name = f"{job_name}_array"
     job_script = f"""#!/bin/bash
 #SBATCH --array=1-{n_jobs}
 #SBATCH --job-name={job_name}
@@ -72,7 +78,3 @@ exit $exitcode
     """
 
     return job_script
-
-
-    
-

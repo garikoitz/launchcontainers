@@ -24,81 +24,86 @@ from dask.distributed import Client
 from dask.distributed import LocalCluster
 from dask_jobqueue import SGECluster
 from dask_jobqueue import SLURMCluster
-logger = logging.getLogger('Launchcontainers')
+
+logger = logging.getLogger("Launchcontainers")
 
 
 def initiate_cluster(jobqueue_config, n_job, dask_logdir):
-    '''
+    """
+    Create and scale a Dask cluster from the configured scheduler backend.
+
     Parameters
     ----------
-    jobqueue_config : dictionary
-        read the jobquene_yaml from the yaml file
-    n_job : not clear what should it be
-        basically it's a quene specific thing, needs to check if it's dask specific.
+    jobqueue_config : dict
+        Scheduler-specific settings loaded from the launchcontainers YAML file.
+    n_job : int
+        Number of worker jobs or local workers to request.
+    dask_logdir : str
+        Directory where Dask worker logs should be written.
 
     Returns
     -------
-    cluster_by_config : dask cluster object
-        according to the jobquene config, we defined a cluster object we want to use.
-
-    '''
-    config.set(distributed__comm__timeouts__tcp='90s')
-    config.set(distributed__comm__timeouts__connect='90s')
-    config.set(scheduler='single-threaded')
-    config.set({'distributed.scheduler.allowed-failures': 50})
-    config.set(admin__tick__limit='3h')
-    logger.critical(f'\n $$$$$ dask number of jobs scaled is {n_job}')
-    if 'sge' in jobqueue_config['manager']:
+    dask_jobqueue.core.JobQueueCluster or dask.distributed.LocalCluster or None
+        Configured cluster object for the requested backend.
+    """
+    config.set(distributed__comm__timeouts__tcp="90s")
+    config.set(distributed__comm__timeouts__connect="90s")
+    config.set(scheduler="single-threaded")
+    config.set({"distributed.scheduler.allowed-failures": 50})
+    config.set(admin__tick__limit="3h")
+    logger.critical(f"\n $$$$$ dask number of jobs scaled is {n_job}")
+    if "sge" in jobqueue_config["manager"]:
         # envextra is needed for launch jobs on SGE and SLURM
         envextra = [
             f"module load {jobqueue_config['apptainer']} ",
         ]
         cluster_by_config = SGECluster(
-            queue=jobqueue_config['queue'],
-            cores=jobqueue_config['cores'],
-            memory=jobqueue_config['memory'],
-            walltime=jobqueue_config['walltime'],
+            queue=jobqueue_config["queue"],
+            cores=jobqueue_config["cores"],
+            memory=jobqueue_config["memory"],
+            walltime=jobqueue_config["walltime"],
             processes=1,
             log_directory=dask_logdir,
             job_script_prologue=envextra,
         )
         cluster_by_config.scale(jobs=n_job)
 
-    elif 'slurm' in jobqueue_config['manager']:
+    elif "slurm" in jobqueue_config["manager"]:
         envextra = [
             f"module load {jobqueue_config['apptainer']} ",
             f"export SINGULARITYENV_TMPDIR={jobqueue_config['tmpdir']}",
             "export SINGULARITY_BIND=''",
         ]
         cluster_by_config = SLURMCluster(
-            cores=jobqueue_config['cores'],
-            memory=jobqueue_config['memory'],
+            cores=jobqueue_config["cores"],
+            memory=jobqueue_config["memory"],
             processes=1,
             log_directory=dask_logdir,
-            queue=jobqueue_config['queue'],
-            job_extra_directives=['--export=ALL'] + jobqueue_config['job_extra_directives'],
+            queue=jobqueue_config["queue"],
+            job_extra_directives=["--export=ALL"]
+            + jobqueue_config["job_extra_directives"],
             death_timeout=300,
-            walltime=jobqueue_config['walltime'],
+            walltime=jobqueue_config["walltime"],
             job_script_prologue=envextra,
         )
         cluster_by_config.scale(jobs=n_job)
 
-    elif 'local' in jobqueue_config['manager']:
+    elif "local" in jobqueue_config["manager"]:
         cluster_by_config = LocalCluster(
             processes=False,
             n_workers=n_job,
-            threads_per_worker=jobqueue_config['threads_per_worker'],
-            memory_limit=jobqueue_config['memory_limit'],
+            threads_per_worker=jobqueue_config["threads_per_worker"],
+            memory_limit=jobqueue_config["memory_limit"],
         )
 
     else:
         logger.warning(
             "dask configuration wasn't detected, "
-            'if you are using a cluster please look at '
-            'the jobqueue YAML example, modify it so it works in your cluster '
-            'and add it to ~/.config/dask '
-            'local configuration will be used.'
-            'You can find a jobqueue YAML example in the pySPFM/jobqueue.yaml file.',
+            "if you are using a cluster please look at "
+            "the jobqueue YAML example, modify it so it works in your cluster "
+            "and add it to ~/.config/dask "
+            "local configuration will be used."
+            "You can find a jobqueue YAML example in the pySPFM/jobqueue.yaml file.",
         )
         cluster_by_config = None
 
@@ -106,14 +111,30 @@ def initiate_cluster(jobqueue_config, n_job, dask_logdir):
 
 
 def dask_scheduler(jobqueue_config, n_job, dask_logdir):
+    """
+    Create a Dask client and cluster pair.
+
+    Parameters
+    ----------
+    jobqueue_config : dict
+        Scheduler-specific settings loaded from the launchcontainers YAML file.
+    n_job : int
+        Number of worker jobs or local workers to request.
+    dask_logdir : str
+        Directory where Dask worker logs should be written.
+
+    Returns
+    -------
+    tuple[dask.distributed.Client | None, object | None]
+        The connected client and the cluster object.
+    """
     if jobqueue_config is None:
         logger.warning(
             "dask configuration wasn't detected, "
-            'if you are using a cluster please look at '
-            'the jobqueue YAML example, modify it so it works in your cluster '
-            'and add it to ~/.config/dask '
-            'local configuration will be used.',
-
+            "if you are using a cluster please look at "
+            "the jobqueue YAML example, modify it so it works in your cluster "
+            "and add it to ~/.config/dask "
+            "local configuration will be used.",
         )
         cluster = None
     else:
@@ -124,36 +145,63 @@ def dask_scheduler(jobqueue_config, n_job, dask_logdir):
     return client, cluster
 
 
-def print_job_script(host, jobqueue_config , n_jobs, daskworker_logdir):
-    if host == 'local':
-        launch_mode = jobqueue_config['launch_mode']
+def print_job_script(host, jobqueue_config, n_jobs, daskworker_logdir):
+    """
+    Print the scheduler script that Dask would submit for the current backend.
+
+    Parameters
+    ----------
+    host : str
+        Host name from the launchcontainers configuration.
+    jobqueue_config : dict
+        Scheduler-specific settings loaded from the YAML file.
+    n_jobs : int
+        Number of worker jobs to request.
+    daskworker_logdir : str
+        Directory where Dask worker logs should be written.
+    """
+    if host == "local":
+        launch_mode = jobqueue_config["launch_mode"]
     # If the host is not local, print the job script to be launched in the cluster.
-    if host != 'local' or (host == 'local' and launch_mode == 'dask_worker'):
+    if host != "local" or (host == "local" and launch_mode == "dask_worker"):
         _, cluster = dask_scheduler(jobqueue_config, n_jobs, daskworker_logdir)
-        if host != 'local':
+        if host != "local":
             logger.critical(
-                f'Cluster job script for this command is:\n'
-                f'{cluster.job_script()}',  # type: ignore
+                f"Cluster job script for this command is:\n{cluster.job_script()}",  # type: ignore
             )
-        elif host == 'local' and launch_mode == 'dask_worker':
+        elif host == "local" and launch_mode == "dask_worker":
             logger.critical(
-                f'Local job script by dask is:\n'
-                f'{cluster}',
+                f"Local job script by dask is:\n{cluster}",
             )
         else:
             logger.critical(
-                'Job launched on local, no job script',
+                "Job launched on local, no job script",
             )
     return
 
 
 def launch_with_dask(jobqueue_config, n_jobs, daskworker_logdir, cmds):
+    """
+    Execute a list of shell commands through a Dask cluster.
+
+    Parameters
+    ----------
+    jobqueue_config : dict
+        Scheduler-specific settings loaded from the YAML file.
+    n_jobs : int
+        Number of worker jobs to request.
+    daskworker_logdir : str
+        Directory where Dask worker logs should be written.
+    cmds : list[str]
+        Shell commands to run in parallel.
+    """
+
     def run_cmd(cmd: str):
         return sp.run(cmd, shell=True).returncode
 
     client, cluster = dask_scheduler(jobqueue_config, n_jobs, daskworker_logdir)
     logger.info(
-        '---this is the cluster and client\n' + f'{client} \n cluster: {cluster} \n',
+        "---this is the cluster and client\n" + f"{client} \n cluster: {cluster} \n",
     )
 
     # Compose the command to run in the cluster
@@ -163,10 +211,10 @@ def launch_with_dask(jobqueue_config, n_jobs, daskworker_logdir, cmds):
     )
     results = client.gather(futures)  # type: ignore
     logger.info(results)
-    logger.info('###########')
+    logger.info("###########")
     # Close the connection with the client and the cluster, and inform about it
     client.close()  # type: ignore
     cluster.close()  # type: ignore
 
-    logger.critical('\n' + 'launchcontainer finished, all the jobs are done')
+    logger.critical("\n" + "launchcontainer finished, all the jobs are done")
     return

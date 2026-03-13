@@ -39,12 +39,17 @@ logger = logging.getLogger("Launchcontainers")
 
 def get_parser():
     """
-    Input:
-    Parse command line inputs
+    Build and execute the top-level ``lc`` argument parser.
 
-    Returns:
-    a dict stores information about the cmd input
+    The parser exposes the main launchcontainers workflows as subcommands:
+    ``prepare``, ``run``, ``qc``, ``create_bids``, ``copy_configs``,
+    ``zip_configs``, and ``gen_subses``. The parsed values are returned both
+    as an ``argparse.Namespace`` and as a plain dictionary for legacy callers.
 
+    Returns
+    -------
+    tuple[argparse.Namespace, dict]
+        Parsed command-line values as both a namespace and a dictionary.
     """
     parser = argparse.ArgumentParser(
         prog="lc",
@@ -122,6 +127,7 @@ def get_parser():
         help="Root of prepared analysis folders",
     )
     run.add_argument(
+        "-R",
         "--run_lc",
         action="store_true",
         help="If not input, lc will just print commands without submitting;"
@@ -248,15 +254,23 @@ def get_parser():
 
 def create_analysis_dir(parse_namespace):
     """
-    Description: create analysis folder based on your container and your analysis.
+    Create the derivative container directory and analysis directory.
 
-    In the meantime, it will copy your input config files to the analysis folder.
+    The output location depends on the derivative layout requested in the
+    launchcontainers YAML file. For the legacy layout an intermediate
+    container-version directory is created and the actual analysis is stored in
+    ``analysis-<analysis_name>``. For the newer layout the analysis directory
+    is the container-version_<analysis_name> directory itself.
 
-    In the end, it will check if everything are in place and ready for the next level preparation
-    which is at the subject and session level
+    Parameters
+    ----------
+    parse_namespace : argparse.Namespace
+        Parsed CLI arguments containing at least ``lc_config``.
 
-    After this step, the following preparing method will based on the config files
-    under the analysis folder instread of your input
+    Returns
+    -------
+    str
+        Absolute path to the prepared analysis directory.
     """
     # read the yaml to get input info
     lc_config_fpath = parse_namespace.lc_config
@@ -285,7 +299,7 @@ def create_analysis_dir(parse_namespace):
                 basedir,
                 bidsdir_name,
                 "derivatives",
-                f"{container}_{version}",
+                f"{container}-{version}",
             )
         else:
             container_folder = op.join(
@@ -313,6 +327,13 @@ def create_analysis_dir(parse_namespace):
 
 
 def main():
+    """
+    Dispatch the requested ``lc`` subcommand.
+
+    This function configures logging, resolves the active analysis directory,
+    and forwards execution to the matching helper module for prepare, run,
+    quality-control, or utility workflows.
+    """
     parse_namespace, parse_dict = get_parser()
     quiet = parse_namespace.quiet
     verbose = parse_namespace.verbose

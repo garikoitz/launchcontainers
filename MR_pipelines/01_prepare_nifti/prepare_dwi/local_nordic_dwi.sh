@@ -39,7 +39,7 @@ mkdir -p $logdir
 # copy the subseslist to the logdir for record
 cp $subseslist_path $logdir
 # Loop through sub/ses list and invoke single-job script
-while IFS=',' read -r sub ses
+while IFS=',' read -r sub ses _
 do
     echo "line number is $line_number sub is $sub ses is $ses"
     # Increment line counter

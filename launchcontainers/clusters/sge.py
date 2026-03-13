@@ -10,30 +10,36 @@ def gen_sge_array_job_script(
     parse_namespace,
     log_dir,
     n_jobs,
-
 ):
     """
-    Alternative implementation using SLURM array jobs (more efficient).
+    Build the SGE array-job script used for batch container launches.
 
-    Args:
-        Same as gen_slurm_job_script
+    Parameters
+    ----------
+    parse_namespace : argparse.Namespace
+        Parsed CLI arguments for run mode.
+    log_dir : str
+        Directory where scheduler stdout/stderr logs should be written.
+    n_jobs : int
+        Number of array tasks to request.
 
     Returns:
-        Single job ID for the array job (None if dry_run=True)
+        str
+            Full SGE batch script text.
     """
     # read LC config yml from analysis dir
     analysis_dir = parse_namespace.workdir
-    lc_config_fpath = op.join(analysis_dir, 'lc_config.yaml')
+    lc_config_fpath = op.join(analysis_dir, "lc_config.yaml")
     lc_config = do.read_yaml(lc_config_fpath)
-    host = lc_config['general']['host']
-    jobqueue_config = lc_config['host_options'][host]
+    host = lc_config["general"]["host"]
+    jobqueue_config = lc_config["host_options"][host]
     # below is the job specific configs
-    job_name = jobqueue_config['job_name']
-    queue = jobqueue_config['queue']
-    walltime = jobqueue_config['walltime']
+    job_name = jobqueue_config["job_name"]
+    queue = jobqueue_config["queue"]
+    walltime = jobqueue_config["walltime"]
 
     # Generate array job script
-    job_name = f'{job_name}_array'
+    job_name = f"{job_name}_array"
     job_script = f"""#!/bin/bash
 #$ -t 1-{n_jobs}
 #$ -N {job_name}
