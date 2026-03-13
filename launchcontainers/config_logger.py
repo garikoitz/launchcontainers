@@ -21,25 +21,31 @@ import os
 import os.path as op
 from os import makedirs
 
-logger = logging.getLogger('Launchcontainers')
+logger = logging.getLogger("Launchcontainers")
 
 
 def setup_logger(quiet, verbose=False, debug=False, log_dir=None, log_filename=None):
-    '''
-    stream_handler_level: str,  optional
-        if no input, it will be default at INFO level, \
-            this will be the setting for the command line logging
+    """
+    Configure the main launchcontainers logger.
 
-    verbose: bool, optional
-    debug: bool, optional
-    log_dir: str, optional
-        if no input, there will have nothing to be saved in log file
-        but only the command line output
+    Parameters
+    ----------
+    quiet : bool
+        If ``True``, only critical messages are emitted to the console.
+    verbose : bool, default=False
+        If ``True``, emit informational messages to the console.
+    debug : bool, default=False
+        If ``True``, emit debug messages to the console.
+    log_dir : str, optional
+        Directory where ``.log`` and ``.err`` files should be written.
+    log_filename : str, optional
+        Basename used for the log files created under ``log_dir``.
 
-    log_filename: str, optional
-        the name of your log_file.
-
-    '''
+    Returns
+    -------
+    logging.Logger
+        Configured package logger.
+    """
     # Clear existing handlers to avoid duplicates
     logger.handlers.clear()
     # set up the lowest level for the logger first, so that all the info will be get
@@ -48,13 +54,13 @@ def setup_logger(quiet, verbose=False, debug=False, log_dir=None, log_filename=N
     # set up formatter and handler so that the logging info can go to stream or log files
     # with specific format
     log_formatter = logging.Formatter(
-        '%(asctime)s (%(name)s):[%(levelname)s] \
-            %(module)s - %(funcName)s() - line:%(lineno)d   $ %(message)s ',
-        datefmt='%Y-%m-%d_%H:%M:%S',
+        "%(asctime)s (%(name)s):[%(levelname)s] \
+            %(module)s - %(funcName)s() - line:%(lineno)d   $ %(message)s ",
+        datefmt="%Y-%m-%d_%H:%M:%S",
     )
 
     stream_formatter = logging.Formatter(
-        '(%(name)s):[%(levelname)s]  %(module)s:%(funcName)s:%(lineno)d %(message)s',
+        "(%(name)s):[%(levelname)s]  %(module)s:%(funcName)s:%(lineno)d %(message)s",
     )
     # Define handler and formatter
     stream_handler = logging.StreamHandler()
@@ -73,11 +79,11 @@ def setup_logger(quiet, verbose=False, debug=False, log_dir=None, log_filename=N
         if not os.path.isdir(log_dir):
             makedirs(log_dir)
 
-        file_handler_info = (
-            logging.FileHandler(op.join(log_dir, f'{log_filename}.log'), mode='a')
+        file_handler_info = logging.FileHandler(
+            op.join(log_dir, f"{log_filename}.log"), mode="a"
         )
-        file_handler_error = (
-            logging.FileHandler(op.join(log_dir, f'{log_filename}.err'), mode='a')
+        file_handler_error = logging.FileHandler(
+            op.join(log_dir, f"{log_filename}.err"), mode="a"
         )
         file_handler_info.setFormatter(log_formatter)
         file_handler_error.setFormatter(log_formatter)
@@ -92,34 +98,36 @@ def setup_logger(quiet, verbose=False, debug=False, log_dir=None, log_filename=N
 
 
 def setup_logger_create_bids(verbose=True, log_dir=None, log_filename=None):
-    '''
-    stream_handler_level: str,  optional
-        if no input, it will be default at INFO level, this will be
-        the setting for the command line logging
+    """
+    Configure a simplified logger for the fake-BIDS helper workflow.
 
-    verbose: bool, optional
-    debug: bool, optional
-    log_dir: str, optional
-        if no input, there will have nothing to be saved in log file
-        but only the command line output
+    Parameters
+    ----------
+    verbose : bool, default=True
+        If ``True``, emit informational messages to the console.
+    log_dir : str, optional
+        Directory where helper log files should be written.
+    log_filename : str, optional
+        Basename used for the helper log files.
 
-    log_filename: str, optional
-        the name of your log_file.
-
-    '''
+    Returns
+    -------
+    logging.Logger
+        Configured package logger.
+    """
     # set up the lowest level for the logger first, so that all the info will be get
     logger.setLevel(logging.DEBUG)
 
     # set up formatter and handler so that the logging info can go to stream or log files
     # with specific format
     log_formatter = logging.Formatter(
-        '%(asctime)s (%(name)s):[%(levelname)s] %(module)s - '
-        '%(funcName)s() - line:%(lineno)d   $ %(message)s ',
-        datefmt='%Y-%m-%d %H:%M:%S',
+        "%(asctime)s (%(name)s):[%(levelname)s] %(module)s - "
+        "%(funcName)s() - line:%(lineno)d   $ %(message)s ",
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
 
     stream_formatter = logging.Formatter(
-        '(%(name)s):[%(levelname)s]  %(module)s:%(funcName)s:%(lineno)d %(message)s',
+        "(%(name)s):[%(levelname)s]  %(module)s:%(funcName)s:%(lineno)d %(message)s",
     )
     # Define handler and formatter
     stream_handler = logging.StreamHandler()
@@ -134,11 +142,11 @@ def setup_logger_create_bids(verbose=True, log_dir=None, log_filename=None):
         if not os.path.isdir(log_dir):
             os.makedirs(log_dir)
 
-        file_handler_info = (
-            logging.FileHandler(op.join(log_dir, f'{log_filename}_info.log'), mode='a')
+        file_handler_info = logging.FileHandler(
+            op.join(log_dir, f"{log_filename}_info.log"), mode="a"
         )
-        file_handler_error = (
-            logging.FileHandler(op.join(log_dir, f'{log_filename}_error.log'), mode='a')
+        file_handler_error = logging.FileHandler(
+            op.join(log_dir, f"{log_filename}_error.log"), mode="a"
         )
         file_handler_info.setFormatter(log_formatter)
         file_handler_error.setFormatter(log_formatter)
