@@ -26,13 +26,17 @@ logger = logging.getLogger(__name__)
 
 def gen_subseslist(basedir: str, output_name: str, output_dir=None) -> None:
     """
-    Scans BIDS-style directories under `basedir` for subjects/sub-sessions,
-    checks for anat, dwi, func subfolders, and writes a CSV summary.
+    Generate a simple ``subseslist`` file from a BIDS-style directory tree.
 
-    Parameters:
-    - basedir: root path containing sub-*/ directories
-    - output_dir: directory where the output file will be written
-    - output_name: base name (without extension) for the output file
+    Parameters
+    ----------
+    basedir : str
+        Root directory containing ``sub-*`` folders.
+    output_name : str
+        Output filename stem without the ``.txt`` suffix.
+    output_dir : str, optional
+        Destination directory for the generated file. If omitted, ``basedir``
+        is used.
     """
     base = Path(basedir)
     if not output_dir:
@@ -69,6 +73,9 @@ def gen_subseslist(basedir: str, output_name: str, output_dir=None) -> None:
 
 
 def main():
+    """
+    Run the ``gen_subses`` helper from the shared launchcontainers parser.
+    """
     parser_namespace, parse_dict = lc_parser.get_parser()
 
     # Check if download_configs argument is provided

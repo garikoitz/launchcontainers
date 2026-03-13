@@ -23,41 +23,59 @@ from datetime import datetime
 from launchcontainers import config_logger
 from launchcontainers import utils as do
 
-logger = logging.getLogger('QC')
+logger = logging.getLogger("QC")
 
 
 def qc():
+    """
+    Placeholder QC entrypoint.
+
+    The package currently routes QC work through :func:`main`; this function is
+    kept only as a stub for future expansion.
+    """
     return
 
 
 def main(parse_namespace):
+    """
+    Run the package-level QC workflow for a prepared analysis directory.
+
+    Parameters
+    ----------
+    parse_namespace : argparse.Namespace
+        Parsed CLI arguments for QC mode.
+    """
     # 1. setup run mode logger
     # read the yaml to get input info
     analysis_dir = parse_namespace.workdir
     logging_dir = parse_namespace.log_dir
-    print(f' The logging dir is {logging_dir}')
+    print(f" The logging dir is {logging_dir}")
     # get the dir and fpath for launchcontainer logger
-    timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    logging_fname = f'qc_log_{timestamp}'
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    logging_fname = f"qc_log_{timestamp}"
     # set up the logger for prepare mode
     debug = parse_namespace.debug
     logger = config_logger.setup_logger(False, True, debug, logging_dir, logging_fname)
 
     # read LC config yml from analysis dir
-    lc_config_fpath = op.join(analysis_dir, 'lc_config.yaml')
+    lc_config_fpath = op.join(analysis_dir, "lc_config.yaml")
     lc_config = do.read_yaml(lc_config_fpath)
-    logger.info('\n do_qc.main() reading lc config yaml')
+    logger.info("\n do_qc.main() reading lc config yaml")
 
     # Get general information from the config.yaml file
     # bidsdir_name = lc_config['general']['bidsdir_name']
-    container = lc_config['general']['container']
+    container = lc_config["general"]["container"]
     # if container is freesurgerator or anatrois, there is nothing to check
-    if container in ['freesurferator', 'anatrois']:
-        logger.info('\n There is not yet any QC for freesurferator or anatrois, finishing')
+    if container in ["freesurferator", "anatrois"]:
+        logger.info(
+            "\n There is not yet any QC for freesurferator or anatrois, finishing"
+        )
 
     # if it is rtppreproc, or rtp2-preproc, check if the output log has the field success,
-    if container in ['freesurferator', 'anatrois']:
-        logger.info('\n There is not yet any QC for freesurferator or anatrois, finishing')
+    if container in ["freesurferator", "anatrois"]:
+        logger.info(
+            "\n There is not yet any QC for freesurferator or anatrois, finishing"
+        )
     #
     #
     # if not,

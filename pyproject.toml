@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "launchcontainers"
-version = "0.4.6"
+version = "0.4.7"
 description = "A Python based soft to launch neuroimaging containers on clusters"
 authors = [ "Garikoitz Lerma-Usabiaga",
             "Leandro Lecca",
@@ -13,6 +13,7 @@ authors = [ "Garikoitz Lerma-Usabiaga",
             ]
 # Acknowledgments
 # We would like to thank Iñigo Tellaetxe from CompNeuroLabBilbao for his help on packaging this repository
+# We would also like to thank Qian Chu from MPIEA for his help on setting up sphinx and github workflow for this repository
 
 maintainers = ["Garikoitz Lerma-Usabiaga", "Yongning Lei"]
 readme = "README.md"

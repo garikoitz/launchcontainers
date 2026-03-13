@@ -10,14 +10,15 @@
 # substantial portions of the Software.
 # """
 
-'''
+"""
 The output QC will only related to the analysis dir, so it is very good!
-TODO: feature, give a analysis name and version, it will look for the things under BIDS/derivatives using 
+TODO: feature, give a analysis name and version, it will look for the things under BIDS/derivatives using
 pybids
 
-For rtp2preproc, it seems that the only thing we need to check is that if the DWI file was prepared. 
+For rtp2preproc, it seems that the only thing we need to check is that if the DWI file was prepared.
 
-'''
+"""
+
 from __future__ import annotations
 
 import os
@@ -29,19 +30,35 @@ import pandas as pd
 import typer
 
 
-def find_newest_log(log_dir: Path, exts: tuple[str, ...] = ('.err', '.e')) -> Path | None:
+def find_newest_log(
+    log_dir: Path, exts: tuple[str, ...] = (".err", ".e")
+) -> Path | None:
     """
-    Scan `log_dir` for files matching *_YYYY-MM-DD_HH-MM-SS.<ext>,
-    and return the Path to the file with the latest timestamp.
-    If no timestamped file is found, fall back to:
-      - if exactly one file with one of the given extensions exists, return it;
-      - otherwise return the one with the newest filesystem mtime.
+    Return the newest log file in a directory.
+
+    The function first looks for files whose names end with a timestamp of the
+    form ``YYYY-MM-DD_HH-MM-SS`` followed by one of the requested extensions.
+    If no timestamped filename is found, it falls back to non-timestamped log
+    files and chooses the only match or the most recently modified one.
+
+    Parameters
+    ----------
+    log_dir : pathlib.Path
+        Directory containing log files.
+    exts : tuple[str, ...], default=('.err', '.e')
+        File extensions that should be considered valid log files.
+
+    Returns
+    -------
+    pathlib.Path | None
+        Path to the newest matching log file, or ``None`` if no candidate log
+        file exists.
     """
     log_dir = Path(log_dir)
     timestamp_re = re.compile(
-        r'.*_(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})('
-        + '|'.join(re.escape(e) for e in exts)
-        + r')$',
+        r".*_(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})("
+        + "|".join(re.escape(e) for e in exts)
+        + r")$",
     )
 
     latest: Path | None = None
@@ -54,7 +71,7 @@ def find_newest_log(log_dir: Path, exts: tuple[str, ...] = ('.err', '.e')) -> Pa
         m = timestamp_re.match(p.name)
         if not m:
             continue
-        ts = datetime.strptime(m.group(1), '%Y-%m-%d_%H-%M-%S')
+        ts = datetime.strptime(m.group(1), "%Y-%m-%d_%H-%M-%S")
         if latest_dt is None or ts > latest_dt:
             latest_dt, latest = ts, p
 
@@ -62,10 +79,7 @@ def find_newest_log(log_dir: Path, exts: tuple[str, ...] = ('.err', '.e')) -> Pa
         return latest
 
     # 2) Fallback: no timestamped logs – pick from any file with the right ext
-    plain_logs = [
-        p for p in log_dir.iterdir()
-        if p.is_file() and p.suffix in exts
-    ]
+    plain_logs = [p for p in log_dir.iterdir() if p.is_file() and p.suffix in exts]
 
     if not plain_logs:
         return None
@@ -78,27 +92,50 @@ def find_newest_log(log_dir: Path, exts: tuple[str, ...] = ('.err', '.e')) -> Pa
 
 
 def find_subseslist(analysis_dir):
+    """
+    Locate ``subseslist.txt`` somewhere under an analysis directory.
+
+    Parameters
+    ----------
+    analysis_dir : str or path-like
+        Root directory to search.
+
+    Returns
+    -------
+    str
+        Full path to the discovered ``subseslist.txt`` file.
+    """
     for dirpath, dirnames, filenames in os.walk(analysis_dir):
         for fname in filenames:
-            if fname.lower() == 'subseslist.txt':
+            if fname.lower() == "subseslist.txt":
                 return os.path.join(dirpath, fname)
-    raise FileNotFoundError(f'No subseslist.txt found under {analysis_dir}')
+    raise FileNotFoundError(f"No subseslist.txt found under {analysis_dir}")
 
 
 def check_rtp_preproc_logs(analysis_dir):
+    """
+    Report sessions whose expected preprocessed DWI output is missing.
+
+    Parameters
+    ----------
+    analysis_dir : str or path-like
+        Analysis directory containing session output folders and
+        ``subseslist.txt``.
+    """
     path_to_subses = find_subseslist(analysis_dir)
-    df_subSes = pd.read_csv(path_to_subses, sep=',', dtype=str)
-    for row in df_subSes.itertuples(index=True, name='Pandas'):
+    df_subSes = pd.read_csv(path_to_subses, sep=",", dtype=str)
+    for row in df_subSes.itertuples(index=True, name="Pandas"):
         sub = row.sub
         ses = row.ses
         RUN = row.RUN
         dwi = row.dwi
-        if RUN == 'True' and dwi == 'True':
+        if RUN == "True" and dwi == "True":
             dwi_file = os.path.join(
                 analysis_dir,
-                f'sub-{sub}',
-                f'ses-{ses}',
-                'output', 'dwi.nii.gz',
+                f"sub-{sub}",
+                f"ses-{ses}",
+                "output",
+                "dwi.nii.gz",
             )
             # log_file_dir = os.path.join(
             #     analysis_dir,
@@ -109,8 +146,8 @@ def check_rtp_preproc_logs(analysis_dir):
             # print(os.listdir(log_file_dir))
             # log_file = find_newest_log(log_file_dir)
             if not os.path.isfile(dwi_file):
-                print(f'*****for sub-{sub}_ses-{ses}')
-                print(f'!!!Issue with sub-{sub}, ses-{ses}*****\n')
+                print(f"*****for sub-{sub}_ses-{ses}")
+                print(f"!!!Issue with sub-{sub}, ses-{ses}*****\n")
             # else:
             #     with open(log_file) as f:
             #         lines = f.readlines()
@@ -124,5 +161,5 @@ def check_rtp_preproc_logs(analysis_dir):
 # check_rtp_preproc_logs(analysis_dir)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     typer.run(check_rtp_preproc_logs)
