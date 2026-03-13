@@ -210,7 +210,8 @@ def anatrois(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout):
             elif len(zips) == 1:
                 src_path_fszip = op.join(pre_fs_path, zips[0])
             else:
-                zips_by_time = sorted(zips, key=op.getmtime)
+                src_paths_fszip = [op.join(pre_fs_path, fszip) for fszip in zips]
+                zips_by_time = sorted(src_paths_fszip, key=op.getmtime)
                 answer = input(
                     f"Do you want to use the newset fs.zip: \n{zips_by_time[-1]} \n \
                         we get for you? \n input y for yes, n for no",
