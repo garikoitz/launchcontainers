@@ -122,7 +122,7 @@ def get_parser():
         help="Root of prepared analysis folders",
     )
     run.add_argument(
-        "-R"
+        "-R",
         "--run_lc",
         action="store_true",
         help="If not input, lc will just print commands without submitting;"
