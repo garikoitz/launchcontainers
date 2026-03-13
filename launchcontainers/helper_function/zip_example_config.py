@@ -9,6 +9,15 @@ from pathlib import Path
 
 
 def get_git_root():
+    """
+    Return the repository root detected from Git.
+
+    Returns
+    -------
+    pathlib.Path | None
+        Repository root path, or ``None`` if the command is not run inside a
+        Git working tree.
+    """
     try:
         git_root = (
             subprocess.check_output(
@@ -23,6 +32,9 @@ def get_git_root():
 
 
 def do_zip_configs():
+    """
+    Package the repository example configuration directory as a zip archive.
+    """
     # Paths
     repo_dir = get_git_root()
     package_version = version("launchcontainers")

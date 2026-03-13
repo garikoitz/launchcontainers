@@ -95,16 +95,15 @@ class BIDSSpec(AnalysisSpec):
 # BIDSDWISpec
 # =============================================================================
 
-
-class BIDSDWISpec(AnalysisSpec):
+class DWINiiSpec(AnalysisSpec):
     """
-    BIDS DWI: discovers acq- labels on disk, then for each acq expects:
+    BIDS DWI: expects two fixed acq groups — acq-magonly and acq-nordic.
+    Each has:
       dir-AP_run-01:  .bval, .bvec, .json, .nii.gz
       dir-PA_run-01:  .json, .nii.gz
-
-    [DEV] Edit AP_EXTENSIONS or PA_EXTENSIONS to change expected file types.
     """
 
+    ACQ_LABELS = ["magonly", "nordic"]
     AP_EXTENSIONS = [".bval", ".bvec", ".json", ".nii.gz"]
     PA_EXTENSIONS = [".json", ".nii.gz"]
 
@@ -115,8 +114,8 @@ class BIDSDWISpec(AnalysisSpec):
     @property
     def description(self) -> str:
         return (
-            f"BIDS DWI — per acq: "
-            f"AP ({len(self.AP_EXTENSIONS)} files) + PA ({len(self.PA_EXTENSIONS)} files)"
+            f"BIDS DWI — acq-magonly + acq-nordic, "
+            f"AP ({len(self.AP_EXTENSIONS)} files) + PA ({len(self.PA_EXTENSIONS)} files) each"
         )
 
     def get_session_dir(self, analysis_dir: Path, sub: str, ses: str) -> Path:
@@ -134,42 +133,36 @@ class BIDSDWISpec(AnalysisSpec):
         if not session_dir.is_dir():
             return {}
 
-        # session_dir = .../sub-XX/ses-XX/dwi/
         sub = session_dir.parent.parent.name
         ses = session_dir.parent.name
         prefix = f"{sub}_{ses}"
 
-        acq_pattern = re.compile(re.escape(prefix) + r"_acq-([^_]+)_dir-")
-        acq_labels: set[str] = set()
-        for f in session_dir.iterdir():
-            if f.is_file():
-                m = acq_pattern.match(f.name)
-                if m:
-                    acq_labels.add(m.group(1))
-
         groups: dict[str, list[str]] = {}
-        for acq in sorted(acq_labels):
-            expected = [
+        for acq in self.ACQ_LABELS:
+            groups[f"acq-{acq}"] = [
                 f"{prefix}_acq-{acq}_dir-AP_run-01_dwi{ext}"
                 for ext in self.AP_EXTENSIONS
             ] + [
                 f"{prefix}_acq-{acq}_dir-PA_run-01_dwi{ext}"
                 for ext in self.PA_EXTENSIONS
             ]
-            groups[f"acq-{acq}"] = expected
 
         return groups
-
+    
+    def get_group_dimension(self, group_label: str) -> tuple[str, str] | None:
+        if group_label.startswith("acq-"):
+            return ("acq", group_label.split("acq-")[-1])
+        return None
+    
     def get_default_combinations(self) -> list[tuple[str, str]]:
         return default_combinations()
-
 
 # =============================================================================
 # BIDSFuncSBRefSpec
 # =============================================================================
 
 
-class BIDSFuncSBRefSpec(AnalysisSpec):
+class FuncSBRefSpec(AnalysisSpec):
     """
     BIDS func sbref ↔ bold pairing check.
 
@@ -256,7 +249,7 @@ class BIDSFuncSBRefSpec(AnalysisSpec):
 # =============================================================================
 
 
-class BIDSScanstsvSpec(AnalysisSpec):
+class ScanstsvSpec(AnalysisSpec):
     """
     BIDS scans.tsv ↔ JSON AcquisitionTime consistency check.
 

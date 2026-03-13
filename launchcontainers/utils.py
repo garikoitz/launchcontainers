@@ -28,22 +28,35 @@ import yaml
 from yaml.loader import SafeLoader
 
 
-logger = logging.getLogger('Launchcontainers')
+logger = logging.getLogger("Launchcontainers")
 
 
 def die(*args):
+    """
+    Log an error message and terminate the current process.
+
+    Parameters
+    ----------
+    *args
+        Positional message parts forwarded to :meth:`logger.error`.
+    """
     logger.error(*args)
     sys.exit(1)
 
 
 def read_yaml(path_to_config_file):
     """
-    Input:
-    the path to the config file
+    Read a YAML configuration file.
+
+    Parameters
+    ----------
+    path_to_config_file : str or path-like
+        Path to the YAML file to load.
 
     Returns
-    a dictionary that contains all the config info
-
+    -------
+    dict
+        Parsed YAML contents.
     """
     with open(path_to_config_file) as v:
         config = yaml.load(v, Loader=SafeLoader)
@@ -53,17 +66,26 @@ def read_yaml(path_to_config_file):
 
 def read_df(path_to_df_file):
     """
-    Input:
-    path to the subject and session list txt file
+    Read a CSV file into a dataframe and count runnable rows.
+
+    This helper is primarily used for ``subseslist`` files, where the
+    ``RUN`` column marks which rows should be scheduled.
+
+    Parameters
+    ----------
+    path_to_df_file : str or path-like
+        Path to the CSV file to read.
 
     Returns
-    a dataframe
-
+    -------
+    tuple[pandas.DataFrame, int | None]
+        The loaded dataframe and the number of rows where ``RUN == 'True'``.
+        If the file does not contain a ``RUN`` column, the count is ``None``.
     """
-    df = pd.read_csv(path_to_df_file, sep=',', dtype=str)
+    df = pd.read_csv(path_to_df_file, sep=",", dtype=str)
     try:
-        num_of_true_run = len(df.loc[df['RUN'] == 'True'])
-    except Exception as e:
+        num_of_true_run = len(df.loc[df["RUN"] == "True"])
+    except Exception:
         num_of_true_run = None
         # logger.warn(f'The df you are reading is not subseslist'
         #    +f'or something is wrong {e}')
@@ -73,50 +95,82 @@ def read_df(path_to_df_file):
 
 
 def copy_file(src_file, dst_file, force):
-    logger.info('\n' + '#####################################################\n')
-    if not os.path.isfile(src_file):
-        logger.error(' An error occurred')
-        raise FileExistsError('the source file is not here')
+    """
+    Copy a file to a destination path with optional overwrite behavior.
 
-    logger.info('\n' + f'---start copying {src_file} to {dst_file} \n')
+    Parameters
+    ----------
+    src_file : str or path-like
+        Source file to copy.
+    dst_file : str or path-like
+        Destination file path.
+    force : bool
+        If ``True``, overwrite an existing destination file.
+
+    Returns
+    -------
+    str
+        Destination path.
+
+    Raises
+    ------
+    FileExistsError
+        If the source file does not exist.
+    """
+    logger.info("\n" + "#####################################################\n")
+    if not os.path.isfile(src_file):
+        logger.error(" An error occurred")
+        raise FileExistsError("the source file is not here")
+
+    logger.info("\n" + f"---start copying {src_file} to {dst_file} \n")
     try:
         if ((not os.path.isfile(dst_file)) or (force)) or (
             os.path.isfile(dst_file) and force
         ):
             shutil.copy(src_file, dst_file)
             logger.info(
-                '\n'
-                + f'---{src_file} has been successfully copied to \
-                     {os.path.dirname(src_file)} directory \n'
-                + '---REMEMBER TO CHECK/EDIT TO HAVE THE CORRECT PARAMETERS IN THE FILE\n',
+                "\n"
+                + f"---{src_file} has been successfully copied to \
+                     {os.path.dirname(src_file)} directory \n"
+                + "---REMEMBER TO CHECK/EDIT TO HAVE THE CORRECT PARAMETERS IN THE FILE\n",
             )
         elif os.path.isfile(dst_file) and not force:
             logger.warning(
-                '\n' + f'---copy are not operating, the {src_file} already exist',
+                "\n" + f"---copy are not operating, the {src_file} already exist",
             )
 
     # If source and destination are the same
     except shutil.SameFileError:
-        logger.error('***Source and destination represent the same file.\n')
+        logger.error("***Source and destination represent the same file.\n")
 
     # If there is any permission issue, skip it
     except PermissionError:
-        logger.warning(f'***Permission denied: {dst_file}. Skipping...\n')
+        logger.warning(f"***Permission denied: {dst_file}. Skipping...\n")
 
     # For other errors
     except Exception as e:
-        logger.error(f'***Error occurred while copying file: {e}\n')
+        logger.error(f"***Error occurred while copying file: {e}\n")
 
-    logger.info('\n' + '#####################################################\n')
+    logger.info("\n" + "#####################################################\n")
 
     return dst_file
 
 
 def copy_configs(output_path, force=True):
+    """
+    Copy packaged example configuration files into a target directory.
+
+    Parameters
+    ----------
+    output_path : str or path-like
+        Directory where the example configuration files should be copied.
+    force : bool, default=True
+        If ``True``, overwrite existing files in ``output_path``.
+    """
     # first, know where the tar file is stored
     import pkg_resources
 
-    config_path = pkg_resources.resource_filename('launchcontainers', 'example_configs')
+    config_path = pkg_resources.resource_filename("launchcontainers", "example_configs")
 
     # second, copy all the files from the source folder to the output_path
     all_cofig_files = os.listdir(config_path)
@@ -127,56 +181,57 @@ def copy_configs(output_path, force=True):
 
     return
 
-def force_symlink(file1, file2, force):
-    """Creates symlinks making sure
-    Args:
-        file1 (str): path to the source file,
-        which is the output of the previous container
-        file2 (str): path to the destination file, which is the input of the current container
-        force (bool): specifies if existing files will be rewritten or not.
-        Set in the config.yaml file.
 
-    Raises:
-        n (OSError): Raised if input file does not exist when
-        trying to create a symlink between file1 and file2
-        e (OSError):
-        e: _description_
+def force_symlink(file1, file2, force):
+    """
+    Create or refresh a symbolic link and validate the result.
+
+    Parameters
+    ----------
+    file1 : str or path-like
+        Link target, usually an output from a previous processing step.
+    file2 : str or path-like
+        Link path to create for the current container input.
+    force : bool
+        If ``True``, replace an existing link at ``file2``.
+
+    Raises
+    ------
+    OSError
+        If the source is missing or the link cannot be created.
     """
     logger.info(
-        '\n'
-        + '-----------------------------------------------\n',
+        "\n" + "-----------------------------------------------\n",
     )
     # If force is set to False (we do not want to overwrite)
     if not force:
         try:
             # Try the command, if the files are correct and the symlink does not exist, create one
             logger.info(
-                '\n'
-                + f'---creating symlink for source file: {file1} and destination file: {file2}\n',
+                "\n"
+                + f"---creating symlink for source file: {file1} and destination file: {file2}\n",
             )
             os.symlink(file1, file2)
             logger.info(
-                '\n'
-                + f'--- force is {force}, \
-                -----------------creating success -----------------------\n',
+                "\n"
+                + f"--- force is {force}, \
+                -----------------creating success -----------------------\n",
             )
         # If raise [erron 2]: file does not exist, print the error and pass
         except OSError as n:
             if n.errno == 2:
                 logger.error(
-                    '\n'
-                    + 'Input files are missing, please check \n',
+                    "\n" + "Input files are missing, please check \n",
                 )
                 pass
             # If raise [errno 17] the symlink exist,
             # we don't force and print that we keep the original one
             elif n.errno == errno.EEXIST:
                 logger.warning(
-                    '\n'
-                    + f'--- force is {force}, symlink exist, remain old \n',
+                    "\n" + f"--- force is {force}, symlink exist, remain old \n",
                 )
             else:
-                logger.error('\n' + 'Unknown error, break the program')
+                logger.error("\n" + "Unknown error, break the program")
                 raise n
 
     # If we set force to True (we want to overwrite)
@@ -185,62 +240,67 @@ def force_symlink(file1, file2, force):
             # Try the command, if the file are correct and symlink not exist, it will create one
             os.symlink(file1, file2)
             logger.info(
-                '\n'
-                + f'--- force is {force}, symlink empty, new link created successfully\n ',
+                "\n"
+                + f"--- force is {force}, symlink empty, new link created successfully\n ",
             )
         # If the symlink exists, OSError will be raised
         except OSError as e:
             if e.errno == errno.EEXIST:
                 os.remove(file2)
                 logger.warning(
-                    '\n'
-                    + '--- overwriting the existing symlink',
+                    "\n" + "--- overwriting the existing symlink",
                 )
                 os.symlink(file1, file2)
                 logger.info(
-                    '\n'
-                    + '----------------- Overwrite success -----------------------\n',
+                    "\n"
+                    + "----------------- Overwrite success -----------------------\n",
                 )
             elif e.errno == 2:
                 logger.error(
-                    '\n'
-                    + '***input files are missing, please check that they exist\n',
+                    "\n" + "***input files are missing, please check that they exist\n",
                 )
                 raise e
             else:
                 logger.error(
-                    '\n'
-                    + '***ERROR***\n'
-                    + 'We do not know what happened\n',
+                    "\n" + "***ERROR***\n" + "We do not know what happened\n",
                 )
                 raise e
     check_symlink(file2)
     logger.info(
-        '\n'
-        + '-----------------------------------------------\n',
+        "\n" + "-----------------------------------------------\n",
     )
     return
 
+
 def check_symlink(path: str) -> None:
     """
-    Function to check if a symlink is a link and also if it is being pointed to correct place
+    Validate that a path is an existing symbolic link target.
 
-    if not point to a real place, the prepare mode will fail
+    Parameters
+    ----------
+    path : str
+        Link path to inspect.
 
+    Raises
+    ------
+    FileNotFoundError
+        If ``path`` is a symlink but its target does not exist.
     """
     if op.islink(path):
         if op.exists(path):
             logger.info(
-                ' √ Symlink %r is valid and points to %r',
-                path, op.realpath(path),
+                " √ Symlink %r is valid and points to %r",
+                path,
+                op.realpath(path),
             )
         else:
             target = os.readlink(path)
             logger.error(
-                'X Symlink %r is broken (target %r not found)',
-                path, target,
+                "X Symlink %r is broken (target %r not found)",
+                path,
+                target,
             )
-            raise FileNotFoundError(f'Broken symlink: {path!r} → {target!r}')
+            raise FileNotFoundError(f"Broken symlink: {path!r} → {target!r}")
 
     else:
-        logger.info(' %r is not a symlink', path)
+        logger.info(" %r is not a symlink", path)

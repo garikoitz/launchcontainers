@@ -48,9 +48,9 @@ from rich.console import Console
 from rich.table import Table
 
 from .base import AnalysisSpec
-from .bids import BIDSDWISpec
-from .bids import BIDSFuncSBRefSpec
-from .bids import BIDSScanstsvSpec
+from .bids import DWINiiSpec
+from .bids import FuncSBRefSpec
+from .bids import ScanstsvSpec
 from .bids import BIDSSpec
 from .fmriprep import FMRIPrepSpec
 from .glm import GLMSpec
@@ -760,6 +760,88 @@ def print_group_distribution(results: list[SessionResult]) -> None:
         table.add_row(str(n), str(counts[n]))
     console.print(table)
 
+# a more detailed summary for prfanalyze
+def summarize_incomplete_by_dimension(
+    results: list[SessionResult],
+    spec: AnalysisSpec,
+    output_dir: Path,
+) -> None:
+    """
+    Generic dimensional summary for incomplete sessions.
+    Dimension is defined per-spec via get_group_dimension().
+    If spec returns None for all groups, prints a flat incomplete list instead.
+    """
+    # dim_value -> set of (sub, ses) for console dedup
+    dim_subses:   defaultdict[str, set]  = defaultdict(set)
+    # dim_value -> list of (sub, ses) for txt output
+    dim_entries:  defaultdict[str, list] = defaultdict(list)
+    missing_dirs: list[tuple[str, str]]  = []
+    dim_name = "group"  # fallback label
+
+    for r in results:
+        if not r.session_dir_exists:
+            missing_dirs.append((r.sub, r.ses))
+            continue
+        if r.is_complete:
+            continue
+        for glabel, gresult in r.groups.items():
+            if gresult.is_complete:
+                continue
+            dim = spec.get_group_dimension(glabel)
+            if dim is not None:
+                dim_name, dim_val = dim
+                dim_subses[dim_val].add((r.sub, r.ses))
+                dim_entries[dim_val].append((r.sub, r.ses))
+            else:
+                # No dimension — bucket everything under the group label itself
+                dim_subses[glabel].add((r.sub, r.ses))
+                dim_entries[glabel].append((r.sub, r.ses))
+
+    # ── Console print ──────────────────────────────────────────────────────
+    console.print(f"\n[bold cyan]Incomplete by {dim_name}:[/bold cyan]")
+    if dim_subses:
+        for dim_val, subses_set in sorted(dim_subses.items()):
+            subses_strs = ", ".join(
+                f"[yellow]{sub}_{ses}[/yellow]"
+                for sub, ses in sorted(subses_set)
+            )
+            console.print(f"  [bold]{dim_name}-{dim_val}[/bold]: {subses_strs}")
+    else:
+        console.print("  [green]None[/green]")
+
+    if missing_dirs:
+        console.print("\n[bold red]Missing Session Directories:[/bold red]")
+        for sub, ses in sorted(missing_dirs):
+            console.print(f"  [red]{sub}_{ses}[/red]")
+
+    # ── Summary counts ─────────────────────────────────────────────────────
+    console.print(f"\n[bold cyan]Summary:[/bold cyan]")
+    console.print(f"  {dim_name}s with incomplete sessions : [red]{len(dim_subses)}[/red]")
+    all_incomplete = set().union(*dim_subses.values()) if dim_subses else set()
+    console.print(f"  Unique incomplete sub/ses           : [red]{len(all_incomplete)}[/red]")
+    console.print(f"  Missing session directories         : [red]{len(missing_dirs)}[/red]")
+    total = sum(len(v) for v in dim_entries.values())
+    console.print(f"  Total incomplete groups             : [red]{total}[/red]")
+
+    # ── Write per-dimension txt files ──────────────────────────────────────
+    if output_dir is not None:
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        for dim_val, entries in sorted(dim_entries.items()):
+            out_file = output_dir / f"incomplete_{dim_name}-{dim_val}.txt"
+            with open(out_file, "w", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow(["sub", "ses", "RUN"])
+                seen: set = set()
+                for sub, ses in sorted(entries):
+                    if (sub, ses) not in seen:
+                        seen.add((sub, ses))
+                        writer.writerow([
+                            sub.replace("sub-", ""),
+                            ses.replace("ses-", ""),
+                            True,
+                        ])
+            console.print(f"  [dim]Wrote {out_file}[/dim]")
 
 # =============================================================================
 # 7. SPEC REGISTRY + CLI
@@ -770,9 +852,9 @@ SPEC_REGISTRY: dict[str, AnalysisSpec] = {
     "prfprepare": PRFPrepareSpec(),
     "prfanalyze": PRFAnalyzeSpec(),
     "bids": BIDSSpec(),
-    "bidsdwi": BIDSDWISpec(),
-    "bidsfuncsbref": BIDSFuncSBRefSpec(),
-    "bidsscantsv": BIDSScanstsvSpec(),
+    "dwinii": DWINiiSpec(),
+    "bidsfuncsbref": FuncSBRefSpec(),
+    "scanstsv": ScanstsvSpec(),
     "fmriprep": FMRIPrepSpec(),
     "glm": GLMSpec(),
     "rtp": RTPSpec(),
@@ -811,7 +893,7 @@ def check(
     analysis_type: str = typer.Argument(
         ...,
         help="Analysis type: prfprepare, prfanalyze, bids, "
-        "bidsdwi, bidsfuncsbref, bidsscantsv, fmriprep, glm, rtp",
+        "dwinii, funcsbref, scanstsv, fmriprep, glm, rtp",
     ),
     subses: list[str] | None = typer.Option(
         None,
@@ -907,7 +989,7 @@ def check(
         print_group_distribution(results)
     if debug:
         print_all_groups(results, spec)
-    else:
+    if verbose:
         print_detailed_results(results, verbose)
 
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -918,7 +1000,10 @@ def check(
     write_detailed_log(results, spec, detail_path)
     write_matrix_from_result(results, output_dir / f"{spec.name}_matrix_detailed.csv")
     write_matrix_from_brief_csv(brief_df, output_dir / f"{spec.name}_matrix_simple.csv")
-
+    
+    # additional summary for prfanalyze to break down incomplete by task
+    summarize_incomplete_by_dimension(results, spec, output_dir)
+    
     # [DEV] Add new conditional output writers here (copy this pattern)
     if any(r.total_corrupted > 0 for r in results):
         p = output_dir / f"{spec.name}_corrupted.txt"

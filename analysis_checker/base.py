@@ -101,6 +101,17 @@ class AnalysisSpec(ABC):
         Return None to require explicit input from the user.
         """
         return None
+    
+    def get_group_dimension(self, group_label: str) -> tuple[str, str] | None:
+        """
+        Extract (dimension_name, dimension_value) from a group label for
+        detailed summary. Return None to skip dimensional summary.
+
+        Examples:
+          prfanalyze: 'sub-01_ses-01_task-ret_run-01' -> ('task', 'ret')
+          bidsdwi:    'acq-nordic'                    -> ('acq', 'nordic')
+        """
+        return None
 
 
 # move these helpers here too

@@ -18,6 +18,7 @@ persons to whom the Software is furnished to do so, subject to the following con
 The above copyright notice and this permission notice shall be included in all copies
 or substantial portions of the Software.
 """
+
 from __future__ import annotations
 
 import json
@@ -28,137 +29,165 @@ import zipfile
 from datetime import datetime
 
 
-logger = logging.getLogger('Launchcontainers')
+logger = logging.getLogger("Launchcontainers")
 
 
 def check_tractparam(lc_config, sub, ses, tractparam_df):
-    """Checks the correctness of the given parameters.
+    """
+    Verify that all ROIs referenced in ``tractparams`` exist in ``fs.zip``.
 
-    Args:
-        lc_config (dict): _description_
-        sub (str): _description_
-        ses (str): _description_
-        tractparam_df (pandas.DataFrame): _description_
-            inherited parameters: path to the fs.zip file, defined by lc_config, sub, ses.
+    Parameters
+    ----------
+    lc_config : dict
+        Parsed launchcontainers YAML configuration.
+    sub : str
+        Subject identifier without the ``sub-`` prefix.
+    ses : str
+        Session identifier without the ``ses-`` prefix.
+    tractparam_df : pandas.DataFrame
+        Tract parameter table used by ``rtp-pipeline`` or ``rtp2-pipeline``.
 
-    Raises:
-        FileNotFoundError: _description_
+    Returns
+    -------
+    bool
+        ``True`` if every required ROI file is present in the anatomical
+        derivative ``fs.zip`` archive.
 
-    Returns:
-        rois_are_there (bool): Whether the regions of interest (ROIs) are present or not
+    Raises
+    ------
+    FileNotFoundError
+        If one or more required ROI files are missing.
     """
     # Define the list of required ROIs
     logger.info(
-        '\n'
-        + '#####################################################\n',
+        "\n" + "#####################################################\n",
     )
     roi_list = []
     # Iterate over some defined roisand check if they are required or not in the config.yaml
-    for col in ['roi1', 'roi2', 'roi3', 'roi4', 'roiexc1', 'roiexc2']:
+    for col in ["roi1", "roi2", "roi3", "roi4", "roiexc1", "roiexc2"]:
         for val in tractparam_df[col][~tractparam_df[col].isna()]:
-            if '_AND_' in val:
-                multi_roi = val.split('_AND_')
+            if "_AND_" in val:
+                multi_roi = val.split("_AND_")
                 roi_list.extend(multi_roi)
             else:
-                if val != 'NO':
+                if val != "NO":
                     roi_list.append(val)
 
     required_rois = set(roi_list)
 
     # Define the zip file
-    basedir = lc_config['general']['basedir']
-    container = lc_config['general']['container']
-    bidsdir_name = lc_config['general']['bidsdir_name']
-    precontainer_anat = lc_config['container_specific'][container]['precontainer_anat']
-    anat_analysis_name = lc_config['container_specific'][container]['anat_analysis_name']
+    basedir = lc_config["general"]["basedir"]
+    container = lc_config["general"]["container"]
+    bidsdir_name = lc_config["general"]["bidsdir_name"]
+    precontainer_anat = lc_config["container_specific"][container]["precontainer_anat"]
+    anat_analysis_name = lc_config["container_specific"][container][
+        "anat_analysis_name"
+    ]
 
     # Define where the fs.zip file is
     fs_zip = op.join(
         basedir,
         bidsdir_name,
-        'derivatives',
-        f'{precontainer_anat}',
-        'analysis-' + anat_analysis_name,
-        'sub-' + sub,
-        'ses-' + ses,
-        'output', 'fs.zip',
+        "derivatives",
+        f"{precontainer_anat}",
+        "analysis-" + anat_analysis_name,
+        "sub-" + sub,
+        "ses-" + ses,
+        "output",
+        "fs.zip",
     )
 
     # Extract .gz files from zip file and check if they are all present
-    with zipfile.ZipFile(fs_zip, 'r') as zip:
+    with zipfile.ZipFile(fs_zip, "r") as zip:
         zip_gz_files = set(zip.namelist())
 
     # See which ROIs are present in the fs.zip file
-    required_gz_files = {f'fs/ROIs/{file}.nii.gz' for file in required_rois}
+    required_gz_files = {f"fs/ROIs/{file}.nii.gz" for file in required_rois}
     logger.info(
-        '\n'
-        + f'---The following are the ROIs in fs.zip file: \n {zip_gz_files} \n'
-        + f'---there are {len(zip_gz_files)} .nii.gz files in fs.zip from anatrois output\n'
-        + f'---There are {len(required_gz_files)} ROIs that are required to run RTP-PIPELINE\n',
+        "\n"
+        + f"---The following are the ROIs in fs.zip file: \n {zip_gz_files} \n"
+        + f"---there are {len(zip_gz_files)} .nii.gz files in fs.zip from anatrois output\n"
+        + f"---There are {len(required_gz_files)} ROIs that are required to run RTP-PIPELINE\n",
     )
     if required_gz_files.issubset(zip_gz_files):
         logger.info(
-            '\n'
-            + '---checked! All required .gz files are present in the fs.zip \n',
+            "\n" + "---checked! All required .gz files are present in the fs.zip \n",
         )
     else:
         missing_files = required_gz_files - zip_gz_files
         logger.error(
-            '\n'
-            + '*****Error: \n'
-            + f'there are {len(missing_files)} missed in fs.zip \n'
-            + f'The following .gz files are missing in the zip file:\n {missing_files}',
+            "\n"
+            + "*****Error: \n"
+            + f"there are {len(missing_files)} missed in fs.zip \n"
+            + f"The following .gz files are missing in the zip file:\n {missing_files}",
         )
-        raise FileNotFoundError('Required .gz file are missing')
+        raise FileNotFoundError("Required .gz file are missing")
 
     ROIs_are_there = required_gz_files.issubset(zip_gz_files)
     logger.info(
-        '\n'
-        + '#####################################################\n',
+        "\n" + "#####################################################\n",
     )
     return ROIs_are_there
 
 
 def check_dwi_analysis_folder(parse_namespace, container):
-    '''
-    Check if all the config files are successfully copied
+    """
+    Validate the analysis-level configuration files for a prepared run.
 
-    '''
+    Parameters
+    ----------
+    parse_namespace : argparse.Namespace
+        Parsed CLI arguments for run mode.
+    container : str
+        Container name used to resolve the expected JSON filename.
+
+    Returns
+    -------
+    bool
+        ``True`` if the expected analysis-level configuration files exist.
+
+    Raises
+    ------
+    FileNotFoundError
+        If any required analysis-level configuration file is missing.
+    """
     # analysis dir path
     analysis_dir = parse_namespace.workdir
 
     # for the most general 3 things: -lcc -ssl -cc
-    ana_dir_lcc = op.join(analysis_dir, 'lc_config.yaml')
-    ana_dir_ssl = op.join(analysis_dir, 'subseslist.txt')
-    container_configs_fname = f'{container}.json'
+    ana_dir_lcc = op.join(analysis_dir, "lc_config.yaml")
+    ana_dir_ssl = op.join(analysis_dir, "subseslist.txt")
+    container_configs_fname = f"{container}.json"
     ana_dir_cc = op.join(analysis_dir, container_configs_fname)
 
     copies = [
-        ana_dir_lcc, ana_dir_ssl, ana_dir_cc,
+        ana_dir_lcc,
+        ana_dir_ssl,
+        ana_dir_cc,
     ]
 
     general_config_present = all(op.isfile(copy_path) for copy_path in copies)
 
     if general_config_present:
         logger.critical(
-            f'\n### Analysis folder {analysis_dir} is having all the general configs\n'
-            + 'Pass to next step',
+            f"\n### Analysis folder {analysis_dir} is having all the general configs\n"
+            + "Pass to next step",
         )
     else:
         logger.error(
-            '\n Did NOT detect back up configs in the analysis folder, \
-                Please check then continue the run mode',
+            "\n Did NOT detect back up configs in the analysis folder, \
+                Please check then continue the run mode",
         )
-        raise FileNotFoundError('Not all the 3 configs is under analysis dir, aborting')
+        raise FileNotFoundError("Not all the 3 configs is under analysis dir, aborting")
 
     # 1) Load safely
     with open(ana_dir_cc) as infile:
         config = json.load(infile)
 
     # 2) check if inputs in the json
-    if 'inputs' not in config:
+    if "inputs" not in config:
         logger.critical(f"'inputs' field missing; adding to {ana_dir_cc}\n")
-        logger.critical('Please check your container version and pay attention to this')
+        logger.critical("Please check your container version and pay attention to this")
 
     return general_config_present
 
@@ -168,30 +197,38 @@ def backup_old_rtp2pipeline_log(
     df_subses,
 ):
     """
+    Rename pre-existing RTP log files before launching a new run.
+
+    Parameters
+    ----------
+    parse_namespace : argparse.Namespace
+        Parsed CLI arguments for run mode.
+    df_subses : pandas.DataFrame
+        Subject/session rows whose output directories should be inspected.
     """
     # read LC config yml from analysis dir
     analysis_dir = parse_namespace.workdir
-    for row in df_subses.itertuples(index=True, name='Pandas'):
+    for row in df_subses.itertuples(index=True, name="Pandas"):
         sub = row.sub
         ses = row.ses
         subses_dir_output = op.join(
             analysis_dir,
-            'sub-' + sub,
-            'ses-' + ses,
-            'output',
+            "sub-" + sub,
+            "ses-" + ses,
+            "output",
         )
 
         # check if there is old RTP
         old_rtp_log = os.path.join(
             subses_dir_output,
-            'log',
-            'RTP_log.txt',
+            "log",
+            "RTP_log.txt",
         )
         if os.path.exists(old_rtp_log):
-            now = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-            new_name = old_rtp_log.replace('_log', f'_log_backup_at_{now}')
+            now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            new_name = old_rtp_log.replace("_log", f"_log_backup_at_{now}")
             os.rename(old_rtp_log, new_name)
         else:
-            logger.info('\n no previous RTP, will run ')
+            logger.info("\n no previous RTP, will run ")
 
     return
