@@ -32,11 +32,26 @@ Utilities
    :members:
    :undoc-members: False
 
-.. automodule:: launchcontainers.config_logger
+.. automodule:: launchcontainers.log_setup
    :members:
    :undoc-members: False
 
-.. automodule:: launchcontainers.gen_launch_cmd
+Job-script generation
+---------------------
+
+.. automodule:: launchcontainers.gen_jobscript
+   :members:
+   :undoc-members: False
+
+.. automodule:: launchcontainers.gen_jobscript.gen_container_cmd
+   :members:
+   :undoc-members: False
+
+.. automodule:: launchcontainers.gen_jobscript.gen_matlab_cmd
+   :members:
+   :undoc-members: False
+
+.. automodule:: launchcontainers.gen_jobscript.gen_py_cmd
    :members:
    :undoc-members: False
 
@@ -58,7 +73,7 @@ Preparation
 Schedulers
 ----------
 
-.. automodule:: launchcontainers.clusters.dask_scheduler
+.. automodule:: launchcontainers.clusters.local
    :members:
    :undoc-members: False
 
