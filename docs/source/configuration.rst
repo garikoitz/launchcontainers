@@ -204,11 +204,46 @@ local
 
    host_options:
      local:
-       use_module: False
+       use_module: True           # set False if apptainer is in PATH without module load
+       apptainer: apptainer/latest
+       mount_options: ['/bcbl', '/tmp', '/scratch', '/export']
        manager: local
-       launch_mode: parallel
-       njobs: 4
-       memory_limit: '32GiB'
+       launch_mode: parallel      # 'serial' or 'parallel'
+       max_workers: 2             # parallel only: max concurrent containers
+       mem_per_job: 32g           # parallel only: memory cap per worker (e.g. 32g, 512m)
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 12 55
+
+   * - Key
+     - Type
+     - Description
+   * - ``use_module``
+     - bool
+     - ``True`` if the ``module load`` command is needed to make ``apptainer``
+       available (typical on BCBL workstations). ``False`` if apptainer is
+       already in ``PATH``.
+   * - ``apptainer``
+     - str
+     - Module name passed to ``module load``. Ignored when ``use_module: False``.
+   * - ``mount_options``
+     - list
+     - Filesystem paths to bind-mount into every container.
+   * - ``launch_mode``
+     - str
+     - ``serial``: containers run one after another.
+       ``parallel``: containers run concurrently up to ``max_workers``.
+   * - ``max_workers``
+     - int
+     - Maximum number of containers running at the same time (parallel mode
+       only). Rule of thumb: ``floor(total_cores / cpus_needed_per_job)``.
+   * - ``mem_per_job``
+     - str
+     - Memory ceiling per worker process enforced by the OS (``resource.setrlimit``).
+       Accepts human-readable units: ``32g``, ``512m``, ``1t``. The apptainer
+       container inherits this limit as a child process. Omit or set to ``null``
+       for no limit.
 
 ----
 
