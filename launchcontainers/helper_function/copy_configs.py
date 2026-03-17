@@ -16,13 +16,11 @@
 # """
 from __future__ import annotations
 
-import logging
 import os
 
 from launchcontainers import cli as lc_parser
 from launchcontainers import utils as do
-
-logger = logging.getLogger(__name__)
+from launchcontainers.log_setup import console
 
 
 def copy_example_configs(copy_configs):
@@ -39,7 +37,7 @@ def copy_example_configs(copy_configs):
         os.makedirs(copy_configs)
 
     do.copy_configs(copy_configs)
-    print("\n Step 0; Copy example_configs to the specified place")
+    console.print("\n Step 0; Copy example_configs to the specified place")
 
     return
 

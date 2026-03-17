@@ -21,12 +21,11 @@ or substantial portions of the Software.
 
 from __future__ import annotations
 
-import logging
 import os
 import os.path as op
 import subprocess as sp
 
-logger = logging.getLogger("Launchcontainers")
+from launchcontainers.log_setup import console
 
 
 def cli_show_folder_struc(analysis_dir, sub, ses):
@@ -92,7 +91,7 @@ def print_option_for_review(
             f"No such file : {container_sif_name} \n under {containerdir} "
         )
     # output the options here for the user to review:
-    logger.critical(
+    console.print(
         "\n"
         + "#####################################################\n"
         + f"SubsesList is read, there are * {num_of_jobs} * jobs \n "
@@ -102,11 +101,12 @@ def print_option_for_review(
         + f"singularity image dir is {containerdir} \n"
         + f"analysis name is: {analysis_name} \n"
         + "##################################################### \n",
+        style="bold red",
     )
 
     if container in ["freesurferator", "anatrois"]:
         src_dir = bids_dname
-        logger.critical(f"\n### The source dir is: {src_dir}")
+        console.print(f"\n### The source dir is: {src_dir}", style="bold red")
 
     if container in ["rtppreproc", "rtp2-preproc"]:
         precontainer_anat = lc_config["container_specific"][container][
@@ -132,7 +132,10 @@ def print_option_for_review(
                 f"{precontainer_anat}_{anat_analysis_name}",
             )
 
-        logger.critical(f"\n ### The source FSMASK and T1w dir: {pre_anatrois_dir}")
+        console.print(
+            f"\n ### The source FSMASK and T1w dir: {pre_anatrois_dir}",
+            style="bold red",
+        )
     if container in ["rtp-pipeline", "rtp2-pipeline"]:
         # rtppipeline specefic variables
         precontainer_anat = lc_config["container_specific"][container][
@@ -180,8 +183,9 @@ def print_option_for_review(
                 f"{precontainer_preproc}_{preproc_analysis_name}",
             )
 
-        logger.critical(
+        console.print(
             f"\n### The source FSMASK and ROI dir is: {pre_anatrois_dir} \n"
             + f"The source DWI preprocessing dir is: {pre_preproc_dir} \n",
+            style="bold red",
         )
     return

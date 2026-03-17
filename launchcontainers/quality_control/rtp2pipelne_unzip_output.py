@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import os
 import shutil
 import zipfile
@@ -9,8 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pandas as pd
-
-logger = logging.getLogger(__name__)
+from launchcontainers.log_setup import console
 
 
 def find_subseslist(analysis_dir):
@@ -80,15 +78,16 @@ def unzip_subses_output(subses_outputdir: Path, force):
     warning_msg = ""
 
     if has_tract_dir and has_tract_zip and not force:
-        logger.info(
+        console.print(
             "Both RTP_PIPELINE_ALL_OUTPUT/ "
             + "and RTP_PIPELINE_ALL_OUTPUT.zip exist, skipping",
+            style="cyan",
         )
         return has_tract_dir, has_tract_zip, True, ""
 
     elif not has_tract_dir and has_tract_zip or force:
         try:
-            logger.info(f"Unzipping {tract_zip}")
+            console.print(f"Unzipping {tract_zip}", style="cyan")
             if tract_dir.exists():
                 shutil.rmtree(tract_dir)
             with zipfile.ZipFile(tract_zip, "r") as zip_ref:
@@ -98,17 +97,19 @@ def unzip_subses_output(subses_outputdir: Path, force):
 
             unzip_success = True
             has_tract_dir = True
-            logger.info("Successfully unzipped RTP_PIPELINE_ALL_OUTPUT.zip")
+            console.print(
+                "Successfully unzipped RTP_PIPELINE_ALL_OUTPUT.zip", style="cyan"
+            )
 
         except Exception as e:
             warning_msg = f"Failed to unzip RTP_PIPELINE_ALL_OUTPUT.zip: {e}"
-            logger.error(warning_msg)
+            console.print(warning_msg, style="red")
 
     elif has_tract_dir and has_tract_zip and force:
         try:
             # first remove the dir that are there
             shutil.rmtree(tract_dir)
-            logger.info(f"Unzipping {tract_zip}")
+            console.print(f"Unzipping {tract_zip}", style="cyan")
             with zipfile.ZipFile(tract_zip, "r") as zip_ref:
                 tract_dir.mkdir(parents=True, exist_ok=True)
                 zip_ref.extractall(tract_dir)
@@ -116,15 +117,15 @@ def unzip_subses_output(subses_outputdir: Path, force):
 
             unzip_success = True
             has_tract_dir = True
-            logger.info("Successfully unzipped tract.zip")
+            console.print("Successfully unzipped tract.zip", style="cyan")
 
         except Exception as e:
             warning_msg = f"Failed to unzip tract.zip: {e}"
-            logger.error(warning_msg)
+            console.print(warning_msg, style="red")
 
     else:
         warning_msg = "Missing files (no tract/ or tract.zip)"
-        logger.warning(warning_msg)
+        console.print(warning_msg, style="yellow")
 
     return has_tract_dir, has_tract_zip, unzip_success, warning_msg
 
@@ -162,13 +163,14 @@ def check_subses_output(subses_outputdir):
 
     if has_tract_dir and has_tract_zip:
         if len(os.listdir(tract_dir / "mrtrix")) != 0:
-            logger.info(
+            console.print(
                 "Both RTP_PIPELINE_ALL_OUTPUT/ "
                 + "and RTP_PIPELINE_ALL_OUTPUT.zip exist, skipping",
+                style="cyan",
             )
             return has_tract_dir, has_tract_zip, True, ""
         else:
-            logger.info("has RTP_PIPELINE_ALL_OUTPUT but not complete")
+            console.print("has RTP_PIPELINE_ALL_OUTPUT but not complete", style="cyan")
             return (
                 False,
                 has_tract_zip,
@@ -177,7 +179,7 @@ def check_subses_output(subses_outputdir):
             )
 
     elif not has_tract_dir and has_tract_zip:
-        logger.info(f"need to unzip {tract_zip}")
+        console.print(f"need to unzip {tract_zip}", style="cyan")
         unzip_success = False
         has_tract_dir = True
 
@@ -186,7 +188,7 @@ def check_subses_output(subses_outputdir):
             f"Missing files: has_tract_dir {has_tract_dir},"
             + f"and has_tract_zip: {has_tract_zip} "
         )
-        logger.warning(warning_msg)
+        console.print(warning_msg, style="yellow")
 
     return has_tract_dir, has_tract_zip, unzip_success, warning_msg
 
@@ -195,11 +197,9 @@ def check_subses_output(subses_outputdir):
 Parallel processing the unzipping
 """
 
-# Setup logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
+"""
+Parallel processing the unzipping
+"""
 
 
 def process_single_subject(analysis_dir, sub, ses, run, dwi, force):
@@ -218,7 +218,7 @@ def process_single_subject(analysis_dir, sub, ses, run, dwi, force):
             # Call your unzip_subses_output function
             result = unzip_subses_output(subses_outputdir, force)
 
-            logger.info(f"Processed sub-{sub}_ses-{ses}: Success")
+            console.print(f"Processed sub-{sub}_ses-{ses}: Success", style="cyan")
             return {
                 "subject": sub,
                 "session": ses,
@@ -227,7 +227,9 @@ def process_single_subject(analysis_dir, sub, ses, run, dwi, force):
                 "output_dir": subses_outputdir,
             }
         else:
-            logger.info(f"Skipped sub-{sub}_ses-{ses}: RUN={run}, dwi={dwi}")
+            console.print(
+                f"Skipped sub-{sub}_ses-{ses}: RUN={run}, dwi={dwi}", style="cyan"
+            )
             return {
                 "subject": sub,
                 "session": ses,
@@ -237,7 +239,7 @@ def process_single_subject(analysis_dir, sub, ses, run, dwi, force):
             }
 
     except Exception as e:
-        logger.error(f"Error processing sub-{sub}_ses-{ses}: {str(e)}")
+        console.print(f"Error processing sub-{sub}_ses-{ses}: {str(e)}", style="red")
         return {
             "subject": sub,
             "session": ses,
@@ -265,19 +267,21 @@ def unzipping_tracts_parallel(analysis_dir, force, n_workers=65):
         Per-session processing results.
     """
 
-    logger.info(f"Starting parallel tract unzipping with {n_workers} workers")
+    console.print(
+        f"Starting parallel tract unzipping with {n_workers} workers", style="cyan"
+    )
 
     # Load subject-session list
     path_to_subses = find_subseslist(analysis_dir)
     df_subSes = pd.read_csv(path_to_subses, sep=",", dtype=str)
 
-    logger.info(f"Found {len(df_subSes)} subject-session entries")
+    console.print(f"Found {len(df_subSes)} subject-session entries", style="cyan")
 
     # Filter for entries that need processing
     valid_entries = df_subSes[
         (df_subSes["RUN"] == "True") & (df_subSes["dwi"] == "True")
     ]
-    logger.info(f"Processing {len(valid_entries)} valid entries")
+    console.print(f"Processing {len(valid_entries)} valid entries", style="cyan")
 
     # Prepare tasks
     tasks = []
@@ -311,7 +315,9 @@ def unzipping_tracts_parallel(analysis_dir, force, n_workers=65):
                     skipped_subjects.append(f"sub-{sub}_ses-{ses}")
 
             except Exception as e:
-                logger.error(f"Future failed for sub-{sub}_ses-{ses}: {str(e)}")
+                console.print(
+                    f"Future failed for sub-{sub}_ses-{ses}: {str(e)}", style="red"
+                )
                 failed_subjects.append(f"sub-{sub}_ses-{ses}")
                 results.append(
                     {
@@ -330,14 +336,14 @@ def unzipping_tracts_parallel(analysis_dir, force, n_workers=65):
     failed = len(failed_subjects)
     skipped = len(skipped_subjects)
 
-    logger.info("Processing complete:")
-    logger.info(f"  Total entries: {total_processed}")
-    logger.info(f"  Successfully processed: {successful}")
-    logger.info(f"  Failed: {failed}")
-    logger.info(f"  Skipped: {skipped}")
+    console.print("Processing complete:", style="cyan")
+    console.print(f"  Total entries: {total_processed}", style="cyan")
+    console.print(f"  Successfully processed: {successful}", style="cyan")
+    console.print(f"  Failed: {failed}", style="cyan")
+    console.print(f"  Skipped: {skipped}", style="cyan")
 
     if failed_subjects:
-        logger.warning(f"Failed subjects: {', '.join(failed_subjects)}")
+        console.print(f"Failed subjects: {', '.join(failed_subjects)}", style="yellow")
 
     # Save results summary
     save_processing_summary(analysis_dir, results)
@@ -371,7 +377,7 @@ def save_processing_summary(analysis_dir, results):
     with open(summary_file, "w") as f:
         json.dump(summary, f, indent=2)
 
-    logger.info(f"Summary saved to: {summary_file}")
+    console.print(f"Summary saved to: {summary_file}", style="cyan")
 
 
 def check_and_unzip_tract_wrapper(output_dir, sub, ses):
@@ -418,16 +424,16 @@ def unzipping_tracts_with_progress(analysis_dir, n_workers=35):
         use_tqdm = True
     except ImportError:
         use_tqdm = False
-        logger.warning("tqdm not available, no progress bar will be shown")
+        console.print("tqdm not available, no progress bar will be shown", style="yellow")
 
-    logger.info(f"Starting parallel tract unzipping with {n_workers} workers")
+    console.print(f"Starting parallel tract unzipping with {n_workers} workers", style="cyan")
 
     path_to_subses = find_subseslist(analysis_dir)
     df_subSes = pd.read_csv(path_to_subses, sep=',', dtype=str)
 
     # Filter valid entries
     valid_entries = df_subSes[(df_subSes['RUN'] == 'True') & (df_subSes['dwi'] == 'True')]
-    logger.info(f"Processing {len(valid_entries)} valid entries")
+    console.print(f"Processing {len(valid_entries)} valid entries", style="cyan")
 
     tasks = []
     for row in valid_entries.itertuples(index=False, name='Pandas'):
@@ -461,7 +467,7 @@ def unzipping_tracts_with_progress(analysis_dir, n_workers=35):
                     })
 
             except Exception as e:
-                logger.error(f"Task failed: {str(e)}")
+                console.print(f"Task failed: {str(e)}", style="red")
                 if use_tqdm:
                     progress_bar.update(1)
 
@@ -480,7 +486,7 @@ def unzipping_tracts_parallel_processes(analysis_dir, n_workers=35):
 
     from concurrent.futures import ProcessPoolExecutor
 
-    logger.info(f"Starting parallel tract unzipping with {n_workers} processes")
+    console.print(f"Starting parallel tract unzipping with {n_workers} processes", style="cyan")
 
     path_to_subses = find_subseslist(analysis_dir)
     df_subSes = pd.read_csv(path_to_subses, sep=',', dtype=str)
@@ -497,7 +503,7 @@ def unzipping_tracts_parallel_processes(analysis_dir, n_workers=35):
             )
             tasks.append((subses_outputdir, row.sub, row.ses))
 
-    logger.info(f"Processing {len(tasks)} valid entries")
+    console.print(f"Processing {len(tasks)} valid entries", style="cyan")
 
     results = []
     with ProcessPoolExecutor(max_workers=n_workers) as executor:
@@ -513,9 +519,9 @@ def unzipping_tracts_parallel_processes(analysis_dir, n_workers=35):
             try:
                 result = future.result()
                 results.append(result)
-                logger.info(f"Completed: sub-{task[1]}_ses-{task[2]}")
+                console.print(f"Completed: sub-{task[1]}_ses-{task[2]}", style="cyan")
             except Exception as e:
-                logger.error(f"Failed: sub-{task[1]}_ses-{task[2]} - {str(e)}")
+                console.print(f"Failed: sub-{task[1]}_ses-{task[2]} - {str(e)}", style="red")
                 results.append({
                     'subject': task[1],
                     'session': task[2],

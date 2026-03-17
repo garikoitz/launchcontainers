@@ -2,10 +2,8 @@
 
 import pandas as pd
 from pathlib import Path
-import logging
 import os
-
-logger = logging.getLogger(__name__)
+from launchcontainers.log_setup import console
 
 
 def load_tract_params(tractparams_file):
@@ -39,11 +37,11 @@ def load_tract_params(tractparams_file):
             + df["nhlabel"].str.replace("-", "_")
             + "_clean"
         )
-        logger.info(f"Loaded {len(tract_names)} tract names")
+        console.print(f"Loaded {len(tract_names)} tract names", style="cyan")
         return tract_names
 
     except Exception as e:
-        logger.error(f"Error reading tractparams.tsv: {e}")
+        console.print(f"Error reading tractparams.tsv: {e}", style="red")
         raise
 
 
@@ -179,10 +177,10 @@ def check_and_tract_dir(subses_outputdir):
     has_tract_zip = tract_zip.exists() and tract_zip.is_file()
 
     if has_tract_dir and has_tract_zip:
-        logger.info("Both tract/ and tract.zip exist")
+        console.print("Both tract/ and tract.zip exist", style="cyan")
         return has_tract_dir, has_tract_zip, True, ""
     elif not has_tract_zip:
-        logger.info("output.zip doesn't exist, not finishing")
+        console.print("output.zip doesn't exist, not finishing", style="cyan")
 
 
 def check_all_sub(analysis_dir):

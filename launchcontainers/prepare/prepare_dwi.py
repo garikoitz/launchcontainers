@@ -22,14 +22,12 @@ or substantial portions of the Software.
 from __future__ import annotations
 
 import json
-import logging
 import os
 import os.path as op
 
 from launchcontainers import utils as do
+from launchcontainers.log_setup import console
 from launchcontainers.prepare import dwi_prepare_input as prep_dwi
-
-logger = logging.getLogger("Launchcontainers")
 
 
 def copy_configs(container, extra_config_fpath, analysis_dir, force, option=None):
@@ -61,13 +59,12 @@ def copy_configs(container, extra_config_fpath, analysis_dir, force, option=None
         If the file type is not supported for the selected container/option.
     """
     if os.path.isfile(extra_config_fpath):
-        logger.info(
+        console.print(
             "\n" + f" We will pass  {extra_config_fpath} to {container} analysis dir",
+            style="cyan",
         )
     else:
-        logger.error(
-            f"\n{extra_config_fpath} does not exist",
-        )
+        console.print(f"\n{extra_config_fpath} does not exist", style="red")
 
     config_fname = os.path.basename(extra_config_fpath)
     file_suffix = os.path.splitext(config_fname)[1]
@@ -119,7 +116,7 @@ def gen_config_dict_and_copy(parser_namespace, analysis_dir):
     # read the yaml to get input info
     lc_config_fpath = parser_namespace.lc_config
     lc_config = do.read_yaml(lc_config_fpath)
-    logger.info("\n prepare_dwi_extra_configs reading lc config yaml")
+    console.print("\n prepare_dwi_extra_configs reading lc config yaml", style="cyan")
     # read parameters from lc_config
     container = lc_config["general"]["container"]
     force = lc_config["general"]["force"]
@@ -335,18 +332,20 @@ def write_json(extra_field_config_json, json_path, force):
 
     # 2) Decide whether to set/overwrite
     if "inputs" not in config:
-        logger.info(f"'inputs' field missing; adding to {json_path}")
+        console.print(f"'inputs' field missing; adding to {json_path}", style="cyan")
         config["inputs"] = extra_field_config_json
 
     elif force:
-        logger.info(
-            f"'inputs' already exists in {json_path}; overwriting because --force=True"
+        console.print(
+            f"'inputs' already exists in {json_path}; overwriting because --force=True",
+            style="cyan",
         )
         config["inputs"] = extra_field_config_json
 
     else:
-        logger.warning(
+        console.print(
             f"'{json_path}' already has an 'inputs' field; use --force to overwrite",
+            style="yellow",
         )
         # No change to config
 
@@ -380,7 +379,7 @@ def copy_and_edit_config_json(parser_namespace, analysis_dir):
     # read the yaml to get input info
     lc_config_fpath = parser_namespace.lc_config
     lc_config = lc_config = do.read_yaml(lc_config_fpath)
-    logger.info("\n copy_and_edit_config_json reading lc config yaml")
+    console.print("\n copy_and_edit_config_json reading lc config yaml", style="cyan")
     # read parameters from lc_config
     container = lc_config["general"]["container"]
     force = lc_config["general"]["force"]
@@ -394,7 +393,7 @@ def copy_and_edit_config_json(parser_namespace, analysis_dir):
     json_under_analysis_dir = config_json_dict["config_path"]
 
     if write_json(extra_field_config_json, json_under_analysis_dir, force):
-        logger.info(f"Successfully write json for {container}")
+        console.print(f"Successfully write json for {container}", style="cyan")
 
     return config_json_dict
 
@@ -423,7 +422,7 @@ def prepare_dwi(parser_namespace, analysis_dir, df_subses, layout):
     # read the yaml to get input info
     lc_config_fpath = parser_namespace.lc_config
     lc_config = lc_config = do.read_yaml(lc_config_fpath)
-    logger.info("\n prepare_dwi_input_folder reading lc config yaml")
+    console.print("\n prepare_dwi_input_folder reading lc config yaml", style="cyan")
 
     container = lc_config["general"]["container"]
     force = lc_config["general"]["force"]
@@ -434,44 +433,49 @@ def prepare_dwi(parser_namespace, analysis_dir, df_subses, layout):
     force = lc_config["general"]["force"]
     version = lc_config["container_specific"][container]["version"]
 
-    logger.info(
+    console.print(
         "#####################################################\n"
         + "Preparing for DWI pipeline RTP2",
+        style="cyan",
     )
 
     # copy and edit config json and extra config files
     config_json_dict = copy_and_edit_config_json(parser_namespace, analysis_dir)
 
     if config_json_dict:
-        logger.info(
+        console.print(
             "#####################################################\n"
             + "Successfully copy extra confings and rewrite the json\n",
+            style="cyan",
         )
     else:
-        logger.error(
+        console.print(
             "\n"
             + "#####################################################\n"
             + "Prepare json not finished. Please check\n",
+            style="red",
         )
         raise Exception(
             "Sorry the Json file seems not being written correctly, \
                 it may cause container dysfunction",
         )
 
-    logger.info(
+    console.print(
         "\n"
         + "#####################################################\n"
         + f"DWI Create the symlinks of all the input files RTP2-{container}\n",
+        style="cyan",
     )
 
     for row in df_subses.itertuples(index=True, name="Pandas"):
         sub = row.sub
         ses = row.ses
 
-        logger.critical(
+        console.print(
             "\n"
             + "The current ses is: \n"
             + f"sub-{sub}_ses-{ses}_{container}_{version}\n",
+            style="bold red",
         )
 
         tmpdir = op.join(
@@ -514,14 +518,18 @@ def prepare_dwi(parser_namespace, analysis_dir, df_subses, layout):
                 os.makedirs(container_logdir, exist_ok=True)
             elif os.path.islink(current_session_dir) or os.path.exists(src_session_dir):
                 # retest session and src already exists, skip
-                logger.warning(
+                console.print(
                     f"\n You are preparing for the session:{ses} that are"
-                    + f"not the reference session:{use_src_session}"
+                    + f"not the reference session:{use_src_session}",
+                    style="yellow",
                 )
-                logger.warning("\n Not creating tmp dir, skip")
+                console.print("\n Not creating tmp dir, skip", style="yellow")
             else:
                 # retest session but src doesn't exist yet, warn loudly
-                logger.warning(f"src session {use_src_session} not found, cannot skip!")
+                console.print(
+                    f"src session {use_src_session} not found, cannot skip!",
+                    style="yellow",
+                )
         try:
             do.copy_file(
                 parser_namespace.lc_config,
@@ -533,8 +541,9 @@ def prepare_dwi(parser_namespace, analysis_dir, df_subses, layout):
                 config_json_path, op.join(container_logdir, "config.json"), force
             )
         except Exception:
-            logger.error(
-                f"\n copy config file and create tmp failed for sub-{sub}_ses-{ses}"
+            console.print(
+                f"\n copy config file and create tmp failed for sub-{sub}_ses-{ses}",
+                style="red",
             )
 
         if container in ["rtppreproc", "rtp2-preproc"]:
@@ -564,11 +573,13 @@ def prepare_dwi(parser_namespace, analysis_dir, df_subses, layout):
                 layout,
             )
         else:
-            logger.error(
-                f"\n{container} is not created, check for typos or \
-                contact admin for singularity images\n",
+            console.print(
+                f"\n{container} is not created, check for typos or "
+                "contact admin for singularity images\n",
+                style="red",
             )
-    logger.info(
+    console.print(
         "\n" + "#####################################################\n",
+        style="cyan",
     )
     return True

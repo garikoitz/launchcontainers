@@ -16,7 +16,6 @@
 # """
 from __future__ import annotations
 
-import logging
 import os
 import os.path as op
 import shutil
@@ -27,8 +26,7 @@ import pandas as pd
 import yaml
 from yaml.loader import SafeLoader
 
-
-logger = logging.getLogger("Launchcontainers")
+from launchcontainers.log_setup import console
 
 
 def die(*args):
@@ -38,9 +36,9 @@ def die(*args):
     Parameters
     ----------
     *args
-        Positional message parts forwarded to :meth:`logger.error`.
+        Positional message parts forwarded to :meth:`console.print`.
     """
-    logger.error(*args)
+    console.print(*args, style="red")
     sys.exit(1)
 
 
@@ -89,7 +87,7 @@ def read_df(path_to_df_file):
         num_of_true_run = None
         # logger.warn(f'The df you are reading is not subseslist'
         #    +f'or something is wrong {e}')
-    logger.info(df.head(5))
+    console.print(df.head(5), style="cyan")
 
     return df, num_of_true_run
 
@@ -117,41 +115,51 @@ def copy_file(src_file, dst_file, force):
     FileExistsError
         If the source file does not exist.
     """
-    logger.info("\n" + "#####################################################\n")
+    console.print(
+        "\n" + "#####################################################\n", style="cyan"
+    )
     if not os.path.isfile(src_file):
-        logger.error(" An error occurred")
+        console.print(" An error occurred", style="red")
         raise FileExistsError("the source file is not here")
 
-    logger.info("\n" + f"---start copying {src_file} to {dst_file} \n")
+    console.print("\n" + f"---start copying {src_file} to {dst_file} \n", style="cyan")
     try:
         if ((not os.path.isfile(dst_file)) or (force)) or (
             os.path.isfile(dst_file) and force
         ):
             shutil.copy(src_file, dst_file)
-            logger.info(
+            console.print(
                 "\n"
                 + f"---{src_file} has been successfully copied to \
-                     {os.path.dirname(src_file)} directory \n"
+                     {os.path.dirname(dst_file)} directory \n"
                 + "---REMEMBER TO CHECK/EDIT TO HAVE THE CORRECT PARAMETERS IN THE FILE\n",
+                style="cyan",
             )
         elif os.path.isfile(dst_file) and not force:
-            logger.warning(
+            console.print(
                 "\n" + f"---copy are not operating, the {src_file} already exist",
+                style="yellow",
             )
 
     # If source and destination are the same
     except shutil.SameFileError:
-        logger.error("***Source and destination represent the same file.\n")
+        console.print(
+            "***Source and destination represent the same file.\n", style="red"
+        )
 
     # If there is any permission issue, skip it
     except PermissionError:
-        logger.warning(f"***Permission denied: {dst_file}. Skipping...\n")
+        console.print(
+            f"***Permission denied: {dst_file}. Skipping...\n", style="yellow"
+        )
 
     # For other errors
     except Exception as e:
-        logger.error(f"***Error occurred while copying file: {e}\n")
+        console.print(f"***Error occurred while copying file: {e}\n", style="red")
 
-    logger.info("\n" + "#####################################################\n")
+    console.print(
+        "\n" + "#####################################################\n", style="cyan"
+    )
 
     return dst_file
 
@@ -200,38 +208,41 @@ def force_symlink(file1, file2, force):
     OSError
         If the source is missing or the link cannot be created.
     """
-    logger.info(
-        "\n" + "-----------------------------------------------\n",
+    console.print(
+        "\n" + "-----------------------------------------------\n", style="cyan"
     )
     # If force is set to False (we do not want to overwrite)
     if not force:
         try:
             # Try the command, if the files are correct and the symlink does not exist, create one
-            logger.info(
+            console.print(
                 "\n"
                 + f"---creating symlink for source file: {file1} and destination file: {file2}\n",
+                style="cyan",
             )
             os.symlink(file1, file2)
-            logger.info(
+            console.print(
                 "\n"
                 + f"--- force is {force}, \
                 -----------------creating success -----------------------\n",
+                style="cyan",
             )
         # If raise [erron 2]: file does not exist, print the error and pass
         except OSError as n:
             if n.errno == 2:
-                logger.error(
-                    "\n" + "Input files are missing, please check \n",
+                console.print(
+                    "\n" + "Input files are missing, please check \n", style="red"
                 )
                 pass
             # If raise [errno 17] the symlink exist,
             # we don't force and print that we keep the original one
             elif n.errno == errno.EEXIST:
-                logger.warning(
+                console.print(
                     "\n" + f"--- force is {force}, symlink exist, remain old \n",
+                    style="yellow",
                 )
             else:
-                logger.error("\n" + "Unknown error, break the program")
+                console.print("\n" + "Unknown error, break the program", style="red")
                 raise n
 
     # If we set force to True (we want to overwrite)
@@ -239,35 +250,39 @@ def force_symlink(file1, file2, force):
         try:
             # Try the command, if the file are correct and symlink not exist, it will create one
             os.symlink(file1, file2)
-            logger.info(
+            console.print(
                 "\n"
                 + f"--- force is {force}, symlink empty, new link created successfully\n ",
+                style="cyan",
             )
         # If the symlink exists, OSError will be raised
         except OSError as e:
             if e.errno == errno.EEXIST:
                 os.remove(file2)
-                logger.warning(
-                    "\n" + "--- overwriting the existing symlink",
+                console.print(
+                    "\n" + "--- overwriting the existing symlink", style="yellow"
                 )
                 os.symlink(file1, file2)
-                logger.info(
+                console.print(
                     "\n"
                     + "----------------- Overwrite success -----------------------\n",
+                    style="cyan",
                 )
             elif e.errno == 2:
-                logger.error(
+                console.print(
                     "\n" + "***input files are missing, please check that they exist\n",
+                    style="red",
                 )
                 raise e
             else:
-                logger.error(
+                console.print(
                     "\n" + "***ERROR***\n" + "We do not know what happened\n",
+                    style="red",
                 )
                 raise e
     check_symlink(file2)
-    logger.info(
-        "\n" + "-----------------------------------------------\n",
+    console.print(
+        "\n" + "-----------------------------------------------\n", style="cyan"
     )
     return
 
@@ -288,19 +303,17 @@ def check_symlink(path: str) -> None:
     """
     if op.islink(path):
         if op.exists(path):
-            logger.info(
-                " √ Symlink %r is valid and points to %r",
-                path,
-                op.realpath(path),
+            console.print(
+                f" √ Symlink {path!r} is valid and points to {op.realpath(path)!r}",
+                style="cyan",
             )
         else:
             target = os.readlink(path)
-            logger.error(
-                "X Symlink %r is broken (target %r not found)",
-                path,
-                target,
+            console.print(
+                f"X Symlink {path!r} is broken (target {target!r} not found)",
+                style="red",
             )
             raise FileNotFoundError(f"Broken symlink: {path!r} → {target!r}")
 
     else:
-        logger.info(" %r is not a symlink", path)
+        console.print(f" {path!r} is not a symlink", style="cyan")

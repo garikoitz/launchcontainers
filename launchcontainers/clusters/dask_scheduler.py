@@ -16,7 +16,6 @@
 # """
 from __future__ import annotations
 
-import logging
 import subprocess as sp
 
 from dask import config
@@ -24,8 +23,7 @@ from dask.distributed import Client
 from dask.distributed import LocalCluster
 from dask_jobqueue import SGECluster
 from dask_jobqueue import SLURMCluster
-
-logger = logging.getLogger("Launchcontainers")
+from launchcontainers.log_setup import console
 
 
 def initiate_cluster(jobqueue_config, n_job, dask_logdir):
@@ -51,7 +49,7 @@ def initiate_cluster(jobqueue_config, n_job, dask_logdir):
     config.set(scheduler="single-threaded")
     config.set({"distributed.scheduler.allowed-failures": 50})
     config.set(admin__tick__limit="3h")
-    logger.critical(f"\n $$$$$ dask number of jobs scaled is {n_job}")
+    console.print(f"\n $$$$$ dask number of jobs scaled is {n_job}", style="bold red")
     if "sge" in jobqueue_config["manager"]:
         # envextra is needed for launch jobs on SGE and SLURM
         envextra = [
@@ -97,13 +95,14 @@ def initiate_cluster(jobqueue_config, n_job, dask_logdir):
         )
 
     else:
-        logger.warning(
+        console.print(
             "dask configuration wasn't detected, "
             "if you are using a cluster please look at "
             "the jobqueue YAML example, modify it so it works in your cluster "
             "and add it to ~/.config/dask "
             "local configuration will be used."
             "You can find a jobqueue YAML example in the pySPFM/jobqueue.yaml file.",
+            style="yellow",
         )
         cluster_by_config = None
 
@@ -129,12 +128,13 @@ def dask_scheduler(jobqueue_config, n_job, dask_logdir):
         The connected client and the cluster object.
     """
     if jobqueue_config is None:
-        logger.warning(
+        console.print(
             "dask configuration wasn't detected, "
             "if you are using a cluster please look at "
             "the jobqueue YAML example, modify it so it works in your cluster "
             "and add it to ~/.config/dask "
             "local configuration will be used.",
+            style="yellow",
         )
         cluster = None
     else:
@@ -166,17 +166,14 @@ def print_job_script(host, jobqueue_config, n_jobs, daskworker_logdir):
     if host != "local" or (host == "local" and launch_mode == "dask_worker"):
         _, cluster = dask_scheduler(jobqueue_config, n_jobs, daskworker_logdir)
         if host != "local":
-            logger.critical(
+            console.print(
                 f"Cluster job script for this command is:\n{cluster.job_script()}",  # type: ignore
+                style="bold red",
             )
         elif host == "local" and launch_mode == "dask_worker":
-            logger.critical(
-                f"Local job script by dask is:\n{cluster}",
-            )
+            console.print(f"Local job script by dask is:\n{cluster}", style="bold red")
         else:
-            logger.critical(
-                "Job launched on local, no job script",
-            )
+            console.print("Job launched on local, no job script", style="bold red")
     return
 
 
@@ -200,8 +197,9 @@ def launch_with_dask(jobqueue_config, n_jobs, daskworker_logdir, cmds):
         return sp.run(cmd, shell=True).returncode
 
     client, cluster = dask_scheduler(jobqueue_config, n_jobs, daskworker_logdir)
-    logger.info(
+    console.print(
         "---this is the cluster and client\n" + f"{client} \n cluster: {cluster} \n",
+        style="cyan",
     )
 
     # Compose the command to run in the cluster
@@ -210,11 +208,13 @@ def launch_with_dask(jobqueue_config, n_jobs, daskworker_logdir, cmds):
         cmds,
     )
     results = client.gather(futures)  # type: ignore
-    logger.info(results)
-    logger.info("###########")
+    console.print(results, style="cyan")
+    console.print("###########", style="cyan")
     # Close the connection with the client and the cluster, and inform about it
     client.close()  # type: ignore
     cluster.close()  # type: ignore
 
-    logger.critical("\n" + "launchcontainer finished, all the jobs are done")
+    console.print(
+        "\n" + "launchcontainer finished, all the jobs are done", style="bold red"
+    )
     return

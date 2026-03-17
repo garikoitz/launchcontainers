@@ -16,23 +16,21 @@
 # """
 from __future__ import annotations
 
-import logging
 import os
 import os.path as op
 import subprocess as sp
 import sys
+from argparse import Namespace
 from datetime import datetime
 from os import makedirs
-
 from launchcontainers import utils as do
 from launchcontainers.check import check_dwi_pipelines
 from launchcontainers.check import general_checks
-from launchcontainers.clusters import dask_scheduler as dask_launch
+from launchcontainers.clusters import local
 from launchcontainers.clusters import sge
 from launchcontainers.clusters import slurm
-from launchcontainers.gen_launch_cmd import gen_launch_cmd
-
-logger = logging.getLogger("Launchcontainers")
+from launchcontainers.gen_jobscript import gen_launch_cmd
+from launchcontainers.log_setup import console
 
 
 def write_job_script(job_script, script_dir, job_script_fname):
@@ -72,15 +70,15 @@ def write_job_script(job_script, script_dir, job_script_fname):
 def launch_jobs(
     parse_namespace,
     df_subses,
-    container_log_dir,
+    job_script_dir,
     run_lc,
 ):
     """
     Generate launch commands and either print or submit them.
 
     Depending on the launchcontainers configuration this function performs a
-    dry run, submits an array job through SLURM or SGE, or launches the
-    commands through the Dask-based scheduler helper.
+    dry run, submits an array job through SLURM or SGE, or runs the commands
+    locally in parallel using ``concurrent.futures``.
 
     Parameters
     ----------
@@ -88,7 +86,7 @@ def launch_jobs(
         Parsed CLI arguments for run mode.
     df_subses : pandas.DataFrame
         Filtered subject/session rows to launch.
-    container_log_dir : str
+    job_script_dir : str
         Directory used to store generated scripts and batch command files.
     run_lc : bool
         If ``True``, submit jobs for execution. If ``False``, only print the
@@ -99,136 +97,124 @@ def launch_jobs(
     lc_config_fpath = op.join(analysis_dir, "lc_config.yaml")
     lc_config = do.read_yaml(lc_config_fpath)
     host = lc_config["general"]["host"]
-    jobqueue_config = lc_config["host_options"][host]
-    # if use dask, then we will use dask and dask jobqueue
-    # if not, we will create tmp files and launch them using sbatch/qsub
-    use_dask = lc_config["general"]["use_dask"]
-    if use_dask:
-        daskworker_logdir = os.path.join(analysis_dir, "dask_log")
-        os.makedirs(daskworker_logdir, exist_ok=True)
     # get number of jobs from subseslist
     n_jobs = len(df_subses)
-    # write commands in to a single file to form batch array
-    batch_command_fpath = op.join(container_log_dir, "batch_commands.txt")
+    # write commands into a single file to form batch array
+    batch_command_fpath = op.join(job_script_dir, "batch_commands.txt")
     commands = gen_launch_cmd(parse_namespace, df_subses, batch_command_fpath)
-    # read the commands from the command array using python
-    array_id = 1
+    # read the first command as example
     with open(batch_command_fpath) as f:
-        lines = f.readlines()
-    command = lines[array_id - 1].strip()
-    # if it is dry run mode
+        command = f.readline().strip()
+
+    # DRY RUN mode
     if not run_lc:
-        logger.critical("\n### No launching, here is the launching command")
-        if use_dask:
-            # print the job_script generate by dask
-            dask_launch.print_job_script(
-                host, jobqueue_config, n_jobs, daskworker_logdir
+        console.print(
+            "\n### No launching, here is the launching command", style="bold red"
+        )
+        if host == "DIPC":
+            job_script = slurm.gen_slurm_array_job_script(
+                parse_namespace,
+                job_script_dir,
+                n_jobs,
             )
-        else:
-            if host == "DIPC":
-                job_script = slurm.gen_slurm_array_job_script(
-                    parse_namespace,
-                    container_log_dir,
-                    n_jobs,
-                )
-                logger.critical(f"\n### SLURM job script is {job_script}")
-            elif host == "BCBL":
-                job_script = sge.gen_sge_array_job_script(
-                    parse_namespace,
-                    container_log_dir,
-                    n_jobs,
-                )
-                logger.critical(f"\n### SGE job script is {job_script}")
-        # finally cat the from the command
-        logger.critical(f"\n### Example launch command is: {command}")
+            console.print(f"\n### SLURM job script is {job_script}", style="bold red")
+        elif host == "BCBL":
+            job_script = sge.gen_sge_array_job_script(
+                parse_namespace,
+                job_script_dir,
+                n_jobs,
+            )
+            console.print(f"\n### SGE job script is {job_script}", style="bold red")
+        console.print(f"\n### Example launch command is: {command}", style="bold red")
 
     # RUN mode
     else:
-        logger.critical("\n### Real running , here is the launching command")
+        console.print(
+            "\n### Real running, here is the launching command", style="bold red"
+        )
 
-        if use_dask:
-            dask_launch.launch_with_dask(
-                jobqueue_config,
-                n_jobs,
-                daskworker_logdir,
-                commands,
+        def launch_cmd(cmd):
+            result = sp.run(cmd, shell=True, capture_output=True, text=True, timeout=60)
+            return result.returncode
+
+        if host == "local":
+            jobqueue_config = lc_config["host_options"][host]
+            launch_mode = jobqueue_config.get("launch_mode", "serial")
+            if launch_mode == "parallel":
+                max_workers = jobqueue_config.get("max_workers", None)
+                mem_per_job = jobqueue_config.get("mem_per_job", None)
+                local.launch_parallel(
+                    commands, max_workers=max_workers, mem_per_job=mem_per_job
+                )
+            else:
+                local.launch_serial(commands)
+
+        elif host == "DIPC":
+            batch_command = (
+                f"""$(sed -n "${{SLURM_ARRAY_TASK_ID}}p" {batch_command_fpath})"""
             )
+            job_script = slurm.gen_slurm_array_job_script(
+                parse_namespace,
+                job_script_dir,
+                n_jobs,
+            )
+            final_script = job_script.replace("your_command_here", batch_command)
+            job_script_fname = "src_launch_script.slurm"
+            job_script_fpath = write_job_script(
+                final_script,
+                job_script_dir,
+                job_script_fname,
+            )
+            console.print(
+                f"This is the final job script that is being launched:\n{final_script}",
+                style="bold red",
+            )
+            cmd = f"sbatch {job_script_fpath}"
+            try:
+                return_code = launch_cmd(cmd)
+                console.print(
+                    f"\n return code of launch is {return_code} \n",
+                    style="bold red",
+                )
+            except sp.TimeoutExpired:
+                console.print("Sbatch submission timed out!", style="bold red")
+            except Exception as e:
+                console.print(f"Error during submission: {e}", style="bold red")
 
-        else:
-
-            def launch_cmd(cmd):
-                result = sp.run(
-                    cmd, shell=True, capture_output=True, text=True, timeout=60
+        elif host == "BCBL":
+            batch_command = f"""$(sed -n "${{SGE_TASK_ID}}p" {batch_command_fpath})"""
+            job_script = sge.gen_sge_array_job_script(
+                parse_namespace,
+                job_script_dir,
+                n_jobs,
+            )
+            final_script = job_script.replace("your_command_here", batch_command)
+            job_script_fname = "src_launch_script.sh"
+            job_script_fpath = write_job_script(
+                final_script,
+                job_script_dir,
+                job_script_fname,
+            )
+            console.print(
+                f"This is the final job script that is being launched:\n{final_script}",
+                style="bold red",
+            )
+            cmd = f"qsub {job_script_fpath}"
+            try:
+                return_code = launch_cmd(cmd)
+                console.print(
+                    f"\n return code of launch is {return_code} \n",
+                    style="bold red",
                 )
-                return result.returncode
-
-            if host == "DIPC":
-                batch_command = (
-                    f"""$(sed -n "${{SLURM_ARRAY_TASK_ID}}p" {batch_command_fpath})"""
-                )
-                job_script = slurm.gen_slurm_array_job_script(
-                    parse_namespace,
-                    container_log_dir,
-                    n_jobs,
-                )
-                final_script = job_script.replace("your_command_here", batch_command)
-                # create job_script_fname to get the batch job script
-                job_script_fname = "src_launch_script.slurm"
-                # Submit job
-                job_script_fpath = write_job_script(
-                    final_script,
-                    container_log_dir,
-                    job_script_fname,
-                )
-                logger.critical(
-                    f"This is the final job script that is being lauched: \n {final_script}",
-                )
-                cmd = f"sbatch {job_script_fpath}"
-                try:
-                    return_code = launch_cmd(cmd)
-                    logger.critical(f"\n return code of launch is {return_code} \n")
-                except sp.TimeoutExpired:
-                    logger.critical("❌ Sbatch submission timed out!")
-                    return 1, "", "Submission timeout"
-                except Exception as e:
-                    logger.critical(f"❌ Error during submission: {e}")
-                    return 1, "", str(e)
-            elif host == "BCBL":
-                batch_command = (
-                    f"""$(sed -n "${{SGE_TASK_ID}}p" {batch_command_fpath})"""
-                )
-                job_script = sge.gen_sge_array_job_script(
-                    parse_namespace,
-                    container_log_dir,
-                    n_jobs,
-                )
-                final_script = job_script.replace("your_command_here", batch_command)
-                # create job_script_fname to get the batch job script
-                job_script_fname = "src_launch_script.sh"
-                # Submit job
-                job_script_fpath = write_job_script(
-                    final_script,
-                    container_log_dir,
-                    job_script_fname,
-                )
-                logger.critical(
-                    f"This is the final job script that is being lauched: \n {final_script}",
-                )
-                cmd = f"qsub {job_script_fpath}"
-                try:
-                    return_code = launch_cmd(cmd)
-                    logger.critical(f"\n return code of launch is {return_code} \n")
-                except sp.TimeoutExpired:
-                    logger.critical("❌ Sbatch submission timed out!")
-                    return 1, "", "Submission timeout"
-                except Exception as e:
-                    logger.critical(f"❌ Error during submission: {e}")
-                    return 1, "", str(e)
+            except sp.TimeoutExpired:
+                console.print("Qsub submission timed out!", style="bold red")
+            except Exception as e:
+                console.print(f"Error during submission: {e}", style="bold red")
 
     return
 
 
-def main(parse_namespace):
+def main(workdir: str, run_lc: bool = False):
     """
     Validate a prepared analysis directory and launch the requested jobs.
 
@@ -239,18 +225,20 @@ def main(parse_namespace):
 
     Parameters
     ----------
-    parse_namespace : argparse.Namespace
-        Parsed CLI arguments for run mode.
+    workdir : str
+        Working directory for run mode.
+    run_lc : bool, default=False
+        Whether to run launchcontainers.
     """
     # 1. setup run mode logger
     # read the yaml to get input info
-    analysis_dir = parse_namespace.workdir
-    run_lc = parse_namespace.run_lc
+    analysis_dir = workdir
+    run_lc = run_lc
 
     # read LC config yml from analysis dir
     lc_config_fpath = op.join(analysis_dir, "lc_config.yaml")
     lc_config = do.read_yaml(lc_config_fpath)
-    print("\n cli.main() reading lc config yaml")
+    console.print("\n cli.main() reading lc config yaml", style="cyan")
     # Get general information from the config.yaml file
     bidsdir_name = lc_config["general"]["bidsdir_name"]
     container = lc_config["general"]["container"]
@@ -258,6 +246,7 @@ def main(parse_namespace):
     sub_ses_list_path = op.join(analysis_dir, "subseslist.txt")
     df_subses, num_of_jobs = do.read_df(sub_ses_list_path)
     # 2. do a independent check to see if everything is in place
+    parse_namespace = Namespace(workdir=workdir, run_lc=run_lc)
     if container in [
         "anatrois",
         "rtppreproc",
@@ -290,7 +279,7 @@ def main(parse_namespace):
     # extract sub and ses
     sub = first_row["sub"]
     ses = first_row["ses"]
-    logger.critical("\n### output example subject folder structure \n")
+    console.print("\n### output example subject folder structure \n", style="bold red")
     general_checks.cli_show_folder_struc(analysis_dir, sub, ses)
 
     # 4. ask for user input about folder structure and example command
@@ -305,10 +294,10 @@ def main(parse_namespace):
     # TODO: for different containers
     # check here if the log dir and singularity home dir is being put under proper place
     # Setup log dir, create command txt under log dir
-    container_log_dir = (
+    job_script_dir = (
         f"{analysis_dir}/job_script_dir_{datetime.now().strftime('%Y-%m-%d_%H-%M')}"
     )
-    os.makedirs(container_log_dir, exist_ok=True)
+    os.makedirs(job_script_dir, exist_ok=True)
     # 6. generate command to print
     # === Ask user to confirm before launching anything ===
     ans = input(
@@ -316,20 +305,20 @@ def main(parse_namespace):
         "commandline info. Continue? [y / N]: ",
     )
     if ans.strip().lower() not in ("y", "yes"):
-        logger.info("Aborted by user.")
+        console.print("Aborted by user.", style="cyan")
         sys.exit(0)
 
     # 7. launch the work
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    logger.critical(f"\n##### The launching time is {timestamp}")
+    console.print(f"\n##### The launching time is {timestamp}", style="bold red")
     launch_jobs(
         parse_namespace,
         df_subses,
-        container_log_dir,
+        job_script_dir,
         run_lc,
     )
     timestamp_finish = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    logger.critical(f"\n##### The finishing time is {timestamp_finish}")
+    console.print(f"\n##### The finishing time is {timestamp_finish}", style="bold red")
     # when finished launch QC to read the log and check if everything is there
     return
 

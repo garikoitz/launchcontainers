@@ -16,17 +16,14 @@
 # """
 from __future__ import annotations
 
-import logging
 import os
 import os.path as op
 
 from bids import BIDSLayout
 
 from launchcontainers import utils as do
+from launchcontainers.log_setup import console
 from launchcontainers.prepare import prepare_dwi as prep_dwi
-
-# import lc package utilities
-logger = logging.getLogger("Launchcontainers")
 
 
 def prepare_analysis_dir(parse_namespace, analysis_dir):
@@ -53,32 +50,14 @@ def prepare_analysis_dir(parse_namespace, analysis_dir):
     # read the yaml to get input info
     lc_config_fpath = parse_namespace.lc_config
     lc_config = do.read_yaml(lc_config_fpath)
-    logger.info("\n prepare_analysis_dir reading lc config yaml")
+    console.print("\n prepare_analysis_dir reading lc config yaml", style="cyan")
     # read parameters from lc_config
     # the pipeline we are going to run
     container = lc_config["general"]["container"]
     # if force overwrite
     force = lc_config["general"]["force"]
-    # if use dask to do the parallel, will abandon it in the future release
-    use_dask = lc_config["general"]["use_dask"]
 
-    # 2 create logdir for dask if use dask to launch
-    if use_dask:
-        host = lc_config["general"]["host"]
-        jobqueue_config = lc_config["host_options"][host]
-        daskworer_logdir = os.path.join(analysis_dir, "daskworker_log")
-
-        if jobqueue_config["manager"] in ["sge", "slurm"] and not os.path.exists(
-            daskworer_logdir
-        ):
-            os.makedirs(daskworer_logdir)
-        if jobqueue_config["manager"] in ["local"]:
-            if jobqueue_config["launch_mode"] == "dask_worker":
-                os.makedirs(daskworer_logdir)
-    else:
-        logger.info("Not using dask to lauch task, no dask log dir")
-
-    # 3 Copy the configs
+    # Copy the configs
     # define the potential exist config files
     # TODO: shall I add the time stamp to the file name?
     ana_dir_lcc = op.join(analysis_dir, "lc_config.yaml")
@@ -97,9 +76,10 @@ def prepare_analysis_dir(parse_namespace, analysis_dir):
 
     # create a tmp dir to store all the launch script for SLURM and SGE
 
-    logger.info(
+    console.print(
         f"\n The analysis folder: {analysis_dir} successfully created,"
         "all the configs has been copied",
+        style="green",
     )
 
     success = True
@@ -132,7 +112,7 @@ def main(parse_namespace, analysis_dir):
     lc_config_fpath = parse_namespace.lc_config
     # read LC config yml
     lc_config = do.read_yaml(lc_config_fpath)
-    print("\n cli.main() reading lc config yaml")
+    console.print("\n cli.main() reading lc config yaml", style="cyan")
     # Get general information from the config.yaml file
     basedir = lc_config["general"]["basedir"]
     bidsdir_name = lc_config["general"]["bidsdir_name"]
@@ -141,7 +121,7 @@ def main(parse_namespace, analysis_dir):
 
     # read LC config yml
     lc_config = lc_config = do.read_yaml(lc_config_fpath)
-    print("\n do_prepare reading lc config yaml")
+    console.print("\n do_prepare reading lc config yaml", style="cyan")
     # Get general information from the config.yaml file
     basedir = lc_config["general"]["basedir"]
     bidsdir_name = lc_config["general"]["bidsdir_name"]
@@ -149,17 +129,7 @@ def main(parse_namespace, analysis_dir):
     # get stuff from subseslist for future jobs scheduling
     sub_ses_list_path = parse_namespace.sub_ses_list
     df_subses, _ = do.read_df(sub_ses_list_path)
-    if container in [
-        "anatrois",
-        "rtppreproc",
-        "rtp-pipeline",
-        "freesurferator",
-        "rtp2-preproc",
-        "rtp2-pipeline",
-    ]:
-        mask = (df_subses["RUN"] == "True") & (df_subses["dwi"] == "True")
-    else:
-        mask = df_subses["RUN"] == "True"
+    mask = df_subses["RUN"] == "True"
     df_subses = df_subses.loc[mask]
 
     # the prepare code
@@ -169,10 +139,10 @@ def main(parse_namespace, analysis_dir):
     # 2. do container specific preparation
     #   a. for DWI, prepare the container specific json
     #   b. create symbolic links
-    logger.info("Reading the BIDS layout...")
+    console.print("Reading the BIDS layout...", style="blue")
     bids_dname = os.path.join(basedir, bidsdir_name)
     layout = BIDSLayout(bids_dname, validate=False)
-    logger.info("finished reading the BIDS layout.")
+    console.print("Finished reading the BIDS layout.", style="green")
     if container in [
         "anatrois",
         "rtppreproc",
@@ -181,15 +151,15 @@ def main(parse_namespace, analysis_dir):
         "rtp2-preproc",
         "rtp2-pipeline",
     ]:
-        logger.debug(f"{container} is in the list")
+        console.print(f"{container} is in the list", style="dim")
 
         prepare_step2 = prep_dwi.prepare_dwi(
             parse_namespace, analysis_dir, df_subses, layout
         )
     else:
-        logger.error(f"{container} is not in the list")
+        console.print(f"{container} is not in the list", style="red")
 
-    logger.critical(
-        "\n#####\nAnalysis dir for run mode is \n" + f"{analysis_dir}\n",
+    console.print(
+        f"\n#####\nAnalysis dir for run mode is \n{analysis_dir}\n", style="bold red"
     )
     return prepare_step1 and prepare_step2
