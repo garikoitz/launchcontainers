@@ -791,6 +791,34 @@ def run_prf_glm_prepare(
         ``True`` when all subjects/sessions complete without raising.
     """
     glm = GLMPrepare(lc_config)
+
+    # ------------------------------------------------------------------
+    # One-time setup: seed output_bids_dir with BIDS root files so that
+    # pyBIDS and other tools recognise it as a valid BIDS dataset.
+    # ------------------------------------------------------------------
+    if glm.output_bids_dir is not None:
+        import shutil
+
+        os.makedirs(glm.output_bids_dir, exist_ok=True)
+
+        # Copy dataset_description.json (required by BIDS)
+        src_desc = op.join(glm.bidsdir, "dataset_description.json")
+        dst_desc = op.join(glm.output_bids_dir, "dataset_description.json")
+        if op.exists(src_desc) and not op.exists(dst_desc):
+            shutil.copy2(src_desc, dst_desc)
+            console.print(
+                f"  Copied dataset_description.json → {dst_desc}", style="cyan"
+            )
+
+        # Symlink README (any extension: README, README.md, README.txt, …)
+        for fname in os.listdir(glm.bidsdir):
+            if fname.upper().startswith("README"):
+                src_readme = op.join(glm.bidsdir, fname)
+                dst_readme = op.join(glm.output_bids_dir, fname)
+                if not op.islink(dst_readme) and not op.exists(dst_readme):
+                    os.symlink(src_readme, dst_readme)
+                    console.print(f"  Symlinked {fname} → {dst_readme}", style="cyan")
+
     for row in df_subses.itertuples():
         sub = str(row.sub)
         ses = str(row.ses)
