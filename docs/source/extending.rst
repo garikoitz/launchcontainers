@@ -221,6 +221,6 @@ Summary — anatomy of a prepare module
 ``BasePrepare`` API
 --------------------
 
-.. autoclass:: launchcontainers.prepare.base_prepare.BasePrepare
-   :members:
-   :show-inheritance:
+See :ref:`api_ref` for the full auto-generated documentation:
+
+* :class:`launchcontainers.prepare.base_prepare.BasePrepare`
