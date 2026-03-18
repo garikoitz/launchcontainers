@@ -63,8 +63,30 @@ Project-level settings shared by all pipelines.
 container_specific
 ------------------
 
-Parameters passed to the container. Keyed by container name; only the
-block matching ``general.container`` is used.
+Parameters passed to the container or analysis pipeline.  Keyed by container
+name; only the block matching ``general.container`` is used at runtime.
+
+.. note::
+
+   **Current state of this section:**
+
+   * The **RTP2 DWI pipeline** blocks (``rtppreproc``, ``rtp2-preproc``,
+     ``freesurferator``, ``anatrois``, etc.) are documented manually below.
+     These configs are hand-written by the user and consumed directly by the
+     container prepare logic in
+     :mod:`~launchcontainers.prepare.dwi_prepare`.
+
+   * The **fMRI-GLM prepare** pipeline (``fMRI-GLM``) already has a built-in
+     config generator.  Running
+     :func:`~launchcontainers.prepare.glm_prepare.run_glm_prepare` without a
+     config (or calling ``lc prepare`` with no ``container_specific`` block)
+     will write a fully annotated example ``lc_config_example.yaml`` to the
+     current directory.  See :ref:`prepare_glm` for the full key reference.
+
+   * In the near future, **every pipeline class** will expose the same
+     ``write_example_config`` helper so that users never need to write
+     ``container_specific`` blocks by hand.  The RTP2 DWI pipelines will be
+     the next to receive this treatment.
 
 rtppreproc / rtp2-preproc
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -130,27 +152,44 @@ freesurferator / anatrois
    * - ``use_src_session``
      - Session ID to use as the T1 source (e.g. ``T01``) for multi-session subjects.
 
-glm_specific (fMRI — GLM)
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+fMRI-GLM
+~~~~~~~~~
 
-For analysis-based pipelines the ``container_specific`` block is replaced
-by a type-specific block:
+.. tip::
+
+   Rather than writing this block by hand, let the pipeline generate an
+   annotated example for you:
+
+   .. code-block:: console
+
+      lc prepare --lc_config lc_config.yaml   # omit container_specific.fMRI-GLM
+      # → writes lc_config_example.yaml in the current directory
+
+   See :ref:`prepare_glm` for a full explanation of every key and the
+   prepare workflow.
 
 .. code-block:: yaml
 
-   glm_specific:
-     version: "1.0.0"
-     fmriprep_dir: fmriprep-23.2.0
-     fmriprep_analysis_name: main
-     space: T1w
-     tasks: [floc]
-     n_runs: 1
-     tr: 1.5
-     hrf_model: spm
-     smoothing_fwhm: 6
-     confounds: [trans_x, trans_y, trans_z, rot_x, rot_y, rot_z, framewise_displacement]
-     python_path: python
-     glm_script_path: /path/to/run_glm.py
+   container_specific:
+     fMRI-GLM:
+       is_WC: False
+       output_bids: BIDS_WC          # WC mode only
+       fmriprep_analysis_name: fmriprep-25.1.4
+       task: null
+       start_scans: 5
+       space: fsnative
+       contrast_yaml: /path/to/contrast.yaml
+       output_name: glm_output
+       slice_timing_ref: 0.5
+       use_smoothed: False
+       dry_run: False
+       sm: null
+       mask: null
+       selected_runs: null
+       power_analysis: False
+       n_iterations: 10
+       seed: 42
+       total_runs: 10
 
 ----
 
@@ -247,17 +286,17 @@ local
 
 ----
 
-subseslist.tsv
+subseslist.txt
 --------------
 
-A tab-separated file specifying which subjects and sessions to process.
+A comma-separated file specifying which subjects and sessions to process.
 
 .. code-block:: text
 
-   sub	ses	RUN	dwi
-   01	T01	True	True
-   01	T02	True	True
-   02	T01	False	True
+   sub,ses,RUN
+   01,T01,True
+   01,T02,True
+   02,T01,False
 
 .. list-table::
    :header-rows: 1
@@ -271,8 +310,6 @@ A tab-separated file specifying which subjects and sessions to process.
      - Session ID without the ``ses-`` prefix.
    * - ``RUN``
      - ``True`` to include this row in the current prepare/run cycle.
-   * - ``dwi``
-     - ``True`` required for DWI container pipelines.
 
 .. tip::
 

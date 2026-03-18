@@ -272,11 +272,6 @@ def anatrois(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout):
                 os.makedirs(op.join(dstDir_input, "mniroizip"))
             force_symlink(src_path_mniroi, dst_path_mniroi, force)
 
-        console.print(
-            "\n" + "-----------------The symlink created-----------------------\n",
-            style="cyan",
-        )
-
     return
 
 

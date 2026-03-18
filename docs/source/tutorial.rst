@@ -1,6 +1,16 @@
 Tutorial
 ========
 
+.. toctree::
+   :maxdepth: 2
+   :caption: Prepare tutorials
+
+   prepare_glm
+   prepare_dwi
+   prepare_ret
+
+----
+
 This page walks through a complete run from scratch using ``rtppreproc``
 as the example pipeline. The same steps apply to all other pipelines —
 only the config values change.

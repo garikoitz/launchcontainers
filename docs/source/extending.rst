@@ -1,150 +1,226 @@
-Extending launchcontainers
-==========================
+Extending launchcontainers — Adding a new Prepare pipeline
+==========================================================
 
-Adding a new analysis type (e.g. ``prf``) requires only three steps and
-touches no existing code.
+This page describes the **design pattern** used by all prepare pipelines in
+launchcontainers and explains how to add a new one.  The pattern was
+established while building the :ref:`prepare_glm` pipeline and applies to
+every future pipeline (DWI, PRF, and beyond).
 
-Step 1 — Create a new Preparer class
---------------------------------------
+----
 
-Create ``launchcontainers/prepare/prf_preparer.py``:
+The pattern in one sentence
+----------------------------
 
-.. code-block:: python
+*Be clear about what goes in and what comes out, expose every option as a
+typed property, let the class generate its own example config, implement
+one method per prepare step, and put a single wrapper function at the bottom
+of the module for* ``do_prepare.py`` *to call.*
 
-   from pathlib import Path
-   from .base_preparer import BasePreparer, PrepIssue
+----
 
-   class PRFPreparer(BasePreparer):
-       """Preparer for Population Receptive Field analysis."""
+Step 0 — Think before you code
+--------------------------------
 
-       ANALYSIS_TYPE = "prf"
+Before writing any code, answer these four questions:
 
-       def check_requirements(self, sub: str, ses: str) -> list[PrepIssue]:
-           """
-           Return a list of PrepIssues for this subject/session.
+1. **What are the inputs?** — raw data files, derivatives, log files, config
+   values.
+2. **What are the outputs?** — files written, symlinks created, directories
+   produced.
+3. **What are the options?** — every tunable parameter (space, task filter,
+   block duration, …).
+4. **What are the steps?** — break the prepare work into discrete, testable
+   operations.
 
-           Severity levels:
-             - "blocking"  → subject excluded from run
-             - "warn"      → subject included, issue logged
-             - "auto_fix"  → fix_fn() called automatically
-           """
-           issues = []
-           bold_dir = self._bids_func_dir(sub, ses)
-           if not bold_dir.exists():
-               issues.append(PrepIssue(
-                   sub=sub, ses=ses,
-                   category="bold_dir",
-                   severity="blocking",
-                   message=f"Missing func dir: {bold_dir}",
-               ))
-           # add more checks here ...
-           return issues
+Only once these are clear should you open a new file.
 
-       def generate_run_script(self, sub: str, ses: str, analysis_dir: Path) -> Path:
-           """Write and return the path to the HPC launch script."""
-           host = self.host_options.get(self.general["host"], {})
-           manager = host.get("manager", "local")
-           if manager == "slurm":
-               return self._slurm_script(sub, ses, analysis_dir)
-           elif manager == "sge":
-               return self._sge_script(sub, ses, analysis_dir)
-           else:
-               return self._local_script(sub, ses, analysis_dir)
+----
 
-       # --- private script builders ---
+Step 1 — Create the module and subclass ``BasePrepare``
+--------------------------------------------------------
 
-       def _slurm_script(self, sub, ses, analysis_dir) -> Path:
-           ...
-
-       def _sge_script(self, sub, ses, analysis_dir) -> Path:
-           ...
-
-       def _local_script(self, sub, ses, analysis_dir) -> Path:
-           ...
-
-The ``BasePreparer`` base class handles all orchestration — directory
-creation, config freezing, issue processing, Rich summary output, and
-log writing. Your subclass only needs to know what files the analysis
-requires and how to write the launch script.
-
-Step 2 — Register it
----------------------
-
-Add one line to ``launchcontainers/prepare/__init__.py``:
+Create ``launchcontainers/prepare/<name>_prepare.py`` and subclass
+:class:`~launchcontainers.prepare.base_prepare.BasePrepare`:
 
 .. code-block:: python
 
-   from .base_preparer import BasePreparer, PrepIssue, PrepResult
-   from .glm_preparer  import GLMPreparer
-   from .prf_preparer  import PRFPreparer          # ← add this
+   from launchcontainers.prepare.base_prepare import BasePrepare
 
-   PREPARER_REGISTRY: dict[str, type[BasePreparer]] = {
-       "glm": GLMPreparer,
-       "prf": PRFPreparer,                         # ← and this
-   }
+   class MyPrepare(BasePrepare):
 
-Step 3 — Set the config
-------------------------
+       def __init__(self, lc_config: dict | None = None):
+           super().__init__(lc_config)
+           # pull your pipeline's sub-dict from container_specific
+           self._cfg = self.lc_config.get("container_specific", {}).get("MyPipeline", {})
 
-In ``lc_config.yaml``, set ``general.container`` to the new key:
+``BasePrepare`` provides for free:
 
-.. code-block:: yaml
+* :attr:`~launchcontainers.prepare.base_prepare.BasePrepare.basedir` —
+  ``general.basedir``
+* :attr:`~launchcontainers.prepare.base_prepare.BasePrepare.bidsdir` —
+  ``<basedir>/<bidsdir_name>``
+* :meth:`~launchcontainers.prepare.base_prepare.BasePrepare.write_example_config` —
+  writes a YAML file; delegates content to :meth:`_example_config_dict`
 
-   general:
-     container: prf
+----
 
-Then run ``lc prepare`` as normal — the registry dispatches automatically.
+Step 2 — Expose every option as a typed ``@property``
+------------------------------------------------------
 
-BasePreparer API
-----------------
-
-The following attributes and methods are available to all subclasses.
-
-**Config accessors** (read from ``lc_config.yaml``):
-
-.. list-table::
-   :header-rows: 1
-   :widths: 30 55
-
-   * - Attribute
-     - Description
-   * - ``self.general``
-     - ``dict`` — the ``general`` section of the config
-   * - ``self.analysis_specific``
-     - ``dict`` — the ``<type>_specific`` section (e.g. ``glm_specific``)
-   * - ``self.host_options``
-     - ``dict`` — the ``host_options`` section
-
-**Utility methods**:
-
-.. list-table::
-   :header-rows: 1
-   :widths: 40 45
-
-   * - Method
-     - Description
-   * - ``self.copy_file_to_analysis(src, dest_name, force)``
-     - Copy a file into the analysis ``config/`` directory
-   * - ``self._get_analysis_dir()``
-     - Returns the ``Path`` to the analysis root directory
-   * - ``self._create_dir_structure()``
-     - Creates ``config/``, ``logs/``, ``scripts/``, ``results/``
-
-Adding a new integrity checker spec
--------------------------------------
-
-To add a matching QC spec for the ``checker`` tool, subclass
-``AnalysisSpec`` in ``analysis_checker/``:
+One property per config key.  Always provide a sensible default via
+``.get(key, default)`` so the class can be instantiated with a minimal config
+during testing:
 
 .. code-block:: python
 
-   from analysis_checker.base_spec import AnalysisSpec
+   @property
+   def space(self) -> str:
+       """Output space (e.g. ``fsnative``, ``T1w``)."""
+       return self._cfg.get("space", "fsnative")
 
-   class PRFSpec(AnalysisSpec):
-       SPEC_NAME = "prf"
+   @property
+   def dry_run(self) -> bool:
+       """If ``True``, log actions without writing files."""
+       return bool(self._cfg.get("dry_run", False))
 
-       def expected_files(self, sub, ses) -> list[str]:
-           ...
+Properties that derive a **path** from another property (e.g.
+``fmriprep_dir``) should be properties too, not computed inside methods:
 
-Then register it in the checker's ``SPEC_REGISTRY``. The same
-``checker --spec prf`` command will then validate PRF outputs.
+.. code-block:: python
+
+   @property
+   def fmriprep_dir(self) -> str:
+       return op.join(self.bidsdir, "derivatives", self.fmriprep_analysis_name)
+
+----
+
+Step 3 — Override ``_example_config_dict``
+-------------------------------------------
+
+Return a plain Python ``dict`` that represents a fully annotated
+``lc_config.yaml`` for your pipeline.
+:meth:`~launchcontainers.prepare.base_prepare.BasePrepare.write_example_config`
+(inherited from ``BasePrepare``) handles the YAML serialisation:
+
+.. code-block:: python
+
+   @classmethod
+   def _example_config_dict(cls) -> dict:
+       return {
+           "general": {
+               "basedir": "/path/to/basedir",
+               "bidsdir_name": "BIDS",
+               "container": "MyPipeline",
+               "host": "local",
+               "force": True,
+           },
+           "container_specific": {
+               "MyPipeline": {
+                   "space": "fsnative",
+                   "dry_run": False,
+                   # ... all keys with sensible defaults
+               }
+           },
+           "host_options": {"local": {}},
+       }
+
+Users can then auto-generate a starter config:
+
+.. code-block:: console
+
+   python -c "from launchcontainers.prepare.my_prepare import MyPrepare; MyPrepare.write_example_config()"
+
+----
+
+Step 4 — Implement one method per prepare step
+-----------------------------------------------
+
+Name methods after what they produce, not after implementation details.
+Each method should:
+
+* accept ``sub`` and ``ses`` as its first arguments;
+* accept an optional ``output_dir`` so tests can redirect output;
+* return the paths (or a structured list) of everything written.
+
+.. code-block:: python
+
+   def gen_events_tsv(self, sub: str, ses: str, output_dir=None) -> list[str]:
+       """Write one events.tsv per run and return their paths."""
+       ...
+
+   def gen_bold_symlinks(self, sub, ses, layout, output_dir=None) -> list[dict]:
+       """Symlink bold NIfTIs with normalised names; return matched list."""
+       ...
+
+.. note::
+
+   **Module-level helper functions** (pure utilities that do not need
+   ``self``) may live outside the class at the top of the module.  This is
+   fine — especially when the class is still small.  Note it in a comment so
+   the next developer knows it is intentional and not forgotten refactoring.
+
+----
+
+Step 5 — Add a module-level wrapper function
+---------------------------------------------
+
+After the class definition, add a standalone function that ``do_prepare.py``
+can call.  It instantiates the class, iterates over ``df_subses``, and calls
+the step methods in order:
+
+.. code-block:: python
+
+   def run_my_prepare(lc_config: dict, df_subses, layout=None) -> bool:
+       """
+       Entry point called by do_prepare.main when container == 'MyPipeline'.
+       """
+       prep = MyPrepare(lc_config)
+       for row in df_subses.itertuples():
+           sub, ses = str(row.sub), str(row.ses)
+           prep.gen_events_tsv(sub, ses)
+           matched = prep.gen_bold_symlinks(sub, ses, layout)
+           prep.gen_preprocessed_symlinks(sub, ses, matched)
+       return True
+
+This keeps ``do_prepare.py`` free of pipeline-specific logic — it only needs
+to know the function name.
+
+----
+
+Step 6 — Register in ``do_prepare.py``
+---------------------------------------
+
+Add one import and one dispatch entry:
+
+.. code-block:: python
+
+   from launchcontainers.prepare.my_prepare import run_my_prepare
+
+   # inside the dispatch block:
+   elif container == "MyPipeline":
+       run_my_prepare(lc_config, df_subses, layout=layout)
+
+----
+
+Summary — anatomy of a prepare module
+---------------------------------------
+
+.. code-block:: text
+
+   my_prepare.py
+   ├── module-level helper functions   ← pure utils, no self needed (note intentional)
+   ├── class MyPrepare(BasePrepare)
+   │   ├── __init__                    ← super().__init__ + pull container_specific sub-dict
+   │   ├── @property …                 ← one per config key; path derivations too
+   │   ├── _example_config_dict        ← full lc_config.yaml as a dict
+   │   └── methods: gen_*              ← one per prepare step; return paths written
+   └── run_my_prepare(…)               ← wrapper called by do_prepare.py
+
+----
+
+``BasePrepare`` API
+--------------------
+
+.. autoclass:: launchcontainers.prepare.base_prepare.BasePrepare
+   :members:
+   :show-inheritance:

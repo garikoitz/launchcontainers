@@ -29,83 +29,6 @@ from launchcontainers.log_setup import console, setup_verbosity, set_log_files
 app = typer.Typer()
 
 
-def create_analysis_dir(lc_config: str) -> str:
-    """
-    Create the derivative container directory and analysis directory.
-
-    The output location depends on the derivative layout requested in the
-    launchcontainers YAML file. For the legacy layout an intermediate
-    container-version directory is created and the actual analysis is stored in
-    ``analysis-<analysis_name>``. For the newer layout the analysis directory
-    is the container-version_<analysis_name> directory itself.
-
-    Parameters
-    ----------
-    lc_config : str
-        Path to launchcontainers config YAML.
-
-    Returns
-    -------
-    str
-        Absolute path to the prepared analysis directory.
-    """
-    from launchcontainers import utils as do
-
-    # read the yaml to get input info
-    lc_config_fpath = lc_config
-    lc_config_data = do.read_yaml(lc_config_fpath)
-    console.print("\n setup_analysis_folder reading lc config yaml", style="cyan")
-    # read parameters from lc_config
-    basedir = lc_config_data["general"]["basedir"]
-    bidsdir_name = lc_config_data["general"]["bidsdir_name"]
-    deriv_layout = lc_config_data["general"]["deriv_layout"]
-    # the pipeline we are going to run
-    container = lc_config_data["general"]["container"]
-    version = lc_config_data["container_specific"][container]["version"]
-    analysis_name = lc_config_data["general"]["analysis_name"]
-
-    # 1 create container dir and analysis dir
-    if container in [
-        "anatrois",
-        "rtppreproc",
-        "rtp-pipeline",
-        "freesurferator",
-        "rtp2-preproc",
-        "rtp2-pipeline",
-    ]:
-        if deriv_layout == "legacy":
-            container_folder = op.join(
-                basedir,
-                bidsdir_name,
-                "derivatives",
-                f"{container}-{version}",
-            )
-        else:
-            container_folder = op.join(
-                basedir,
-                bidsdir_name,
-                "derivatives",
-                f"{container}-{version}_{analysis_name}",
-            )
-        # make dirs
-        os.makedirs(container_folder, exist_ok=True)
-        console.print(
-            f"Container layout is {deriv_layout}, creating folder at {container_folder}",
-            style="blue",
-        )
-        # 2 create analysis dir
-        if deriv_layout == "legacy":
-            analysis_dir = op.join(
-                container_folder,
-                f"analysis-{analysis_name}",
-            )
-        else:
-            analysis_dir = container_folder
-        os.makedirs(analysis_dir, exist_ok=True)
-
-    return analysis_dir
-
-
 @app.command()
 def prepare(
     lc_config: str = typer.Option(
@@ -114,11 +37,11 @@ def prepare(
     sub_ses_list: str = typer.Option(
         ..., "--sub-ses-list", "-ssl", help="Path to subject/session list"
     ),
-    container_specific_config: str = typer.Option(
-        ...,
+    container_specific_config: str | None = typer.Option(
+        None,
         "--container-specific-config",
         "-cc",
-        help="Path to container-specific config",
+        help="Path to container-specific config (optional)",
     ),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Quiet mode"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose mode"),
@@ -131,7 +54,7 @@ def prepare(
     log_fpath = op.join(tmp_log_dir, f"lc_prepare_{timestamp}.log")
     err_fpath = op.join(tmp_log_dir, f"lc_prepare_{timestamp}.err")
     set_log_files(log_fpath, err_fpath)
-    analysis_dir = create_analysis_dir(lc_config)
+
     parse_namespace = Namespace(
         lc_config=lc_config,
         sub_ses_list=sub_ses_list,
@@ -139,16 +62,15 @@ def prepare(
     )
     from launchcontainers import do_prepare
 
-    console.print(
-        f"\n....running prepare mode\nWorking on the dir: {analysis_dir}",
-        style="bold red",
-    )
-    do_prepare.main(parse_namespace, analysis_dir)
-    # Copy logs to analysis_dir/prepare_log/ after prepare finishes
-    prepare_log_dir = op.join(analysis_dir, "prepare_log")
-    os.makedirs(prepare_log_dir, exist_ok=True)
-    shutil.copy(log_fpath, op.join(prepare_log_dir, op.basename(log_fpath)))
-    shutil.copy(err_fpath, op.join(prepare_log_dir, op.basename(err_fpath)))
+    console.print("\n....running prepare mode", style="bold red")
+    _, analysis_dir = do_prepare.main(parse_namespace)
+    # Copy logs to analysis_dir/prepare_log/ only when an analysis dir was created
+    if analysis_dir is not None:
+        console.print("Copied console log to analysis_dir", style="bold cyan")
+        prepare_log_dir = op.join(analysis_dir, "prepare_log")
+        os.makedirs(prepare_log_dir, exist_ok=True)
+        shutil.copy(log_fpath, op.join(prepare_log_dir, op.basename(log_fpath)))
+        shutil.copy(err_fpath, op.join(prepare_log_dir, op.basename(err_fpath)))
 
 
 @app.command()

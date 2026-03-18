@@ -1,6 +1,49 @@
 Changelog
 =========
 
+0.4.8
+-----
+
+- **BasePrepare**: introduced ``launchcontainers/prepare/base_prepare.py`` with
+  a ``BasePrepare`` base class shared by all prepare pipelines.  Provides
+  ``basedir`` / ``bidsdir`` properties and the ``write_example_config`` /
+  ``_example_config_dict`` classmethod pair so every subclass can auto-generate
+  an annotated ``lc_config_example.yaml`` without duplicating boilerplate.
+
+- **GLMPrepare** now subclasses ``BasePrepare``.  Removed the redundant
+  ``basedir`` / ``bidsdir`` properties and replaced the ``@staticmethod
+  write_example_config`` with ``@classmethod _example_config_dict``.
+
+- **GLMPrepare — Word-Center (WC) mode**: new ``output_bids`` and
+  ``output_bids_dir`` properties.  When ``is_WC=True`` the prepare workflow
+  writes all outputs (events TSVs, BIDS bold symlinks, fMRIprep bold symlinks,
+  and their JSON sidecars) into a separate BIDS-mirrored directory tree rooted
+  at ``<basedir>/<output_bids>`` (e.g. ``BIDS_WC/``), including a
+  ``derivatives/<fmriprep_analysis_name>/`` sub-tree.
+
+- **Symlinks now include JSON sidecars**: both ``gen_bids_bold_symlinks`` and
+  ``gen_fmriprep_bold_symlinks`` create a matching ``.json`` symlink alongside
+  every NIfTI / GIFTI symlink.
+
+- **Mapping TSV moved to vistadisplog dir**: ``PRFPrepare.parse_prf_mat`` now
+  writes ``sub-<sub>_ses-<ses>_desc-mapping_PRF_acqtime.tsv`` to the
+  vistadisplog source directory instead of the BIDS ``func/`` directory.
+  ``GLMPrepare._load_mapping_tsv`` reads from the same location.
+
+- **Bug fix**: ``run_glm_prepare`` was not forwarding the ``layout`` argument
+  to ``run_prf_glm_prepare``, causing an ``AttributeError: 'NoneType' object
+  has no attribute 'get'`` at runtime.
+
+- **Type annotations**: added ``TYPE_CHECKING`` guard in ``glm_prepare.py``
+  for ``pandas.DataFrame`` and ``bids.BIDSLayout``; all public wrapper
+  functions now carry full type signatures.
+
+- **Docs**: added tutorial sub-pages ``prepare_glm.rst``, ``prepare_dwi.rst``,
+  ``prepare_ret.rst`` under the Tutorial section.  Rewrote ``extending.rst``
+  to document the actual ``BasePrepare`` pattern with step-by-step guidance.
+  Updated ``configuration.rst`` ``container_specific`` section and ``api.rst``
+  fMRI-GLM preparation section.
+
 0.4.7
 -----
 

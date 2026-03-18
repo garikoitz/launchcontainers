@@ -27,10 +27,10 @@ import os.path as op
 
 from launchcontainers import utils as do
 from launchcontainers.log_setup import console
-from launchcontainers.prepare import dwi_prepare_input as prep_dwi
+from launchcontainers.prepare import RTP2_prepare_input as prepare_input
 
 
-def copy_configs(container, extra_config_fpath, analysis_dir, force, option=None):
+def copy_rtp2_configs(container, extra_config_fpath, analysis_dir, force, option=None):
     """
     Copy an auxiliary container input file into the analysis directory.
 
@@ -140,11 +140,11 @@ def gen_config_dict_and_copy(parser_namespace, analysis_dir):
             config_fname = "T1.nii.gz"
             config_json_dict[container]["anat"] = f"anat/{config_fname}"
         if annotfile:
-            config_fname = copy_configs(container, annotfile, analysis_dir, force)
+            config_fname = copy_rtp2_configs(container, annotfile, analysis_dir, force)
 
             config_json_dict[container]["annotfile"] = f"annotfile/{config_fname}"
         if mniroizip:
-            config_fname = copy_configs(container, mniroizip, analysis_dir, force)
+            config_fname = copy_rtp2_configs(container, mniroizip, analysis_dir, force)
             config_json_dict[container]["mniroizip"] = f"mniroizip/{config_fname}"
 
     if container in ["freesurferator"]:
@@ -165,10 +165,10 @@ def gen_config_dict_and_copy(parser_namespace, analysis_dir):
                 f"control_points/{config_fname}"
             )
         if annotfile:
-            config_fname = copy_configs(container, annotfile, analysis_dir, force)
+            config_fname = copy_rtp2_configs(container, annotfile, analysis_dir, force)
             config_json_dict[container]["annotfile"] = f"annotfile/{config_fname}"
         if mniroizip:
-            config_fname = copy_configs(container, mniroizip, analysis_dir, force)
+            config_fname = copy_rtp2_configs(container, mniroizip, analysis_dir, force)
             config_json_dict[container]["mniroizip"] = f"mniroizip/{config_fname}"
 
     if container in ["rtppreproc"]:
@@ -227,7 +227,7 @@ def gen_config_dict_and_copy(parser_namespace, analysis_dir):
 
         tractparams = lc_config["container_specific"][container]["tractparams"]
         if tractparams:
-            config_fname = copy_configs(
+            config_fname = copy_rtp2_configs(
                 container,
                 tractparams,
                 analysis_dir,
@@ -252,7 +252,7 @@ def gen_config_dict_and_copy(parser_namespace, analysis_dir):
         fsmask = lc_config["container_specific"][container]["fsmask"]
         use_qmap = lc_config["container_specific"][container]["use_qmap"]
         if tractparams:
-            config_fname = copy_configs(
+            config_fname = copy_rtp2_configs(
                 container,
                 tractparams,
                 analysis_dir,
@@ -261,7 +261,7 @@ def gen_config_dict_and_copy(parser_namespace, analysis_dir):
             )
             config_json_dict[container]["tractparams"] = f"tractparams/{config_fname}"
         if fsmask:
-            config_fname = copy_configs(container, fsmask, analysis_dir, "fsmask")
+            config_fname = copy_rtp2_configs(container, fsmask, analysis_dir, "fsmask")
             config_json_dict[container]["fsmask"] = f"fsmask/{config_fname}"
         if use_qmap:
             config_fname = "qmap.zip"
@@ -398,7 +398,7 @@ def copy_and_edit_config_json(parser_namespace, analysis_dir):
     return config_json_dict
 
 
-def prepare_dwi(parser_namespace, analysis_dir, df_subses, layout):
+def main(parser_namespace, analysis_dir, df_subses, layout):
     """
     Prepare analysis-level and session-level inputs for DWI containers.
 
@@ -547,7 +547,7 @@ def prepare_dwi(parser_namespace, analysis_dir, df_subses, layout):
             )
 
         if container in ["rtppreproc", "rtp2-preproc"]:
-            prep_dwi.rtppreproc(
+            prepare_input.rtppreproc(
                 config_json_dict,
                 analysis_dir,
                 lc_config,
@@ -556,7 +556,7 @@ def prepare_dwi(parser_namespace, analysis_dir, df_subses, layout):
                 layout,
             )
         elif container in ["rtp-pipeline", "rtp2-pipeline"]:
-            prep_dwi.rtppipeline(
+            prepare_input.rtppipeline(
                 config_json_dict,
                 analysis_dir,
                 lc_config,
@@ -564,7 +564,7 @@ def prepare_dwi(parser_namespace, analysis_dir, df_subses, layout):
                 ses,
             )
         elif container in ["anatrois", "freesurferator"]:
-            prep_dwi.anatrois(
+            prepare_input.anatrois(
                 config_json_dict,
                 analysis_dir,
                 lc_config,
@@ -578,8 +578,4 @@ def prepare_dwi(parser_namespace, analysis_dir, df_subses, layout):
                 "contact admin for singularity images\n",
                 style="red",
             )
-    console.print(
-        "\n" + "#####################################################\n",
-        style="cyan",
-    )
     return True
