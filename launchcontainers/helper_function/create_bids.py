@@ -16,7 +16,6 @@
 # """
 from __future__ import annotations
 
-import logging
 import os
 import os.path as op
 from pathlib import Path
@@ -24,10 +23,8 @@ from pathlib import Path
 from heudiconv import bids as hb
 
 from launchcontainers import cli as lc_parser
-from launchcontainers import config_logger
 from launchcontainers import utils as do
-
-logger = logging.getLogger(__name__)
+from launchcontainers.log_setup import console
 
 
 def main():
@@ -42,7 +39,7 @@ def main():
 
     # Check if download_configs argument is provided
 
-    print(
+    console.print(
         "You are creating a fake BIDS folder structure based on "
         "your input basedir, and subseslist",
     )
@@ -95,7 +92,8 @@ def main():
     if log_dir == "analysis_dir":
         log_dir = analysis_dir
     os.makedirs(log_dir, exist_ok=True)
-    config_logger.setup_logger_create_bids(True, log_dir, log_filename)
+    console_file = open(op.join(log_dir, f"{log_filename}.txt"), "w")
+    console.file = console_file
 
     # figure out a way to copy the bids componement to the corresponding bids folder
     for row in sub_ses_list.itertuples(index=True, name="Pandas"):
@@ -158,23 +156,26 @@ def main():
             if not op.exists(input_dir):
                 os.makedirs(input_dir)
             else:
-                logger.info(
+                console.print(
                     f"Input folder for sub-{sub}/ses-{ses} is there",
-                )  # type: ignore
+                    style="cyan",
+                )
             if not op.exists(outpt_dir):
                 os.makedirs(outpt_dir)
             else:
-                logger.info(
+                console.print(
                     f"Output folder for sub-{sub}/ses-{ses} is there",
-                )  # type: ignore
+                    style="cyan",
+                )
             if file_name:
                 fake_file = op.join(outpt_dir, file_name)
                 if not Path(fake_file).is_file():
                     Path(fake_file).touch()
                 else:
-                    logger.info(
+                    console.print(
                         f"The file for sub-{sub}/ses-{ses}/output is there",
-                    )  # type: ignore
+                        style="cyan",
+                    )
 
 
 # #%%

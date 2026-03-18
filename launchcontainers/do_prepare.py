@@ -16,180 +16,169 @@
 # """
 from __future__ import annotations
 
-import logging
 import os
 import os.path as op
 
 from bids import BIDSLayout
 
 from launchcontainers import utils as do
-from launchcontainers.prepare import prepare_dwi as prep_dwi
+from launchcontainers.log_setup import console
+from launchcontainers.prepare import dwi_prepare as dwi_prepare
+from launchcontainers.prepare.glm_prepare import run_glm_prepare
 
-# import lc package utilities
-logger = logging.getLogger("Launchcontainers")
+_GLM_PIPELINES = {"fMRI-GLM"}
+_DWI_PIPELINES = {
+    "anatrois",
+    "rtppreproc",
+    "rtp-pipeline",
+    "freesurferator",
+    "rtp2-preproc",
+    "rtp2-pipeline",
+}
 
 
-def prepare_analysis_dir(parse_namespace, analysis_dir):
+def _create_analysis_dir(lc_config: dict) -> str:
     """
-    Initialize a prepared analysis directory from the user input files.
-
-    This step copies the launchcontainers YAML file, the subject/session list,
-    and the container-specific JSON file into the analysis directory. When
-    Dask-based execution is enabled it also creates the worker log directory
-    expected by later launch steps.
+    Create the derivative container/analysis directory for DWI pipelines.
 
     Parameters
     ----------
-    parse_namespace : argparse.Namespace
-        Parsed CLI arguments for prepare mode.
-    analysis_dir : str
-        Target analysis directory created by :func:`launchcontainers.cli.create_analysis_dir`.
+    lc_config : dict
+        Parsed launchcontainers YAML configuration.
 
     Returns
     -------
-    bool
-        ``True`` when the basic analysis directory setup completes.
+    str
+        Absolute path to the analysis directory.
     """
-    # read the yaml to get input info
-    lc_config_fpath = parse_namespace.lc_config
-    lc_config = do.read_yaml(lc_config_fpath)
-    logger.info("\n prepare_analysis_dir reading lc config yaml")
-    # read parameters from lc_config
-    # the pipeline we are going to run
+    basedir = lc_config["general"]["basedir"]
+    bidsdir_name = lc_config["general"]["bidsdir_name"]
+    deriv_layout = lc_config["general"]["deriv_layout"]
     container = lc_config["general"]["container"]
-    # if force overwrite
-    force = lc_config["general"]["force"]
-    # if use dask to do the parallel, will abandon it in the future release
-    use_dask = lc_config["general"]["use_dask"]
+    version = lc_config["container_specific"][container]["version"]
+    analysis_name = lc_config["general"]["analysis_name"]
 
-    # 2 create logdir for dask if use dask to launch
-    if use_dask:
-        host = lc_config["general"]["host"]
-        jobqueue_config = lc_config["host_options"][host]
-        daskworer_logdir = os.path.join(analysis_dir, "daskworker_log")
-
-        if jobqueue_config["manager"] in ["sge", "slurm"] and not os.path.exists(
-            daskworer_logdir
-        ):
-            os.makedirs(daskworer_logdir)
-        if jobqueue_config["manager"] in ["local"]:
-            if jobqueue_config["launch_mode"] == "dask_worker":
-                os.makedirs(daskworer_logdir)
+    if deriv_layout == "legacy":
+        container_folder = op.join(
+            basedir, bidsdir_name, "derivatives", f"{container}-{version}"
+        )
+        analysis_dir = op.join(container_folder, f"analysis-{analysis_name}")
     else:
-        logger.info("Not using dask to lauch task, no dask log dir")
+        container_folder = op.join(
+            basedir,
+            bidsdir_name,
+            "derivatives",
+            f"{container}-{version}_{analysis_name}",
+        )
+        analysis_dir = container_folder
 
-    # 3 Copy the configs
-    # define the potential exist config files
-    # TODO: shall I add the time stamp to the file name?
-    ana_dir_lcc = op.join(analysis_dir, "lc_config.yaml")
-    ana_dir_ssl = op.join(analysis_dir, "subseslist.txt")
-    container_configs_fname = f"{container}.json"
-    ana_dir_cc = op.join(analysis_dir, container_configs_fname)
+    os.makedirs(analysis_dir, exist_ok=True)
+    console.print(
+        f"Container layout is {deriv_layout}, analysis dir: {analysis_dir}",
+        style="blue",
+    )
+    return analysis_dir
 
-    # copy the config under the analysis folder
-    do.copy_file(parse_namespace.lc_config, ana_dir_lcc, force)
-    do.copy_file(parse_namespace.sub_ses_list, ana_dir_ssl, force)
+
+def _prepare_analysis_dir(parse_namespace, analysis_dir: str, lc_config: dict):
+    """Copy lc_config, subseslist, and (optionally) container-specific config into analysis_dir."""
+    container = lc_config["general"]["container"]
+    force = lc_config["general"]["force"]
+
     do.copy_file(
-        parse_namespace.container_specific_config,
-        ana_dir_cc,
-        force,
+        parse_namespace.lc_config, op.join(analysis_dir, "lc_config.yaml"), force
+    )
+    do.copy_file(
+        parse_namespace.sub_ses_list, op.join(analysis_dir, "subseslist.txt"), force
+    )
+    if parse_namespace.container_specific_config is not None:
+        do.copy_file(
+            parse_namespace.container_specific_config,
+            op.join(analysis_dir, f"{container}.json"),
+            force,
+        )
+    console.print(
+        f"\n The analysis folder: {analysis_dir} successfully created, all configs copied",
+        style="green",
     )
 
-    # create a tmp dir to store all the launch script for SLURM and SGE
 
-    logger.info(
-        f"\n The analysis folder: {analysis_dir} successfully created,"
-        "all the configs has been copied",
-    )
-
-    success = True
-    return success
-
-
-def main(parse_namespace, analysis_dir):
+def main(parse_namespace) -> tuple[bool, str | None]:
     """
-    Run the full prepare workflow for one analysis directory.
+    Run the full prepare workflow.
 
-    The workflow loads the BIDS dataset, filters the requested subject/session
-    rows, copies the input configuration files into the analysis directory, and
-    then delegates to the DWI preparation helpers to generate container-ready
-    inputs for each selected session.
+    For both DWI and GLM pipelines, creates an analysis directory under
+    ``BIDS/derivatives/fMRI-GLM-{version}/analysis-{analysis_name}`` (legacy)
+    or ``fMRI-GLM-{version}_{analysis_name}`` (new layout), copies configs into
+    it, and delegates to the appropriate prepare helpers.
+
+    If the ``container_specific.<container>`` section is absent for GLM, an
+    example config is written and the function returns early.
 
     Parameters
     ----------
     parse_namespace : argparse.Namespace
-        Parsed CLI arguments for prepare mode.
-    analysis_dir : str
-        Prepared analysis directory for the current launch configuration.
+        Parsed CLI arguments (``lc_config``, ``sub_ses_list``,
+        ``container_specific_config``).
 
     Returns
     -------
-    bool
-        ``True`` if both the analysis-level setup and the container-specific
-        preparation complete successfully.
+    tuple[bool, str | None]
+        ``(success, analysis_dir)`` where *analysis_dir* is ``None`` only
+        when the GLM config section is missing.
     """
-    # read the yaml to get input info
-    lc_config_fpath = parse_namespace.lc_config
-    # read LC config yml
-    lc_config = do.read_yaml(lc_config_fpath)
-    print("\n cli.main() reading lc config yaml")
-    # Get general information from the config.yaml file
-    basedir = lc_config["general"]["basedir"]
-    bidsdir_name = lc_config["general"]["bidsdir_name"]
+    lc_config = do.read_yaml(parse_namespace.lc_config)
     container = lc_config["general"]["container"]
-    lc_config_fpath = parse_namespace.lc_config
-
-    # read LC config yml
-    lc_config = lc_config = do.read_yaml(lc_config_fpath)
-    print("\n do_prepare reading lc config yaml")
-    # Get general information from the config.yaml file
     basedir = lc_config["general"]["basedir"]
     bidsdir_name = lc_config["general"]["bidsdir_name"]
-    # setup the subseslist read it into dataframe
-    # get stuff from subseslist for future jobs scheduling
+
     sub_ses_list_path = parse_namespace.sub_ses_list
     df_subses, _ = do.read_df(sub_ses_list_path)
-    if container in [
-        "anatrois",
-        "rtppreproc",
-        "rtp-pipeline",
-        "freesurferator",
-        "rtp2-preproc",
-        "rtp2-pipeline",
-    ]:
-        mask = (df_subses["RUN"] == "True") & (df_subses["dwi"] == "True")
-    else:
-        mask = df_subses["RUN"] == "True"
-    df_subses = df_subses.loc[mask]
+    df_subses = df_subses.loc[df_subses["RUN"] == "True"]
 
-    # the prepare code
-    # 1. setup analysis folder
-    prepare_step1 = prepare_analysis_dir(parse_namespace, analysis_dir)
+    if container in _DWI_PIPELINES:
+        analysis_dir = _create_analysis_dir(lc_config)
+        _prepare_analysis_dir(parse_namespace, analysis_dir, lc_config)
 
-    # 2. do container specific preparation
-    #   a. for DWI, prepare the container specific json
-    #   b. create symbolic links
-    logger.info("Reading the BIDS layout...")
-    bids_dname = os.path.join(basedir, bidsdir_name)
-    layout = BIDSLayout(bids_dname, validate=False)
-    logger.info("finished reading the BIDS layout.")
-    if container in [
-        "anatrois",
-        "rtppreproc",
-        "rtp-pipeline",
-        "freesurferator",
-        "rtp2-preproc",
-        "rtp2-pipeline",
-    ]:
-        logger.debug(f"{container} is in the list")
+        console.print("Reading the BIDS layout...", style="blue")
+        layout = BIDSLayout(os.path.join(basedir, bidsdir_name), validate=False)
+        console.print("Finished reading the BIDS layout.", style="green")
 
-        prepare_step2 = prep_dwi.prepare_dwi(
-            parse_namespace, analysis_dir, df_subses, layout
+        console.print(f"{container}: running RTP2 prepare", style="dim")
+        success = dwi_prepare.main(parse_namespace, analysis_dir, df_subses, layout)
+        console.print(
+            f"\n #####\n \U0001f37a Analysis dir is \n{analysis_dir}\n",
+            style="bold red",
         )
-    else:
-        logger.error(f"{container} is not in the list")
+        return success, analysis_dir
 
-    logger.critical(
-        "\n#####\nAnalysis dir for run mode is \n" + f"{analysis_dir}\n",
-    )
-    return prepare_step1 and prepare_step2
+    elif container in _GLM_PIPELINES:
+        # Early exit: if container_specific section is empty, write example config
+        if not lc_config.get("container_specific", {}).get(container):
+            console.print(
+                f"\n### No container_specific.{container} section found — writing example config.",
+                style="yellow",
+            )
+            from launchcontainers.prepare.glm_prepare import GLMPrepare
+
+            GLMPrepare.write_example_config()
+            return False, None
+
+        analysis_dir = _create_analysis_dir(lc_config)
+        _prepare_analysis_dir(parse_namespace, analysis_dir, lc_config)
+
+        console.print("Reading the BIDS layout...", style="blue")
+        layout = BIDSLayout(os.path.join(basedir, bidsdir_name), validate=False)
+        console.print("Finished reading the BIDS layout.", style="green")
+
+        console.print(f"{container}: running GLM prepare", style="dim")
+        success = run_glm_prepare(lc_config, df_subses, layout)
+        console.print(
+            f"\n #####\n \U0001f37a Analysis dir is \n{analysis_dir}\n",
+            style="bold red",
+        )
+        return success, analysis_dir
+
+    else:
+        console.print(f"{container} is not in the list", style="red")
+        return False, None

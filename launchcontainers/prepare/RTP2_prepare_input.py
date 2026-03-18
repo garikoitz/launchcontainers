@@ -22,7 +22,6 @@ or substantial portions of the Software.
 from __future__ import annotations
 
 import json
-import logging
 import os
 import os.path as op
 import re
@@ -33,8 +32,7 @@ import nibabel as nib
 
 from launchcontainers.check import check_dwi_pipelines as check
 from launchcontainers.utils import read_df, force_symlink
-
-logger = logging.getLogger("Launchcontainers")
+from launchcontainers.log_setup import console
 
 
 def anatrois(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout):
@@ -96,11 +94,15 @@ def anatrois(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout):
         )
         dst_session_dpath = op.join(analysis_dir, "sub-" + sub, "ses-" + ses)
 
-        logger.info("\n### Going to create symlinks for repeated sessions\n")
+        console.print(
+            "\n### Going to create symlinks for repeated sessions\n", style="cyan"
+        )
         force_symlink(src_session_dpath, dst_session_dpath, force)
 
         if not os.path.islink(dst_session_dpath):
-            logger.warning(f"***Symbolic link missing: {dst_session_dpath}")
+            console.print(
+                f"***Symbolic link missing: {dst_session_dpath}", style="yellow"
+            )
     # if not going to use 1 src session for retest, do the normal thing
     else:
         # define input output folder for this container
@@ -171,13 +173,15 @@ def anatrois(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout):
                 "ses-" + ses,
                 "output",
             )
-            logger.info(
+            console.print(
                 "\n"
                 + f"---the patter of fs.zip filename we are searching is {prefs_zipname}\n"
                 + f"---the directory we are searching for is {pre_fs_path}",
+                style="cyan",
             )
-            logger.debug(
+            console.print(
                 "\n" + f"the tpye of patter is {type(prefs_zipname)}",
+                style="cyan",
             )
             zips = []
             for filename in os.listdir(pre_fs_path):
@@ -199,10 +203,11 @@ def anatrois(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout):
                             )
 
             if len(zips) == 0:
-                logger.error(
+                console.print(
                     "\n"
                     + f"There are no files with pattern: {prefs_zipname} in {pre_fs_path}, \
                          we will listed potential zip file for you",
+                    style="red",
                 )
                 raise FileNotFoundError(
                     "pre_fs_path is empty, no previous analysis was found"
@@ -219,13 +224,14 @@ def anatrois(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout):
                 if answer in "y":
                     src_path_fszip = zips_by_time[-1]
                 else:
-                    logger.error(
+                    console.print(
                         "\n"
                         + "An error occurred"
-                        + zips_by_time
-                        + "\n"  # type: ignore
+                        + str(zips_by_time)
+                        + "\n"
                         + "no target preanalysis.zip file exist, \
                             please check the config_lc.yaml file",
+                        style="red",
                     )
                     sys.exit(1)
 
@@ -265,10 +271,6 @@ def anatrois(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout):
             if not op.exists(op.join(dstDir_input, "mniroizip")):
                 os.makedirs(op.join(dstDir_input, "mniroizip"))
             force_symlink(src_path_mniroi, dst_path_mniroi, force)
-
-        logger.info(
-            "\n" + "-----------------The symlink created-----------------------\n",
-        )
 
     return
 
@@ -449,33 +451,37 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout)
         src_path_BVEC = target_bvec
         src_path_BVAL = target_bval
         if len(dwi_file_with_acq_in_name) == 0:
-            logger.error(
+            console.print(
                 "\n" + "No files with different acq- to concatenate.\n",
+                style="red",
             )
             raise FileNotFoundError(
                 "Didn't found the multi shell DWI, check your bids naming of acq- field",
             )
         elif len(dwi_file_with_acq_in_name) == 1:
-            logger.error(
+            console.print(
                 "\n"
                 + f"Found only {dwi_file_with_acq_in_name[0]} to concatenate. \
                     There must be at least two files with different acq.\n",
+                style="red",
             )
             raise FileNotFoundError("Didn't found 2 multi shell DWI, only found 1")
         else:
             if not op.isfile(target_dwi_concat):
-                logger.info(
+                console.print(
                     "\n"
                     + f"Concatenating with mrcat of mrtrix3 these files: \
                     {dwi_file_with_acq_in_name} in: {target_dwi_concat} \n",
+                    style="cyan",
                 )
                 dwi_file_with_acq_in_name.sort()
                 sp.run(["mrcat", *dwi_file_with_acq_in_name, target_dwi_concat])
                 src_path_DIFF = target_dwi_concat
             else:
-                logger.info(
+                console.print(
                     "\n"
                     + f"The final DWI file is already being prepared: {target_dwi_concat} \n",
+                    style="cyan",
                 )
             # also get the bvecs and bvals
             bvals_acq = [f for f in bval_files if "acq-" in f]
@@ -491,13 +497,15 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout)
                 sp.run(bval_cmd, shell=True)
                 src_path_BVAL = target_bval
             elif len(dwi_file_with_acq_in_name) != len(bvals_acq):
-                logger.error(
+                console.print(
                     "\n" + f"Missing bval files for {sub} and {ses} ",
+                    style="red",
                 )
             else:
-                logger.info(
+                console.print(
                     "\n"
                     + f"The final DWI bvals is already being prepared: {target_bval} \n",
+                    style="cyan",
                 )
             if len(dwi_file_with_acq_in_name) == len(bvecs_acq) and not op.isfile(
                 target_bvec
@@ -510,13 +518,15 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout)
                 sp.run(bvec_cmd, shell=True)
                 src_path_BVEC = target_bvec
             elif len(dwi_file_with_acq_in_name) != len(bvecs_acq):
-                logger.error(
+                console.print(
                     "\n" + f"Missing bvec files for {sub} and {ses} ",
+                    style="red",
                 )
             else:
-                logger.info(
+                console.print(
                     "\n"
                     + f"The final DWI bvec is already being prepared: {target_bvec} \n",
+                    style="cyan",
                 )
     # destination directory under dstDir_input
     if not op.exists(op.join(dstDir_input, "ANAT")):
@@ -547,8 +557,9 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout)
     force_symlink(src_path_DIFF, dst_path_DIFF, force)
     force_symlink(src_path_BVAL, dst_path_BVAL, force)
     force_symlink(src_path_BVEC, dst_path_BVEC, force)
-    logger.info(
+    console.print(
         "\n" + "-----------------The rtppreproc symlinks created\n",
+        style="cyan",
     )
     # check_create_bvec_bval（force) one of the todo here
     if rpe:
@@ -574,8 +585,9 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout)
 
         if len(src_path_RBVL_lst) == 0:
             src_path_RBVL = src_path_RDIF.replace("dwi.nii.gz", "dwi.bval")
-            logger.warning(
-                "\n the bval Reverse file are not find by BIDS, create empty file !!!"
+            console.print(
+                "\n the bval Reverse file are not find by BIDS, create empty file !!!",
+                style="yellow",
             )
         else:
             src_path_RBVL = layout.get(
@@ -598,8 +610,9 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout)
         )
         if len(src_path_RBVC_lst) == 0:
             src_path_RBVC = src_path_RDIF.replace("dwi.nii.gz", "dwi.bvec")
-            logger.warning(
-                "\n the bvec Reverse file are not find by BIDS, create empty file !!!"
+            console.print(
+                "\n the bvec Reverse file are not find by BIDS, create empty file !!!",
+                style="yellow",
             )
         else:
             src_path_RBVC = layout.get(
@@ -622,7 +635,9 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout)
             f = open(src_path_RBVL, "x")
             f.write(volumes * "0 ")
             f.close()
-            logger.warning("\n Finish writing the bval Reverse file with all 0 !!!")
+            console.print(
+                "\n Finish writing the bval Reverse file with all 0 !!!", style="yellow"
+            )
             # Write bvec file
             f = open(src_path_RBVC, "x")
             f.write(volumes * "0 ")
@@ -632,7 +647,9 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout)
             f.write(volumes * "0 ")
             f.write("\n")
             f.close()
-            logger.warning("\n Finish writing the bvec Reverse file with all 0 !!!")
+            console.print(
+                "\n Finish writing the bvec Reverse file with all 0 !!!", style="yellow"
+            )
 
         if not op.exists(op.join(dstDir_input, "RDIF")):
             os.makedirs(op.join(dstDir_input, "RDIF"))
@@ -648,8 +665,9 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout)
         force_symlink(src_path_RDIF, dst_path_RDIF, force)
         force_symlink(src_path_RBVL, dst_path_RBVL, force)
         force_symlink(src_path_RBVC, dst_path_RBVC, force)
-        logger.info(
+        console.print(
             "\n" + "---------------The rtppreproc rpe=True symlinks created",
+            style="cyan",
         )
 
     if "qmap" in required_inputfiles:
@@ -668,23 +686,26 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout)
             "ses-" + ses,
             "output",
         )
-        logger.info(
+        console.print(
             "\n"
             + f"---the patter of fs.zip filename we are searching is {qmap_fname}\n"
             + f"---the directory we are searching for is {qmap_path}",
+            style="cyan",
         )
-        logger.debug(
+        console.print(
             "\n" + f"the tpye of patter is {type(qmap_fname)}",
+            style="cyan",
         )
         zips = []
         for filename in os.listdir(qmap_path):
             if filename.endswith(".zip") and re.match(qmap_fname, filename):
                 zips.append(filename)
         if len(zips) == 0:
-            logger.error(
+            console.print(
                 "\n"
                 + f"There are no files with pattern: {qmap_fname} in {qmap_path}, \
                      we will listed potential zip file for you",
+                style="red",
             )
             raise FileNotFoundError(
                 "qmap_path is empty, no previous analysis was found"
@@ -700,12 +721,13 @@ def rtppreproc(dict_store_cs_configs, analysis_dir, lc_config, sub, ses, layout)
             if answer in "y":
                 src_path_qmap = zips_by_time[-1]
             else:
-                logger.error(
+                console.print(
                     "\n"
                     + "An error occurred"
-                    + zips_by_time
-                    + "\n"  # type: ignore
+                    + str(zips_by_time)
+                    + "\n"
                     + "no target preanalysis.zip file exist, please check the config_lc.yaml file",
+                    style="red",
                 )
                 sys.exit(1)
 
@@ -847,8 +869,9 @@ def rtppipeline(dict_store_cs_configs, analysis_dir, lc_config, sub, ses):
     force_symlink(src_path_bvec, dst_path_bvec, force)
     force_symlink(src_path_bval, dst_path_bval, force)
 
-    logger.info(
+    console.print(
         "\n" + "-----------------The required rtp2-pipeline symlinks created\n",
+        style="cyan",
     )
     if "tractparams" in required_inputfiles:
         fname_tractparams = config_json_instance["inputs"]["tractparams"]["location"][
@@ -889,23 +912,26 @@ def rtppipeline(dict_store_cs_configs, analysis_dir, lc_config, sub, ses):
             "ses-" + ses,
             "output",
         )
-        logger.info(
+        console.print(
             "\n"
             + f"---the patter of fs.zip filename we are searching is {qmap_fname}\n"
             + f"---the directory we are searching for is {qmap_path}",
+            style="cyan",
         )
-        logger.debug(
+        console.print(
             "\n" + f"the tpye of patter is {type(qmap_fname)}",
+            style="cyan",
         )
         zips = []
         for filename in os.listdir(qmap_path):
             if filename.endswith(".zip") and re.match(qmap_fname, filename):
                 zips.append(filename)
         if len(zips) == 0:
-            logger.error(
+            console.print(
                 "\n"
                 + f"There are no files with pattern: {qmap_fname} in {qmap_path}, \
                      we will listed potential zip file for you",
+                style="red",
             )
             raise FileNotFoundError(
                 "qmap_path is empty, no previous analysis was found"
@@ -921,12 +947,13 @@ def rtppipeline(dict_store_cs_configs, analysis_dir, lc_config, sub, ses):
             if answer in "y":
                 src_path_qmap = zips_by_time[-1]
             else:
-                logger.error(
+                console.print(
                     "\n"
                     + "An error occurred"
-                    + zips_by_time
-                    + "\n"  # type: ignore
+                    + str(zips_by_time)
+                    + "\n"
                     + "no target preanalysis.zip file exist, please check the config_lc.yaml file",
+                    style="red",
                 )
                 sys.exit(1)
 

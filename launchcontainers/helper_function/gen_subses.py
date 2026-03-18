@@ -16,12 +16,10 @@
 # """
 from __future__ import annotations
 
-import logging
 from pathlib import Path
 
 from launchcontainers import cli as lc_parser
-
-logger = logging.getLogger(__name__)
+from launchcontainers.log_setup import console
 
 
 def gen_subseslist(basedir: str, output_name: str, output_dir=None) -> None:
@@ -80,7 +78,7 @@ def main():
 
     # Check if download_configs argument is provided
 
-    print("You are copying configs to target place")
+    console.print("You are copying configs to target place")
     basedir = parser_namespace.basedir
     output_name = parser_namespace.name
     output_dir = parser_namespace.output_dir

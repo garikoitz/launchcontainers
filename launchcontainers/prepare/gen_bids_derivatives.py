@@ -9,12 +9,10 @@ This one is WIP
 from __future__ import annotations
 
 import json
-import logging
 import os
 
 import pandas as pd
-
-logger = logging.getLogger("Launchcontainers")
+from launchcontainers.log_setup import console
 
 
 def gen_dataset_desc_json(output_dir):
@@ -45,7 +43,7 @@ def gen_dataset_desc_json(output_dir):
     with open(output_path, "w") as f:
         json.dump(dataset_description, f, indent=4)
 
-    logger.info(f"dataset_description.json created at: {output_path}")
+    console.print(f"dataset_description.json created at: {output_path}", style="cyan")
 
 
 def gen_participant_json(output_dir):
@@ -79,7 +77,7 @@ def gen_participant_json(output_dir):
     with open(output_path, "w") as f:
         json.dump(participant, f, indent=4)
 
-    logger.info(f"participant.json created at: {output_path}")
+    console.print(f"participant.json created at: {output_path}", style="cyan")
 
 
 def gen_readme(output_dir, content=""):
@@ -100,7 +98,7 @@ def gen_readme(output_dir, content=""):
     with open(readme_path, "w") as f:
         f.write(content)
 
-    logger.info(f"Empty README created at: {readme_path}")
+    console.print(f"Empty README created at: {readme_path}", style="cyan")
 
 
 def gen_participant_tsv(output_dir, columns):
@@ -125,4 +123,4 @@ def gen_participant_tsv(output_dir, columns):
     df = pd.DataFrame(columns=columns)
     df.to_csv(participants_path, sep="\t", index=False)
 
-    logger.info(f"participants.tsv created at: {participants_path}")
+    console.print(f"participants.tsv created at: {participants_path}", style="cyan")

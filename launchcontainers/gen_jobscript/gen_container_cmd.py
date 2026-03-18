@@ -16,14 +16,10 @@
 # """
 from __future__ import annotations
 
-import logging
 import os
-import os.path as op
 from datetime import datetime
 
-from launchcontainers import utils as do
-
-logger = logging.getLogger("Launchcontainers")
+from launchcontainers.log_setup import console
 
 
 def gen_cmd_prefix(lc_config):
@@ -48,13 +44,7 @@ def gen_cmd_prefix(lc_config):
     jobqueue_config = lc_config["host_options"][host]
     use_module = jobqueue_config["use_module"]
     mount_options = jobqueue_config["mount_options"]
-    use_dask = lc_config["general"]["use_dask"]
-    # dask job script module load is not working, need to put under envextra
-    if use_dask:
-        env_cmd = ""
-    else:
-        if use_module:
-            env_cmd = f"module load {jobqueue_config['apptainer']} &&"
+    env_cmd = f"module load {jobqueue_config['apptainer']} &&" if use_module else ""
     # define the mount cmd
     path_mount_cmd = ""
     for mount in mount_options:
@@ -253,118 +243,10 @@ def gen_RTP2_cmd(
 
     # If after all configuration, we do not have command, raise an error
     if cmd is None:
-        logger.error(
+        console.print(
             "the DWI PIPELINE command is not assigned, please check your config.yaml[general][host] session\n",
+            style="red",
         )
         raise ValueError("Launch command is not defined, aborting")
 
     return cmd
-
-
-def gen_launch_cmd(
-    parse_namespace,
-    df_subses,
-    batch_command_file,
-):
-    """
-    Generate one launch command per requested subject/session row.
-
-    The command list is also written to ``batch_command_file`` so scheduler
-    array jobs can read one command per task index.
-
-    Parameters
-    ----------
-    parse_namespace : argparse.Namespace
-        Parsed CLI arguments for run mode.
-    df_subses : pandas.DataFrame
-        Filtered subject/session rows to launch.
-    batch_command_file : str or path-like
-        Output text file that stores the generated command list.
-
-    Returns
-    -------
-    list[str]
-        Launch commands in the same order as ``df_subses``.
-    """
-    # read LC config yml from analysis dir
-    analysis_dir = parse_namespace.workdir
-    lc_config_fpath = op.join(analysis_dir, "lc_config.yaml")
-    lc_config = do.read_yaml(lc_config_fpath)
-    # if use dask, then we will use dask and dask jobqueue
-    # if not, we will create tmp files and launch them using sbatch/qsub
-    use_dask = lc_config["general"]["use_dask"]
-    if use_dask:
-        daskworker_logdir = os.path.join(analysis_dir, "daskworker_log")
-        os.makedirs(daskworker_logdir, exist_ok=True)
-
-    # Iterate over the provided subject list
-    commands = []
-    lc_configs = []
-    subs = []
-    sess = []
-    dir_analysiss = []
-
-    for row in df_subses.itertuples(index=True, name="Pandas"):
-        sub = row.sub
-        ses = row.ses
-        # needs to implement dwi, func etc to control for the other containers
-        # This cmd is only for print the command
-        command = gen_RTP2_cmd(
-            lc_config,
-            sub,
-            ses,
-            analysis_dir,
-        )
-        commands.append(command)
-        lc_configs.append(lc_config)
-        subs.append(sub)
-        sess.append(ses)
-        dir_analysiss.append(analysis_dir)
-    # write the command into a file to log, also use to launcht the jobs
-    with open(batch_command_file, "w") as f:
-        for cmd in commands:
-            f.write(f"{cmd}\n")
-
-    return commands
-
-
-# PRF not implemented
-# def gen_PRF_cmd(lc_config, sub, ses, analysis_dir):
-#     """
-#     Generate singularity command for a specific subject/session.
-#     Mimics the functionality of prfanalyze-vista_dipc.sh
-
-#     Args:
-
-#     Returns:
-#         Complete singularity command string
-#     """
-#     # Define paths based on your script structure
-#     lc_config =
-#     HOME_DIR = f'{baseP}/singularity_home'
-#     license_path = f'{baseP}/BIDS/.license'
-#     json_dir = f'{baseP}/code/{step}_jsons'
-#     sif_path = f'/scratch/tlei/containers/{step}_{version}.sif'
-#     json_path = f'{json_dir}/{task}_sub-{sub}_ses-{ses}.json'
-
-#     # Build the singularity command (mimicking prfanalyze-vista_dipc.sh)
-#     cmd_parts = [
-#         'unset PYTHONPATH;',
-#         'module load Apptainer/1.2.4;',
-#         'singularity run',
-#         '-B /scratch:/scratch',
-#         '-B /data:/data',
-#         f'-H {HOME_DIR}',
-#         f'-B {baseP}:/flywheel/v0/input',
-#         f'-B {baseP}:/flywheel/v0/output',
-#         f'-B {json_path}:/flywheel/v0/input/config.json',
-#         '--cleanenv',
-#         sif_path,
-#         '--verbose;',
-#         'module unload Apptainer',
-#     ]
-
-#     # Join command parts
-#     cmd = ' \\\n\t'.join(cmd_parts[:-1]) + '; ' + cmd_parts[-1]
-
-#     return cmd

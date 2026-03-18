@@ -22,14 +22,12 @@ or substantial portions of the Software.
 from __future__ import annotations
 
 import json
-import logging
 import os
 import os.path as op
 import zipfile
 from datetime import datetime
 
-
-logger = logging.getLogger("Launchcontainers")
+from launchcontainers.log_setup import console
 
 
 def check_tractparam(lc_config, sub, ses, tractparam_df):
@@ -59,8 +57,9 @@ def check_tractparam(lc_config, sub, ses, tractparam_df):
         If one or more required ROI files are missing.
     """
     # Define the list of required ROIs
-    logger.info(
+    console.print(
         "\n" + "#####################################################\n",
+        style="bold red",
     )
     roi_list = []
     # Iterate over some defined roisand check if they are required or not in the config.yaml
@@ -103,29 +102,33 @@ def check_tractparam(lc_config, sub, ses, tractparam_df):
 
     # See which ROIs are present in the fs.zip file
     required_gz_files = {f"fs/ROIs/{file}.nii.gz" for file in required_rois}
-    logger.info(
+    console.print(
         "\n"
         + f"---The following are the ROIs in fs.zip file: \n {zip_gz_files} \n"
         + f"---there are {len(zip_gz_files)} .nii.gz files in fs.zip from anatrois output\n"
         + f"---There are {len(required_gz_files)} ROIs that are required to run RTP-PIPELINE\n",
+        style="cyan",
     )
     if required_gz_files.issubset(zip_gz_files):
-        logger.info(
+        console.print(
             "\n" + "---checked! All required .gz files are present in the fs.zip \n",
+            style="green",
         )
     else:
         missing_files = required_gz_files - zip_gz_files
-        logger.error(
+        console.print(
             "\n"
             + "*****Error: \n"
             + f"there are {len(missing_files)} missed in fs.zip \n"
             + f"The following .gz files are missing in the zip file:\n {missing_files}",
+            style="red",
         )
         raise FileNotFoundError("Required .gz file are missing")
 
     ROIs_are_there = required_gz_files.issubset(zip_gz_files)
-    logger.info(
+    console.print(
         "\n" + "#####################################################\n",
+        style="bold red",
     )
     return ROIs_are_there
 
@@ -169,14 +172,16 @@ def check_dwi_analysis_folder(parse_namespace, container):
     general_config_present = all(op.isfile(copy_path) for copy_path in copies)
 
     if general_config_present:
-        logger.critical(
+        console.print(
             f"\n### Analysis folder {analysis_dir} is having all the general configs\n"
             + "Pass to next step",
+            style="bold red",
         )
     else:
-        logger.error(
+        console.print(
             "\n Did NOT detect back up configs in the analysis folder, \
                 Please check then continue the run mode",
+            style="red",
         )
         raise FileNotFoundError("Not all the 3 configs is under analysis dir, aborting")
 
@@ -186,8 +191,14 @@ def check_dwi_analysis_folder(parse_namespace, container):
 
     # 2) check if inputs in the json
     if "inputs" not in config:
-        logger.critical(f"'inputs' field missing; adding to {ana_dir_cc}\n")
-        logger.critical("Please check your container version and pay attention to this")
+        console.print(
+            f"ERROR: 'inputs' field is missing in {ana_dir_cc}\n"
+            "Run 'lc prepare' first to populate the inputs field.",
+            style="bold red",
+        )
+        raise ValueError(
+            f"'inputs' field missing in {ana_dir_cc}. Run 'lc prepare' first."
+        )
 
     return general_config_present
 
@@ -229,6 +240,6 @@ def backup_old_rtp2pipeline_log(
             new_name = old_rtp_log.replace("_log", f"_log_backup_at_{now}")
             os.rename(old_rtp_log, new_name)
         else:
-            logger.info("\n no previous RTP, will run ")
+            console.print("\n no previous RTP, will run ", style="cyan")
 
     return
