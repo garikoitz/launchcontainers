@@ -20,17 +20,16 @@ unset step
 # user inputs
 ###
 step=$1 # step1 or step2
-subseslist_name=$2 #$codedir/00_heudiconv/subseslist_heudiconv.txt
+subseslist_name=$2 
 analysis_name=$3 #may_launch_25ses
 
 #### below are not going to be changed
-codedir=$basedir/code
-outputdir=$basedir/raw_nifti
+outputdir=$basedir/raw_nifti_sbref_fmap
 # it will always be base/dicom, because the current workflow pre cleans the dicom dirs
 dcm_dir=/base/dicom 
 script_dir=/export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/00_dicom_to_nifti
-subseslist_path=$codedir/$2
-heuristicfile=$script_dir/heuristic/heuristic_all_${project}.py
+subseslist_path=$2
+heuristicfile=$script_dir/heuristic/heuristic_sbref_${project}.py
 sing_path=/bcbl/home/public/Gari/containers/heudiconv_1.3.4.sif
 
 logdir=${outputdir}/log_heudiconv/${analysis_name}_$(date +"%Y-%m-%d")/${step}
@@ -43,13 +42,20 @@ echo "reading the subses"
 # Initialize a line counter
 line_number=0
 # Read the file line by line
-while IFS=, read -r sub ses _ ; do
+while IFS=, read -r sub ses RUN ; do
     echo "line number is $line_number sub is $sub ses is $ses"
     # Increment line counter
     ((line_number++))
 
     # Skip the first line which is the header
     if [ $line_number -eq 1 ]; then
+        continue
+    fi
+
+    # Only process rows where RUN is False
+    RUN="${RUN//$'\r'/}"  # strip Windows carriage returns
+    if [ "$RUN" != "False" ]; then
+        echo "  [SKIP] sub=$sub ses=$ses (RUN=$RUN)"
         continue
     fi
 

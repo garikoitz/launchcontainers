@@ -42,22 +42,18 @@ matplotlib = "*"
 # bokeh
 bokeh = ">=2.4.2"
 # python after Oct 4, 2021
-python = "^3.10"
+# compensate for centOS7, otherwise python = "^3.10" 
+python = "~3.9"
 # bids no limit
 bids = "*"
 # ipython after Oct 30, 2021
 ipython = ">=7.29.0"
 # pybids after May 1, 2023
 pybids = "^0.16.1"
-# distributed belongs to dask, it is after Jan, 2024
-distributed = ">=2024.1.0"
-dask = ">=2024.1.0"
-# dask-jobqueue after Feb 22, 2024
-dask-jobqueue = ">=0.8.5"
 # After April 3, 2023 nibabel = "^5.1.0"
 nibabel = "*"
 # After Jan 2, 2024 numpy = ">=1.26.3"
-numpy = "*"
+numpy = "<1.25"
 # After Jan 19, 2023 pandas = ">=1.5.3"
 pandas = "*"
 # After Nov 18, 2023 scipy = "^1.11.4"
