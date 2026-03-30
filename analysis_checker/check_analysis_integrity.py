@@ -50,6 +50,7 @@ from rich.table import Table
 from .base import AnalysisSpec
 from .bids import DWINiiSpec
 from .bids import FuncSBRefSpec
+from .bids import BIDSfuncSpec
 from .bids import ScanstsvSpec
 from .bids import BIDSSpec
 from .fmriprep import FMRIPrepSpec
@@ -135,6 +136,15 @@ class SessionResult:
         # [DEV] timing — mirrors GroupResult.timing_issues
         return sum(len(g.timing_issues) for g in self.groups.values())
 
+    @property
+    def extra_groups(self) -> dict[str, "GroupResult"]:
+        """Groups discovered beyond the expected set (label starts with EXTRA:)."""
+        return {k: v for k, v in self.groups.items() if k.startswith("EXTRA:")}
+
+    @property
+    def total_extra_groups(self) -> int:
+        return len(self.extra_groups)
+
     # [DEV] add total_<field>() properties here ↓
 
     @property
@@ -145,6 +155,11 @@ class SessionResult:
             and self.num_groups > 0
             and all(g.is_complete for g in self.groups.values())
         )
+
+    @property
+    def is_standard(self) -> bool:
+        """True only if complete AND no extra groups beyond the expected spec."""
+        return self.is_complete and self.total_extra_groups == 0
 
 
 # =============================================================================
@@ -260,6 +275,7 @@ def check_one_session(
 
     for group_label, expected_files in spec.get_expected_groups(session_dir).items():
         found, missing, corrupted = [], [], []
+        is_extra = group_label.startswith("EXTRA:")
 
         for fname in expected_files:
             fpath = session_dir / fname
@@ -282,7 +298,10 @@ def check_one_session(
                 else:
                     found.append(fname)
             else:
-                missing.append(fname)
+                # Extra groups are informational — absent companion files are
+                # not "missing" from the experiment, just not present for the run.
+                if not is_extra:
+                    missing.append(fname)
 
         result.groups[group_label] = GroupResult(
             group_label=group_label,
@@ -298,6 +317,8 @@ def check_one_session(
     #       and append to the matching GroupResult list here.
     if hasattr(spec, "_check_timing"):
         for group_label, gresult in result.groups.items():
+            if group_label.startswith("EXTRA:"):
+                continue
             if gresult.missing_files:
                 continue
             issue = spec._check_timing(session_dir, group_label)
@@ -387,8 +408,8 @@ def write_brief_csv(results: list[SessionResult], output_path: Path) -> pd.DataF
         for r in results:
             sub_num = r.sub.replace("sub-", "")
             ses_num = r.ses.replace("ses-", "")
-            writer.writerow([sub_num, ses_num, r.is_complete])
-            rows.append({"sub": sub_num, "ses": ses_num, "RUN": r.is_complete})
+            writer.writerow([sub_num, ses_num, r.is_standard])
+            rows.append({"sub": sub_num, "ses": ses_num, "RUN": r.is_standard})
     return pd.DataFrame(rows, columns=["sub", "ses", "RUN"])
 
 
@@ -504,13 +525,24 @@ def write_detailed_log(
                 f.write("      No file groups discovered (empty directory?).\n\n")
                 continue
 
+            expected_complete = r.complete_groups - r.total_extra_groups
+            expected_total = r.num_groups - r.total_extra_groups
             f.write(
-                f"      Groups: {r.complete_groups}/{r.num_groups} complete  |  "
-                f"Missing: {r.total_missing}  |  Corrupted: {r.total_corrupted}\n",
+                f"      Groups: {expected_complete}/{expected_total} complete  |  "
+                f"Missing: {r.total_missing}  |  Corrupted: {r.total_corrupted}"
+                + (
+                    f"  |  Extra: {r.total_extra_groups}"
+                    if r.total_extra_groups
+                    else ""
+                )
+                + "\n",
             )
             # [DEV] add new totals to the summary line above ↑
 
+            # Expected groups — show missing / corrupted / timing issues
             for glabel, gresult in sorted(r.groups.items()):
+                if glabel.startswith("EXTRA:"):
+                    continue
                 if gresult.is_complete:
                     continue
 
@@ -534,6 +566,17 @@ def write_detailed_log(
                     for ti in gresult.timing_issues:
                         f.write(f"        ~ {ti}\n")
 
+            # Extra groups — informational, separate section
+            if r.extra_groups:
+                f.write(f"      Extra runs found ({len(r.extra_groups)}):\n")
+                for glabel, gresult in sorted(r.extra_groups.items()):
+                    task_run = glabel.removeprefix("EXTRA:")
+                    found_n = len(gresult.found_files)
+                    total_n = len(gresult.expected_files)
+                    f.write(
+                        f"        + {task_run}  ({found_n}/{total_n} files present)\n"
+                    )
+
             f.write("\n")
 
 
@@ -547,7 +590,9 @@ def write_corrupted_list(
     with open(output_path, "w") as f:
         for r in results:
             session_dir = spec.get_session_dir(analysis_dir, r.sub, r.ses)
-            for gresult in r.groups.values():
+            for glabel, gresult in r.groups.items():
+                if glabel.startswith("EXTRA:"):
+                    continue
                 for cf in gresult.corrupted_files:
                     fname = cf.split(" (")[0]
                     f.write(f"{session_dir / fname}\n")
@@ -563,11 +608,38 @@ def write_time_mismatch_list(
     with open(output_path, "w") as f:
         for r in results:
             session_dir = spec.get_session_dir(analysis_dir, r.sub, r.ses)
-            for gresult in r.groups.values():
+            for glabel, gresult in r.groups.items():
+                if glabel.startswith("EXTRA:"):
+                    continue
                 if gresult.timing_issues:
-                    bold_path = session_dir / gresult.group_label
+                    bold_path = session_dir / glabel
                     for issue in gresult.timing_issues:
                         f.write(f"{bold_path}  {issue.strip()}\n")
+
+
+def write_extra_runs_list(
+    results: list[SessionResult],
+    output_path: Path,
+    spec: AnalysisSpec,
+    analysis_dir: Path,
+) -> None:
+    """Write one line per extra run found beyond the expected set."""
+    with open(output_path, "w") as f:
+        f.write("# Extra runs — present in func/ but not in the expected spec\n")
+        f.write("# sub  ses  task_run  files_found/files_expected\n\n")
+        for r in results:
+            if not r.extra_groups:
+                continue
+            session_dir = spec.get_session_dir(analysis_dir, r.sub, r.ses)
+            sub_num = r.sub.replace("sub-", "")
+            ses_num = r.ses.replace("ses-", "")
+            for glabel, gresult in sorted(r.extra_groups.items()):
+                task_run = glabel.removeprefix("EXTRA:")
+                found_n = len(gresult.found_files)
+                total_n = len(gresult.expected_files)
+                f.write(f"{sub_num}  {ses_num}  {task_run}  {found_n}/{total_n}\n")
+                for ff in gresult.found_files:
+                    f.write(f"  {session_dir / ff}\n")
 
 
 # =============================================================================
@@ -586,8 +658,8 @@ def print_summary(results: list[SessionResult], spec: AnalysisSpec) -> None:
       3. Add it to table.add_row(...)
       4. Add an aggregate stat in the console.print() block at the bottom
     """
-    n_complete = sum(1 for r in results if r.is_complete)
-    n_incomplete = sum(1 for r in results if not r.is_complete)
+    n_complete = sum(1 for r in results if r.is_standard)
+    n_incomplete = sum(1 for r in results if not r.is_standard)
     n_no_dir = sum(1 for r in results if not r.session_dir_exists)
     n_no_groups = sum(1 for r in results if r.session_dir_exists and r.num_groups == 0)
     total_groups = sum(r.num_groups for r in results)
@@ -603,23 +675,32 @@ def print_summary(results: list[SessionResult], spec: AnalysisSpec) -> None:
     table.add_column("Missing", justify="center")
     table.add_column("Corrupted", justify="center")  # [DEV] new column template
     table.add_column("Timing", justify="center")  # [DEV] new column template
+    table.add_column("Extra", justify="center")
     # [DEV] add new columns here ↓
 
     for r in results:
-        style = "green" if r.is_complete else "red bold"
+        if r.is_standard:
+            run_style = "green"
+        elif r.is_complete and r.total_extra_groups > 0:
+            run_style = "orange3"  # complete but non-standard (has extra runs)
+        else:
+            run_style = "red bold"
 
         if not r.session_dir_exists:
             groups_str = "no dir"
             missing_str = "—"
             corrupted_str = "—"
             timing_str = "—"
+            extra_str = "—"
         elif r.num_groups == 0:
             groups_str = "0"
             missing_str = "—"
             corrupted_str = "—"
             timing_str = "—"
+            extra_str = "—"
         else:
-            groups_str = f"{r.complete_groups}/{r.num_groups}"
+            expected_n = r.num_groups - r.total_extra_groups
+            groups_str = f"{r.complete_groups - r.total_extra_groups}/{expected_n}"
             missing_str = str(r.total_missing) if r.total_missing else "0"
             corrupted_str = (
                 f"[red bold]{r.total_corrupted}[/red bold]"
@@ -631,16 +712,22 @@ def print_summary(results: list[SessionResult], spec: AnalysisSpec) -> None:
                 if r.total_timing_issues
                 else "0"
             )
+            extra_str = (
+                f"[yellow]{r.total_extra_groups}[/yellow]"
+                if r.total_extra_groups
+                else "0"
+            )
             # [DEV] compute new column cell value here ↓
 
         table.add_row(
             r.sub.replace("sub-", ""),
             r.ses.replace("ses-", ""),
-            f"[{style}]{r.is_complete}[/{style}]",
+            f"[{run_style}]{r.is_standard}[/{run_style}]",
             groups_str,
             missing_str,
             corrupted_str,
             timing_str,
+            extra_str,
             # [DEV] add new cell value here ↓
         )
 
@@ -660,6 +747,7 @@ def print_summary(results: list[SessionResult], spec: AnalysisSpec) -> None:
         console.print(f"[yellow]Missing session dirs: {n_no_dir}[/yellow]")
     if n_no_groups:
         console.print(f"[yellow]Empty session dirs: {n_no_groups}[/yellow]")
+
 
 def print_all_groups(results: list[SessionResult], spec: AnalysisSpec) -> None:
     """Print group breakdown for every session, complete or not."""
@@ -683,6 +771,7 @@ def print_all_groups(results: list[SessionResult], spec: AnalysisSpec) -> None:
             if gresult.corrupted_files:
                 for cf in gresult.corrupted_files:
                     console.print(f"      [magenta]! {cf}[/magenta]")
+
 
 def print_detailed_results(
     results: list[SessionResult],
@@ -760,6 +849,7 @@ def print_group_distribution(results: list[SessionResult]) -> None:
         table.add_row(str(n), str(counts[n]))
     console.print(table)
 
+
 # a more detailed summary for prfanalyze
 def summarize_incomplete_by_dimension(
     results: list[SessionResult],
@@ -772,10 +862,10 @@ def summarize_incomplete_by_dimension(
     If spec returns None for all groups, prints a flat incomplete list instead.
     """
     # dim_value -> set of (sub, ses) for console dedup
-    dim_subses:   defaultdict[str, set]  = defaultdict(set)
+    dim_subses: defaultdict[str, set] = defaultdict(set)
     # dim_value -> list of (sub, ses) for txt output
-    dim_entries:  defaultdict[str, list] = defaultdict(list)
-    missing_dirs: list[tuple[str, str]]  = []
+    dim_entries: defaultdict[str, list] = defaultdict(list)
+    missing_dirs: list[tuple[str, str]] = []
     dim_name = "group"  # fallback label
 
     for r in results:
@@ -802,8 +892,7 @@ def summarize_incomplete_by_dimension(
     if dim_subses:
         for dim_val, subses_set in sorted(dim_subses.items()):
             subses_strs = ", ".join(
-                f"[yellow]{sub}_{ses}[/yellow]"
-                for sub, ses in sorted(subses_set)
+                f"[yellow]{sub}_{ses}[/yellow]" for sub, ses in sorted(subses_set)
             )
             console.print(f"  [bold]{dim_name}-{dim_val}[/bold]: {subses_strs}")
     else:
@@ -815,11 +904,17 @@ def summarize_incomplete_by_dimension(
             console.print(f"  [red]{sub}_{ses}[/red]")
 
     # ── Summary counts ─────────────────────────────────────────────────────
-    console.print(f"\n[bold cyan]Summary:[/bold cyan]")
-    console.print(f"  {dim_name}s with incomplete sessions : [red]{len(dim_subses)}[/red]")
+    console.print("\n[bold cyan]Summary:[/bold cyan]")
+    console.print(
+        f"  {dim_name}s with incomplete sessions : [red]{len(dim_subses)}[/red]"
+    )
     all_incomplete = set().union(*dim_subses.values()) if dim_subses else set()
-    console.print(f"  Unique incomplete sub/ses           : [red]{len(all_incomplete)}[/red]")
-    console.print(f"  Missing session directories         : [red]{len(missing_dirs)}[/red]")
+    console.print(
+        f"  Unique incomplete sub/ses           : [red]{len(all_incomplete)}[/red]"
+    )
+    console.print(
+        f"  Missing session directories         : [red]{len(missing_dirs)}[/red]"
+    )
     total = sum(len(v) for v in dim_entries.values())
     console.print(f"  Total incomplete groups             : [red]{total}[/red]")
 
@@ -836,12 +931,15 @@ def summarize_incomplete_by_dimension(
                 for sub, ses in sorted(entries):
                     if (sub, ses) not in seen:
                         seen.add((sub, ses))
-                        writer.writerow([
-                            sub.replace("sub-", ""),
-                            ses.replace("ses-", ""),
-                            True,
-                        ])
+                        writer.writerow(
+                            [
+                                sub.replace("sub-", ""),
+                                ses.replace("ses-", ""),
+                                True,
+                            ]
+                        )
             console.print(f"  [dim]Wrote {out_file}[/dim]")
+
 
 # =============================================================================
 # 7. SPEC REGISTRY + CLI
@@ -854,6 +952,7 @@ SPEC_REGISTRY: dict[str, AnalysisSpec] = {
     "bids": BIDSSpec(),
     "dwinii": DWINiiSpec(),
     "bidsfuncsbref": FuncSBRefSpec(),
+    "bidsfunc": BIDSfuncSpec(),
     "scanstsv": ScanstsvSpec(),
     "fmriprep": FMRIPrepSpec(),
     "glm": GLMSpec(),
@@ -1000,10 +1099,10 @@ def check(
     write_detailed_log(results, spec, detail_path)
     write_matrix_from_result(results, output_dir / f"{spec.name}_matrix_detailed.csv")
     write_matrix_from_brief_csv(brief_df, output_dir / f"{spec.name}_matrix_simple.csv")
-    
+
     # additional summary for prfanalyze to break down incomplete by task
     summarize_incomplete_by_dimension(results, spec, output_dir)
-    
+
     # [DEV] Add new conditional output writers here (copy this pattern)
     if any(r.total_corrupted > 0 for r in results):
         p = output_dir / f"{spec.name}_corrupted.txt"
@@ -1014,6 +1113,11 @@ def check(
         p = output_dir / f"{spec.name}_timing_mismatch.txt"
         write_time_mismatch_list(results, p, spec, analysis_dir)
         console.print(f"[bold]Timing mismatch list:[/bold] {p}")
+
+    if any(r.total_extra_groups > 0 for r in results):
+        p = output_dir / f"{spec.name}_extra_runs.txt"
+        write_extra_runs_list(results, p, spec, analysis_dir)
+        console.print(f"[bold]Extra runs:[/bold] {p}")
 
     console.print(f"\n[bold]Brief CSV:[/bold]    {brief_path}")
     console.print(f"[bold]Detailed log:[/bold] {detail_path}")

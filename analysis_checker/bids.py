@@ -16,6 +16,7 @@ BIDS-related specs:
 from __future__ import annotations
 
 import csv as _csv
+import fnmatch
 import re
 from datetime import datetime
 from pathlib import Path
@@ -95,6 +96,7 @@ class BIDSSpec(AnalysisSpec):
 # BIDSDWISpec
 # =============================================================================
 
+
 class DWINiiSpec(AnalysisSpec):
     """
     BIDS DWI: expects two fixed acq groups — acq-magonly and acq-nordic.
@@ -148,14 +150,15 @@ class DWINiiSpec(AnalysisSpec):
             ]
 
         return groups
-    
+
     def get_group_dimension(self, group_label: str) -> tuple[str, str] | None:
         if group_label.startswith("acq-"):
             return ("acq", group_label.split("acq-")[-1])
         return None
-    
+
     def get_default_combinations(self) -> list[tuple[str, str]]:
         return default_combinations()
+
 
 # =============================================================================
 # BIDSFuncSBRefSpec
@@ -436,6 +439,175 @@ class ScanstsvSpec(AnalysisSpec):
                 )
 
         return "\n".join(issues) if issues else None
+
+    def get_default_combinations(self) -> list[tuple[str, str]]:
+        return default_combinations()
+
+
+# =============================================================================
+# BIDSfuncSpec
+# =============================================================================
+
+
+class BIDSfuncSpec(AnalysisSpec):
+    """
+    VOTCLOC func integrity check.
+
+    Expected per sub/ses (16 total groups):
+
+    * ``task-fLoc``  — 10 runs (run-01 … run-10)
+    * ``task-retRW`` — 2 runs  (run-01, run-02)
+    * ``task-retFF`` — 2 runs  (run-01, run-02)
+    * ``task-retCB`` — 2 runs  (run-01, run-02)
+
+    For every group the following four files are expected:
+
+    * ``*_task-<X>_run-<N>_bold.nii.gz``
+    * ``*_task-<X>_run-<N>_bold.json``
+    * ``*_task-<X>_run-<N>_sbref.nii.gz``
+    * ``*_task-<X>_run-<N>_sbref.json``
+
+    Timing check: ``AcquisitionTime`` gap between sbref and bold <= ``max_diff_sec``.
+
+    [DEV] Adjust FLOC_RUNS or RET_TASKS_RUNS to change expected counts.
+    """
+
+    FLOC_RUNS: list[str] = [f"{i:02d}" for i in range(1, 11)]  # 01–10
+    RET_TASKS_RUNS: dict[str, list[str]] = {
+        "retRW": ["01", "02"],
+        "retFF": ["01", "02"],
+        "retCB": ["01", "02"],
+    }
+
+    # [DEV] Add task name patterns here to extend monitoring to new tasks.
+    # Supports shell wildcards: "ret*" matches retRW, retFF, retCB, etc.
+    TASKS_OF_INTEREST: list[str] = ["fLoc", "ret*"]
+
+    def __init__(self, max_diff_sec: int = 30):
+        self.max_diff_sec = max_diff_sec
+
+    def _task_of_interest(self, task: str) -> bool:
+        """Return True if *task* matches any pattern in TASKS_OF_INTEREST."""
+        return any(fnmatch.fnmatch(task, pat) for pat in self.TASKS_OF_INTEREST)
+
+    @property
+    def name(self) -> str:
+        return "funcintegrity"
+
+    @property
+    def description(self) -> str:
+        n_floc = len(self.FLOC_RUNS)
+        n_ret = sum(len(v) for v in self.RET_TASKS_RUNS.values())
+        return (
+            f"VOTCLOC func integrity — fLoc ({n_floc} runs) + "
+            f"ret tasks ({n_ret} runs) = {n_floc + n_ret} total groups, "
+            f"bold+sbref+json each, timing gap <= {self.max_diff_sec}s"
+        )
+
+    def get_session_dir(self, analysis_dir: Path, sub: str, ses: str) -> Path:
+        sub_str = sub if sub.startswith("sub-") else f"sub-{sub}"
+        ses_str = ses if ses.startswith("ses-") else f"ses-{ses}"
+        return analysis_dir / sub_str / ses_str / "func"
+
+    def get_expected_subfolders(
+        self,
+        analysis_dir: Path,
+        sub: str,
+        ses: str,
+    ) -> list[Path]:
+        return [self.get_session_dir(analysis_dir, sub, ses)]
+
+    def get_expected_groups(self, session_dir: Path) -> dict[str, list[str]]:
+        if not session_dir.is_dir():
+            return {}
+
+        sub = session_dir.parent.parent.name  # sub-XX
+        ses = session_dir.parent.name  # ses-XX
+        prefix = f"{sub}_{ses}"
+
+        groups: dict[str, list[str]] = {}
+
+        def _files_for(task: str, run: str) -> list[str]:
+            return [
+                f"{prefix}_task-{task}_run-{run}_bold.nii.gz",
+                f"{prefix}_task-{task}_run-{run}_bold.json",
+                f"{prefix}_task-{task}_run-{run}_sbref.nii.gz",
+                f"{prefix}_task-{task}_run-{run}_sbref.json",
+            ]
+
+        # fLoc runs
+        for run in self.FLOC_RUNS:
+            groups[f"task-fLoc_run-{run}"] = _files_for("fLoc", run)
+
+        # ret task runs
+        for task, runs in self.RET_TASKS_RUNS.items():
+            for run in runs:
+                groups[f"task-{task}_run-{run}"] = _files_for(task, run)
+
+        # Scan directory for extra runs not in the expected set.
+        # Only tasks matching TASKS_OF_INTEREST are considered.
+        expected_labels = set(groups.keys())
+        for bold in sorted(session_dir.glob(f"{prefix}_task-*_run-*_bold.nii.gz")):
+            m = re.search(r"task-(\w+)_run-(\d+)", bold.name)
+            if not m:
+                continue
+            task, run = m.group(1), m.group(2)
+            if not self._task_of_interest(task):
+                continue
+            label = f"task-{task}_run-{run}"
+            if label not in expected_labels:
+                groups[f"EXTRA:{label}"] = _files_for(task, run)
+
+        return groups
+
+    def _check_timing(self, session_dir: Path, group_label: str) -> str | None:
+        """
+        Check AcquisitionTime gap between sbref and bold for this group.
+        Called by the engine via duck-typing (hasattr check).
+        Handles both normal labels and ``EXTRA:task-X_run-N`` labels.
+        """
+        # Strip EXTRA: prefix if present
+        label = group_label.removeprefix("EXTRA:")
+        if not re.search(r"task-(\w+)_run-(\d+)", label):
+            return None
+
+        sub = session_dir.parent.parent.name
+        ses = session_dir.parent.name
+        prefix = f"{sub}_{ses}"
+
+        sbref_json = session_dir / f"{prefix}_{label}_sbref.json"
+        bold_json = session_dir / f"{prefix}_{label}_bold.json"
+
+        t_sbref = (
+            read_json(sbref_json).get("AcquisitionTime")
+            if sbref_json.exists()
+            else None
+        )
+        t_bold = (
+            read_json(bold_json).get("AcquisitionTime") if bold_json.exists() else None
+        )
+
+        if t_sbref is None or t_bold is None:
+            return f"  AcquisitionTime missing (sbref={t_sbref}, bold={t_bold})"
+
+        if not times_match(t_sbref, t_bold, self.max_diff_sec):
+            try:
+                dt1 = datetime.strptime(parse_hms(t_sbref), "%H:%M:%S")
+                dt2 = datetime.strptime(parse_hms(t_bold), "%H:%M:%S")
+                diff = abs((dt1 - dt2).total_seconds())
+            except ValueError:
+                diff = -1
+            return (
+                f"  timing mismatch: sbref={parse_hms(t_sbref)}, "
+                f"bold={parse_hms(t_bold)}, gap={diff:.0f}s (max={self.max_diff_sec}s)"
+            )
+        return None
+
+    def get_group_dimension(self, group_label: str) -> tuple[str, str] | None:
+        # Strip EXTRA: prefix so dimensions still group correctly
+        label = group_label.removeprefix("EXTRA:")
+        m = re.search(r"task-(\w+)_run-", label)
+        return ("task", m.group(1)) if m else None
 
     def get_default_combinations(self) -> list[tuple[str, str]]:
         return default_combinations()
