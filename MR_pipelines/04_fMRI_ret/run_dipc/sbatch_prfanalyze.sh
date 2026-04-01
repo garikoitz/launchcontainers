@@ -16,7 +16,7 @@
 # Define base paths
 baseP="/scratch/tlei/VOTCLOC"
 
-HOME_DIR="$baseP/singularity_home_gari"
+HOME_DIR="$baseP/singularity_home"
 # container specific
 # for prfprepare:
 license_path="$baseP/BIDS/.license"
@@ -30,10 +30,10 @@ model="css" # "one_gaussian" or "css"
 step="prfanalyze-vista"
 version='2.2.1'
 qos="regular" # regular or test
-mem="10G"
-cpus="20"
-time="20:00:00" #time="00:10:00" 10:00:00
-task="retCBblock" # retCB retRW retFF
+mem="16G"
+cpus="25"
+time="8:00:00" #time="00:10:00" 10:00:00
+task="retFF" # retCB retRW retFF
 # retfixRW retfixFF retfixRWblock01 retfixRWblock02 retfixRWblock
 
 # json input
@@ -43,10 +43,9 @@ script_dir="/home/tlei/soft/launchcontainers/MR_pipelines/04_fMRI_ret"
 code_dir=$baseP/code
 sif_path="/scratch/tlei/containers/${step}_${version}.sif"
 log_note=$1
-subses_name=$2
-subses_list_dir=$code_dir/${subses_name}
+subses_list_dir=$2
 # log dir
-LOG_DIR="$baseP/dipc_${step}_logs/${log_note}_$(date +"%Y-%m-%d")"
+LOG_DIR="/scratch/tlei/dipc_${step}_logs/$(date +"%Y-%m-%d")_${log_note}"
 # Ensure directories exist
 mkdir -p "$LOG_DIR"
 mkdir -p "$HOME_DIR"

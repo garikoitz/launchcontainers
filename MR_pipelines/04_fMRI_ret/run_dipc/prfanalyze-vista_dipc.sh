@@ -26,6 +26,7 @@
 # fi
 # current_time=$(date +"%Y-%m-%d_%H-%M-%S")
 module load Apptainer/1.3.5
+export APPTAINER_TMPDIR=/tmp
 
 # export APPTAINNER_TMPDIR=/scratch/tlei/apptainer_tmp
 # export APPTAINER_CACHEDIR=/scratch/tlei/apptainer_cache
@@ -34,7 +35,7 @@ module load Apptainer/1.3.5
 
 mkdir -p /tmp/apptainer/mnt/session 2>/dev/null || true
 
-cmd="unset PYTHONPATH; apptainer run \
+cmd="unset PYTHONPATH; apptainer run --tmpdir /tmp \
 	-B /scratch:/scratch
 	-B /data:/data
 	-H $baseP/singularity_home \
