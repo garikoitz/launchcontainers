@@ -30,7 +30,14 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from .base import AnalysisSpec, default_combinations
+try:
+    from .base import AnalysisSpec, default_combinations
+except ImportError:
+    import sys
+    import os
+
+    sys.path.insert(0, os.path.dirname(__file__))
+    from base import AnalysisSpec, default_combinations
 
 
 # ── Valid task name sets ──────────────────────────────────────────────────────
@@ -220,8 +227,8 @@ class PRFPrepareSpec(AnalysisSpec):
     # ── Group construction ────────────────────────────────────────────────────
 
     def get_expected_groups(self, session_dir: Path) -> dict[str, list[str]]:
-        sub    = session_dir.parent.parent.name
-        ses    = session_dir.parent.name
+        sub = session_dir.parent.parent.name
+        ses = session_dir.parent.name
         prefix = f"{sub}_{ses}"
         groups: dict[str, list[str]] = {}
 
@@ -245,8 +252,7 @@ class PRFPrepareSpec(AnalysisSpec):
         # 3. Events groups
         for task in sorted(event_tasks):
             groups[f"events-{task}"] = [
-                f"{prefix}_task-{task}_run-{run}_events.tsv"
-                for run in self.EVENTS_RUNS
+                f"{prefix}_task-{task}_run-{run}_events.tsv" for run in self.EVENTS_RUNS
             ]
 
         # 4. Validate group count — expected 8 (2 maskinfo + 3 bold + 3 events)
@@ -266,7 +272,9 @@ class PRFPrepareSpec(AnalysisSpec):
 
     def get_group_dimension(self, group_label: str) -> tuple[str, str] | None:
         parts = group_label.split("_")
-        task = next((p.split("task-")[-1] for p in parts if p.startswith("task-")), None)
+        task = next(
+            (p.split("task-")[-1] for p in parts if p.startswith("task-")), None
+        )
         if task:
             return ("task", task)
         return None

@@ -2,6 +2,7 @@
 # All shared ABCs and utilities — no imports from within analysis_checker
 from __future__ import annotations
 
+import csv
 import json
 from abc import ABC, abstractmethod
 from datetime import datetime
@@ -101,7 +102,7 @@ class AnalysisSpec(ABC):
         Return None to require explicit input from the user.
         """
         return None
-    
+
     def get_group_dimension(self, group_label: str) -> tuple[str, str] | None:
         """
         Extract (dimension_name, dimension_value) from a group label for
@@ -119,7 +120,38 @@ class AnalysisSpec(ABC):
 # 6. SHARED CONSTANTS
 # =============================================================================
 
-EXCLUDED_SESSIONS: set[tuple[str, str]] = set()
+EXCLUDED_SESSIONS: set[tuple[str, str]] = {
+    ("10", "02"),
+    ("09", "01"),
+    ("10", "05"),
+    ("06", "10"),
+    ("05", "08"),
+    ("08", "04"),
+}
+# Path to the WC subseslist — two levels up from analysis_checker/
+_WC_SUBSESLIST_PATH = (
+    Path(__file__).parent.parent / "launchcontainers" / "tests" / "wc_subseslist.txt"
+)
+
+
+def _load_wc_sessions() -> set[tuple[str, str]]:
+    """Load WC (wide-column / retfix) sessions from wc_subseslist.txt."""
+    wc: set[tuple[str, str]] = set()
+    if not _WC_SUBSESLIST_PATH.exists():
+        return wc
+    try:
+        with open(_WC_SUBSESLIST_PATH, newline="") as fh:
+            for row in csv.DictReader(fh):
+                sub = str(row["sub"]).strip().zfill(2)
+                ses = str(row["ses"]).strip().zfill(2)
+                wc.add((sub, ses))
+    except Exception:
+        pass
+    return wc
+
+
+# Loaded once at import time.
+WC_SESSIONS: set[tuple[str, str]] = _load_wc_sessions()
 
 
 def default_combinations() -> list[tuple[str, str]]:

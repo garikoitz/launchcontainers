@@ -15,8 +15,14 @@ from __future__ import annotations
 from pathlib import Path
 from collections import defaultdict
 
-from .base import AnalysisSpec
-from .base import default_combinations
+try:
+    from .base import AnalysisSpec, default_combinations
+except ImportError:
+    import sys
+    import os
+
+    sys.path.insert(0, os.path.dirname(__file__))
+    from base import AnalysisSpec, default_combinations
 
 
 class PRFAnalyzeSpec(AnalysisSpec):
@@ -75,7 +81,7 @@ class PRFAnalyzeSpec(AnalysisSpec):
                 prefix = f.name.split("_hemi-")[0]
                 parts = prefix.split("_")
                 task = next((p for p in parts if p.startswith("task-")), None)
-                run  = next((p for p in parts if p.startswith("run-")),  None)
+                run = next((p for p in parts if p.startswith("run-")), None)
                 if task and run:
                     task_runs[task].add(run)
 
@@ -119,13 +125,15 @@ class PRFAnalyzeSpec(AnalysisSpec):
             groups["[validation-errors]"] = validation_errors
 
         return groups
-    
+
     def get_group_dimension(self, group_label: str) -> tuple[str, str] | None:
         parts = group_label.split("_")
-        task = next((p.split("task-")[-1] for p in parts if p.startswith("task-")), None)
+        task = next(
+            (p.split("task-")[-1] for p in parts if p.startswith("task-")), None
+        )
         if task:
             return ("task", task)
         return None
-    
+
     def get_default_combinations(self) -> list[tuple[str, str]]:
         return default_combinations()

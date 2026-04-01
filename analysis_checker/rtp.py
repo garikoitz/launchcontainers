@@ -10,8 +10,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .base import AnalysisSpec
-from .base import default_combinations
+try:
+    from .base import AnalysisSpec, default_combinations
+except ImportError:
+    import sys
+    import os
+
+    sys.path.insert(0, os.path.dirname(__file__))
+    from base import AnalysisSpec, default_combinations
 
 
 class RTPSpec(AnalysisSpec):

@@ -21,12 +21,30 @@ import re
 from datetime import datetime
 from pathlib import Path
 
-from .base import AnalysisSpec
-from .base import default_combinations
-from .base import json_for
-from .base import parse_hms
-from .base import read_json
-from .base import times_match
+try:
+    from .base import (
+        AnalysisSpec,
+        default_combinations,
+        json_for,
+        parse_hms,
+        read_json,
+        times_match,
+        WC_SESSIONS,
+    )
+except ImportError:
+    import sys
+    import os
+
+    sys.path.insert(0, os.path.dirname(__file__))
+    from base import (
+        AnalysisSpec,
+        default_combinations,
+        json_for,
+        parse_hms,
+        read_json,
+        times_match,
+        WC_SESSIONS,
+    )
 
 
 # =============================================================================
@@ -479,9 +497,19 @@ class BIDSfuncSpec(AnalysisSpec):
         "retCB": ["01", "02"],
     }
 
+    # [DEV] Sessions that only acquired retRW + retCB (no retFF) → 14 expected groups.
+    REDUCED_RET_SESSIONS: set[tuple[str, str]] = {
+        ("sub-03", "ses-01"),
+        ("sub-04", "ses-01"),
+        ("sub-06", "ses-01"),
+    }
+
     # [DEV] Add task name patterns here to extend monitoring to new tasks.
-    # Supports shell wildcards: "ret*" matches retRW, retFF, retCB, etc.
+    # Supports shell wildcards: "ret*" matches retRW, retFF, retCB, retfix*, etc.
     TASKS_OF_INTEREST: list[str] = ["fLoc", "ret*"]
+
+    # WC session expected tasks are discovered dynamically from vistadisplog
+    # (see _discover_wc_ret_tasks). Add new retfix variants there automatically.
 
     def __init__(self, max_diff_sec: int = 30):
         self.max_diff_sec = max_diff_sec
@@ -489,6 +517,58 @@ class BIDSfuncSpec(AnalysisSpec):
     def _task_of_interest(self, task: str) -> bool:
         """Return True if *task* matches any pattern in TASKS_OF_INTEREST."""
         return any(fnmatch.fnmatch(task, pat) for pat in self.TASKS_OF_INTEREST)
+
+    def _is_wc_session(self, sub: str, ses: str) -> bool:
+        """Return True if this sub/ses is a WC (retfix) session."""
+        sub_n = sub.replace("sub-", "").zfill(2)
+        ses_n = ses.replace("ses-", "").zfill(2)
+        return (sub_n, ses_n) in WC_SESSIONS
+
+    def _discover_wc_ret_tasks(self, session_dir: Path) -> dict[str, list[str]]:
+        """
+        Scan vistadisplog for this WC session and return {task: [run, ...]}
+        for all retfix* tasks found in *_params.mat filenames.
+
+        session_dir is BIDS/sub-XX/ses-XX/func, so the vistadisplog is at
+        BIDS/sourcedata/vistadisplog/sub-XX/ses-XX/.
+        """
+        bids_root = session_dir.parent.parent.parent
+        sub = session_dir.parent.parent.name  # sub-XX
+        ses = session_dir.parent.name  # ses-XX
+        displog_dir = bids_root / "sourcedata" / "vistadisplog" / sub / ses
+
+        tasks: dict[str, list[str]] = {}
+        if not displog_dir.is_dir():
+            return tasks
+
+        for mat in sorted(displog_dir.glob("*_params.mat")):
+            m = re.search(r"task-(\w+)_run-(\d+)", mat.name)
+            if not m:
+                continue
+            task, run = m.group(1), m.group(2)
+            if not task.startswith("retfix"):
+                continue
+            tasks.setdefault(task, [])
+            if run not in tasks[task]:
+                tasks[task].append(run)
+
+        # sort runs within each task
+        for task in tasks:
+            tasks[task] = sorted(tasks[task])
+        return tasks
+
+    def _ret_tasks_for_session(self, sub: str, ses: str) -> dict[str, list[str]]:
+        """Return expected ret task → runs mapping for this session.
+
+        Reduced sessions (sub-03/04/06 ses-01) only have retRW + retCB.
+        """
+        sub_str = sub if sub.startswith("sub-") else f"sub-{sub}"
+        ses_str = ses if ses.startswith("ses-") else f"ses-{ses}"
+        if (sub_str, ses_str) in self.REDUCED_RET_SESSIONS:
+            return {
+                k: v for k, v in self.RET_TASKS_RUNS.items() if k in ("retRW", "retCB")
+            }
+        return self.RET_TASKS_RUNS
 
     @property
     def name(self) -> str:
@@ -498,10 +578,12 @@ class BIDSfuncSpec(AnalysisSpec):
     def description(self) -> str:
         n_floc = len(self.FLOC_RUNS)
         n_ret = sum(len(v) for v in self.RET_TASKS_RUNS.values())
+        n_wc = len(WC_SESSIONS)
         return (
             f"VOTCLOC func integrity — fLoc ({n_floc} runs) + "
-            f"ret tasks ({n_ret} runs) = {n_floc + n_ret} total groups, "
-            f"bold+sbref+json each, timing gap <= {self.max_diff_sec}s"
+            f"ret tasks ({n_ret} runs) = {n_floc + n_ret} groups (normal); "
+            f"WC sessions ({n_wc}): retfix tasks discovered from vistadisplog; "
+            f"timing gap <= {self.max_diff_sec}s"
         )
 
     def get_session_dir(self, analysis_dir: Path, sub: str, ses: str) -> Path:
@@ -535,28 +617,51 @@ class BIDSfuncSpec(AnalysisSpec):
                 f"{prefix}_task-{task}_run-{run}_sbref.json",
             ]
 
-        # fLoc runs
+        # fLoc runs — same for both normal and WC sessions
         for run in self.FLOC_RUNS:
             groups[f"task-fLoc_run-{run}"] = _files_for("fLoc", run)
 
-        # ret task runs
-        for task, runs in self.RET_TASKS_RUNS.items():
-            for run in runs:
-                groups[f"task-{task}_run-{run}"] = _files_for(task, run)
+        if self._is_wc_session(sub, ses):
+            # ── WC session: expected ret tasks from vistadisplog params.mat ──
+            wc_tasks = self._discover_wc_ret_tasks(session_dir)
+            for task, runs in wc_tasks.items():
+                for run in runs:
+                    groups[f"task-{task}_run-{run}"] = _files_for(task, run)
 
-        # Scan directory for extra runs not in the expected set.
-        # Only tasks matching TASKS_OF_INTEREST are considered.
-        expected_labels = set(groups.keys())
-        for bold in sorted(session_dir.glob(f"{prefix}_task-*_run-*_bold.nii.gz")):
-            m = re.search(r"task-(\w+)_run-(\d+)", bold.name)
-            if not m:
-                continue
-            task, run = m.group(1), m.group(2)
-            if not self._task_of_interest(task):
-                continue
-            label = f"task-{task}_run-{run}"
-            if label not in expected_labels:
-                groups[f"EXTRA:{label}"] = _files_for(task, run)
+            # Scan BIDS func for retfix* runs not found in vistadisplog → EXTRA
+            expected_labels = set(groups.keys())
+            for bold in sorted(
+                session_dir.glob(f"{prefix}_task-retfix*_run-*_bold.nii.gz")
+            ):
+                m = re.search(r"task-(\w+)_run-(\d+)", bold.name)
+                if not m:
+                    continue
+                task, run = m.group(1), m.group(2)
+                label = f"task-{task}_run-{run}"
+                if label not in expected_labels:
+                    groups[f"EXTRA:{label}"] = _files_for(task, run)
+        else:
+            # ── Normal session: fixed ret tasks (retRW/FF/CB, session-specific) ──
+            ret_tasks = self._ret_tasks_for_session(sub, ses)
+            for task, runs in ret_tasks.items():
+                for run in runs:
+                    groups[f"task-{task}_run-{run}"] = _files_for(task, run)
+
+            # Scan for extra ret runs (beyond expected 2 per task).
+            # fLoc extras are acceptable and NOT flagged.
+            expected_labels = set(groups.keys())
+            for bold in sorted(session_dir.glob(f"{prefix}_task-*_run-*_bold.nii.gz")):
+                m = re.search(r"task-(\w+)_run-(\d+)", bold.name)
+                if not m:
+                    continue
+                task, run = m.group(1), m.group(2)
+                if task == "fLoc":
+                    continue
+                if not self._task_of_interest(task):
+                    continue
+                label = f"task-{task}_run-{run}"
+                if label not in expected_labels:
+                    groups[f"EXTRA:{label}"] = _files_for(task, run)
 
         return groups
 

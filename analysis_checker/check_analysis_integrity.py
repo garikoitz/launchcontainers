@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 from collections import defaultdict
 from concurrent.futures import as_completed
 from concurrent.futures import ThreadPoolExecutor
@@ -47,17 +48,26 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from .base import AnalysisSpec
-from .bids import DWINiiSpec
-from .bids import FuncSBRefSpec
-from .bids import BIDSfuncSpec
-from .bids import ScanstsvSpec
-from .bids import BIDSSpec
-from .fmriprep import FMRIPrepSpec
-from .glm import GLMSpec
-from .prf_analyze import PRFAnalyzeSpec
-from .prf_prepare import PRFPrepareSpec
-from .rtp import RTPSpec
+try:
+    from .base import AnalysisSpec
+    from .bids import DWINiiSpec, FuncSBRefSpec, BIDSfuncSpec, ScanstsvSpec, BIDSSpec
+    from .fmriprep import FMRIPrepSpec
+    from .glm import GLMSpec
+    from .prf_analyze import PRFAnalyzeSpec
+    from .prf_prepare import PRFPrepareSpec
+    from .rtp import RTPSpec
+except ImportError:
+    import sys
+    import os
+
+    sys.path.insert(0, os.path.dirname(__file__))
+    from base import AnalysisSpec
+    from bids import DWINiiSpec, FuncSBRefSpec, BIDSfuncSpec, ScanstsvSpec, BIDSSpec
+    from fmriprep import FMRIPrepSpec
+    from glm import GLMSpec
+    from prf_analyze import PRFAnalyzeSpec
+    from prf_prepare import PRFPrepareSpec
+    from rtp import RTPSpec
 
 # Import all specs from analysis_checker package.
 # [DEV] When you add a new spec file, register it in analysis_checker/__init__.py
@@ -681,8 +691,6 @@ def print_summary(results: list[SessionResult], spec: AnalysisSpec) -> None:
     for r in results:
         if r.is_standard:
             run_style = "green"
-        elif r.is_complete and r.total_extra_groups > 0:
-            run_style = "orange3"  # complete but non-standard (has extra runs)
         else:
             run_style = "red bold"
 
@@ -778,15 +786,45 @@ def print_detailed_results(
     verbose: bool = False,
 ) -> None:
     """
-    Print missing/corrupted/timing details for incomplete sessions.
+    Print missing/corrupted/timing details for non-standard sessions.
+
+    Covers:
+    - Truly incomplete sessions (missing expected files)
+    - Complete sessions with extra ret* runs (flagged red)
 
     ─── Where to add new error categories ───────────────────────────────────
     [DEV] Add a new `if gresult.<new_list>:` block here (copy the
           corrupted_files block as a template).
     """
-    incomplete = [r for r in results if not r.is_complete]
-    if not incomplete:
+    non_standard = [r for r in results if not r.is_standard]
+    if not non_standard:
         console.print("\n[bold green]✓ All sessions complete![/bold green]")
+        return
+
+    # --- Sessions with extra ret* runs but otherwise complete ---
+    extra_ret_sessions = [
+        r for r in non_standard if r.is_complete and r.total_extra_groups > 0
+    ]
+    if extra_ret_sessions:
+        console.print(
+            f"\n[bold red]Sessions with extra ret* runs ({len(extra_ret_sessions)}):[/bold red]\n"
+        )
+        for r in extra_ret_sessions:
+            # group EXTRA: labels by task
+            by_task: dict[str, list[str]] = defaultdict(list)
+            for glabel in r.extra_groups:
+                m = re.search(r"task-(\w+)_run-(\d+)", glabel)
+                if m:
+                    by_task[m.group(1)].append(m.group(2))
+            task_summary = ", ".join(
+                f"task-{task}: {len(runs)} extra run(s) (run-{', run-'.join(sorted(runs))})"
+                for task, runs in sorted(by_task.items())
+            )
+            console.print(f"  [red]{r.sub}/{r.ses}[/red] — {task_summary}")
+        console.print()
+
+    incomplete = [r for r in non_standard if not r.is_complete]
+    if not incomplete:
         return
 
     console.print(f"\n[bold red]Incomplete Sessions ({len(incomplete)}):[/bold red]\n")
@@ -951,7 +989,7 @@ SPEC_REGISTRY: dict[str, AnalysisSpec] = {
     "prfanalyze": PRFAnalyzeSpec(),
     "bids": BIDSSpec(),
     "dwinii": DWINiiSpec(),
-    "bidsfuncsbref": FuncSBRefSpec(),
+    "funcsbref": FuncSBRefSpec(),
     "bidsfunc": BIDSfuncSpec(),
     "scanstsv": ScanstsvSpec(),
     "fmriprep": FMRIPrepSpec(),
@@ -991,7 +1029,7 @@ def check(
     ),
     analysis_type: str = typer.Argument(
         ...,
-        help="Analysis type: prfprepare, prfanalyze, bids, "
+        help="Analysis type: prfprepare, prfanalyze, bids, bidsfunc, "
         "dwinii, funcsbref, scanstsv, fmriprep, glm, rtp",
     ),
     subses: list[str] | None = typer.Option(
