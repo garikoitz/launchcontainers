@@ -259,18 +259,8 @@ def main(workdir: str, run_lc: bool = False):
         if container in ["rtp2-pipeline", "rtp-pipeline"]:
             # do a second check for the RTP file, if exist, backup
             check_dwi_pipelines.backup_old_rtp2pipeline_log(parse_namespace, df_subses)
-
-    if container in [
-        "anatrois",
-        "rtppreproc",
-        "rtp-pipeline",
-        "freesurferator",
-        "rtp2-preproc",
-        "rtp2-pipeline",
-    ]:
-        mask = (df_subses["RUN"] == "True") & (df_subses["dwi"] == "True")
-    else:
-        mask = df_subses["RUN"] == "True"
+    # use RUN to control the running logic
+    mask = df_subses["RUN"] == "True"
     df_subses = df_subses.loc[mask]
     num_of_jobs = len(df_subses)
     # 3. tree sub-/ses- structure for checking
