@@ -17,14 +17,17 @@ For this step, we only need to input subseslist name, i.e. subseslist_sub08.txt
 the file will be put under base/code
 
 
-## dont' change subseslist in the middle of running the prepare_anat and prepare_func, 
+## dont' change subseslist in the middle of running the prepare_anat and prepare_func,
 ## it will influence the running program
+
+
+
+this 1-2-3 will be the current workflow for now,
+still I am not so sure, if the fmap populate intended for is working
+and based on the scans.tsv that with the _magnitude, instead of _bold
+
 
 prepare_fmap will be last, it needs to wait for:
 1. fix_func_sbref finished
 2. merge_nifti_session finished
 3. NORDIC func finished
-
-this 1-2-3 will be the current workflow for now, 
-still I am not so sure, if the fmap populate intended for is working
-and based on the scans.tsv that with the _magnitude, instead of _bold

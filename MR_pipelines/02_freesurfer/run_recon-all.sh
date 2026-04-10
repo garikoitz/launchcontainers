@@ -1,49 +1,95 @@
-# """
+#!/usr/bin/env bash
 # MIT License
-
 # Copyright (c) 2024-2025 Yongning Lei
 
-# Permission is hereby granted, free of charge, to any person obtaining a copy of this software
-# and associated documentation files (the "Software"), to deal in the Software without restriction,
-# including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,
-# subject to the following conditions:
-
-# The above copyright notice and this permission notice shall be included in all copies or substantial
-# portions of the Software.
-# BIDS ID
-sub=$1
-ses=$2
-
-surfdir="/bcbl/home/public/Gari/VOTCLOC/main_exp/BIDS/derivatives/freesurfer"
-
-export SUBJECTS_DIR=${surfdir}
-
-###########################################################
-###########################################################
-###########################################################
-module load freesurfer/7.3.2
-
+# ---------------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------------
 basedir=/bcbl/home/public/Gari/VOTCLOC/main_exp
+codedir=/bcbl/home/public/Gari/VOTCLOC/main_exp/code
 bids_dirname=BIDS
-T1_path="$basedir/$bids_dirname/sub-$sub/ses-$ses/anat/sub-${sub}_ses-${ses}_run-01_T1w.nii.gz"
 outputdir=${basedir}/${bids_dirname}
 step=reconall
-analysis_name=check0709
+
+module load freesurfer/7.3.2
+export SUBJECTS_DIR="${outputdir}/derivatives/freesurfer"
+
+# ---------------------------------------------------------------------------
+# Parse arguments
+# ---------------------------------------------------------------------------
+usage() {
+    echo "Usage:"
+    echo "  $0 -s <sub>,<ses>         # single sub/ses pair"
+    echo "  $0 -f <subseslist_name>   # batch from codedir/<subseslist_name>"
+    exit 1
+}
+
+subses_arg=""
+file_arg=""
+
+while getopts ":s:f:" opt; do
+    case $opt in
+        s) subses_arg="$OPTARG" ;;
+        f) file_arg="$OPTARG" ;;
+        *) usage ;;
+    esac
+done
+
+if [[ -z "$subses_arg" && -z "$file_arg" ]]; then
+    usage
+fi
+
+# ---------------------------------------------------------------------------
+# Build sub/ses list
+# ---------------------------------------------------------------------------
+tmpfile=$(mktemp)
+
+if [[ -n "$subses_arg" ]]; then
+    echo "$subses_arg" > "$tmpfile"
+    analysis_name="sub$(echo "$subses_arg" | cut -d',' -f1)ses$(echo "$subses_arg" | cut -d',' -f2)"
+else
+    subseslist_path="$codedir/$file_arg"
+    if [[ ! -f "$subseslist_path" ]]; then
+        echo "Error: subseslist not found: $subseslist_path"
+        exit 1
+    fi
+    tail -n +2 "$subseslist_path" > "$tmpfile"
+    analysis_name=$(basename "$file_arg" | sed 's/\.[^.]*$//')
+fi
+
+# ---------------------------------------------------------------------------
+# Logging setup
+# ---------------------------------------------------------------------------
 logdir=${outputdir}/log_${step}/${analysis_name}_$(date +"%Y-%m-%d")
 echo "The logdir is $logdir"
 echo "The outputdir is $outputdir"
-mkdir -p $logdir
+mkdir -p "$logdir"
 
-now=$(date +"%H;%M")
-log_file="${logdir}/reconall_${sub}_${ses}_${now}.o"
-error_file="${logdir}/reconall_${sub}_${ses}_${now}.e"
+cp "$0" "$logdir"
+[[ -n "$file_arg" ]] && cp "$subseslist_path" "$logdir/subseslist.txt"
 
-cmd="recon-all -i ${T1_path} \
-          -subjid sub-${sub} \
-          -sd ${basedir}/${bids_dirname}/derivatives/freesurfer \
-          -all "
+# ---------------------------------------------------------------------------
+# Run recon-all
+# ---------------------------------------------------------------------------
+while IFS=',' read -r sub ses; do
+    [[ -z "$sub" || -z "$ses" ]] && continue
 
-echo "Going to run recon-all on sub-${sub}"
-echo $cmd
-eval $cmd > ${log_file} 2> ${error_file}
+    echo "### recon-all: sub-${sub} ses-${ses} ###"
+    now=$(date +"%H;%M")
+    log_file="${logdir}/reconall_${sub}_${ses}_${now}.o"
+    error_file="${logdir}/reconall_${sub}_${ses}_${now}.e"
+
+    T1_path="$basedir/$bids_dirname/sub-${sub}/ses-${ses}/anat/sub-${sub}_ses-${ses}_run-01_T1w.nii.gz"
+
+    cmd="recon-all -i ${T1_path} \
+        -subjid sub-${sub} \
+        -sd ${outputdir}/derivatives/freesurfer \
+        -all"
+
+    echo "Going to run recon-all on sub-${sub} ses-${ses}"
+    echo "$cmd"
+    eval "$cmd" > "${log_file}" 2> "${error_file}"
+
+done < "$tmpfile"
+
+rm -f "$tmpfile"

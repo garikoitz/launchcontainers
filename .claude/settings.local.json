@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \":*)",
+      "Bash(grep -l \"^from \\\\.\" /home/tlei/tlei/soft/launchcontainers/analysis_checker/*.py)",
+      "Bash(find /bcbl/home/home_n-z/tlei/soft/launchcontainers /home/tlei/tlei/soft/launchcontainers -name *summar* -o -name *compare*)",
+      "Bash(python3 -c \"import json; d=json.load\\(open\\('/bcbl/home/public/Gari/VOTCLOC/main_exp/BIDS/sub-07/ses-03/dwi/sub-07_ses-03_acq-nordic_dir-AP_run-01_dwi.json'\\)\\); print\\('AcquisitionTime:', d.get\\('AcquisitionTime'\\)\\); print\\('AcquisitionDateTime:', d.get\\('AcquisitionDateTime'\\)\\)\")",
+      "Bash(python3 -c \"import json; d=json.load\\(open\\('/bcbl/home/public/Gari/VOTCLOC/main_exp/BIDS/sub-07/ses-03/dwi/sub-07_ses-03_acq-magonly_dir-AP_run-01_dwi.json'\\)\\); print\\('AcquisitionTime:', d.get\\('AcquisitionTime'\\)\\)\")",
+      "Bash(micromamba run -n lc python3 -c ':*)",
+      "Bash('~/.local/bin/micromamba' run -n lc python3 -c ':*)",
+      "Bash(/opt/conda/bin/python3 -c ':*)"
+    ]
+  }
+}

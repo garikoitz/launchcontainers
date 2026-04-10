@@ -1,77 +1,107 @@
-# """
+#!/usr/bin/env bash
 # MIT License
-
 # Copyright (c) 2024-2025 Yongning Lei
 
-# Permission is hereby granted, free of charge, to any person obtaining a copy of this software
-# and associated documentation files (the "Software"), to deal in the Software without restriction,
-# including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,
-# subject to the following conditions:
-
-# The above copyright notice and this permission notice shall be included in all copies or substantial
-# portions of the Software.
-# """
-
-# Define base paths
+# ---------------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------------
 baseP="/scratch/tlei/VOTCLOC"
+codedir="$baseP/code"
+script_dir="/home/tlei/soft/launchcontainers/MR_pipelines/04_fMRI_ret"
 
 HOME_DIR="$baseP/singularity_home"
-# container specific
-# for prfprepare:
 license_path="$baseP/BIDS/.license"
-model="css" # "one_gaussian" or "css"
+model="css"           # "one_gaussian" or "css"
 
-
-##### For each container
-#####
-
-### for prfanalyze-vista:
 step="prfanalyze-vista"
 version='2.2.1'
-qos="regular" # regular or test
+qos="regular"         # regular or test
 mem="16G"
 cpus="25"
-time="8:00:00" #time="00:10:00" 10:00:00
-task="retFF" # retCB retRW retFF
-# retfixRW retfixFF retfixRWblock01 retfixRWblock02 retfixRWblock
+time="8:00:00"
+task="retFF"          # retCB retRW retFF retfixRW retfixFF
 
-# json input
 json_dir="$baseP/code/${step}_jsons"
-# subseslist dir:
-script_dir="/home/tlei/soft/launchcontainers/MR_pipelines/04_fMRI_ret"
-code_dir=$baseP/code
 sif_path="/scratch/tlei/containers/${step}_${version}.sif"
-log_note=$1
-subses_list_dir=$2
-# log dir
+
+# ---------------------------------------------------------------------------
+# Parse arguments
+# ---------------------------------------------------------------------------
+usage() {
+    echo "Usage:"
+    echo "  $0 -s <sub>,<ses>         # single sub/ses pair"
+    echo "  $0 -f <subseslist_name>   # batch from codedir/<subseslist_name>"
+    exit 1
+}
+
+subses_arg=""
+file_arg=""
+
+while getopts ":s:f:" opt; do
+    case $opt in
+        s) subses_arg="$OPTARG" ;;
+        f) file_arg="$OPTARG" ;;
+        *) usage ;;
+    esac
+done
+
+if [[ -z "$subses_arg" && -z "$file_arg" ]]; then
+    usage
+fi
+
+# ---------------------------------------------------------------------------
+# Build sub/ses list
+# ---------------------------------------------------------------------------
+tmpfile=$(mktemp)
+
+if [[ -n "$subses_arg" ]]; then
+    echo "$subses_arg" > "$tmpfile"
+    log_note="sub$(echo "$subses_arg" | cut -d',' -f1)ses$(echo "$subses_arg" | cut -d',' -f2)"
+else
+    subseslist_path="$codedir/$file_arg"
+    if [[ ! -f "$subseslist_path" ]]; then
+        echo "Error: subseslist not found: $subseslist_path"
+        exit 1
+    fi
+    tail -n +2 "$subseslist_path" > "$tmpfile"
+    log_note=$(basename "$file_arg" | sed 's/\.[^.]*$//')
+fi
+
+# ---------------------------------------------------------------------------
+# Logging setup
+# ---------------------------------------------------------------------------
 LOG_DIR="/scratch/tlei/dipc_${step}_logs/$(date +"%Y-%m-%d")_${log_note}"
-# Ensure directories exist
 mkdir -p "$LOG_DIR"
 mkdir -p "$HOME_DIR"
 
-line_num=1
-# Read subseslist.txt (Skipping header line)
-tail -n +2 $subses_list_dir | while IFS=',' read -r sub ses _; do
-    ((lin_num++))
+cp "$0" "$LOG_DIR/"
+[[ -n "$file_arg" ]] && cp "$subseslist_path" "$LOG_DIR/subseslist.txt"
+
+# ---------------------------------------------------------------------------
+# Submit SLURM jobs
+# ---------------------------------------------------------------------------
+job_num=1
+while IFS=',' read -r sub ses; do
+    [[ -z "$sub" || -z "$ses" ]] && continue
+
     now=$(date +"%H-%M")
-    # Construct sbatch command
-	# if it is prepare and result, we use short.q, otherwise, long.q and more ram
-    cmd="sbatch -J ${lin_num}_${task}_${step} \
+    cmd="sbatch -J ${job_num}_${task}_${step} \
         --time=${time} \
         -n 1 \
         --cpus-per-task=${cpus} \
         --mem=${mem} \
         --partition=general \
         --qos=${qos} \
-        -o "$LOG_DIR/%J_%x_${sub}-${ses}_${now}.o" \
-        -e "$LOG_DIR/%J_%x_${sub}-${ses}_${now}.e" \
-        --export=ALL,baseP=${baseP},license_path=${license_path},version=${version},sub=${sub},ses=${ses},json_path=$json_dir/${task}_${model}_sub-${sub}_ses-${ses}.json,sif_path=$sif_path \
-        $script_dir/run_dipc/${step}_dipc.sh "
+        -o ${LOG_DIR}/%J_%x_${sub}-${ses}_${now}.o \
+        -e ${LOG_DIR}/%J_%x_${sub}-${ses}_${now}.e \
+        --export=ALL,baseP=${baseP},license_path=${license_path},version=${version},sub=${sub},ses=${ses},json_path=${json_dir}/${task}_${model}_sub-${sub}_ses-${ses}.json,sif_path=${sif_path} \
+        ${script_dir}/run_dipc/${step}_dipc.sh"
 
-    # Print and execute the command
     echo "Submitting job for sub-${sub} ses-${ses}"
-    echo $cmd
-    eval $cmd
+    echo "$cmd"
+    eval "$cmd"
 
-done
+    ((job_num++))
+done < "$tmpfile"
+
+rm -f "$tmpfile"
