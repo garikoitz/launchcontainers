@@ -55,7 +55,7 @@ try:
     from .glm import GLMSpec
     from .prf_analyze import PRFAnalyzeSpec
     from .prf_prepare import PRFPrepareSpec
-    from .rtp import RTPSpec
+    from .rtp import RTPSpec, RTPPipelineSpec
 except ImportError:
     import sys
     import os
@@ -96,6 +96,7 @@ class GroupResult:
     missing_files: list[str] = field(default_factory=list)
     corrupted_files: list[str] = field(default_factory=list)  # [DEV] corrupted
     timing_issues: list[str] = field(default_factory=list)  # [DEV] timing
+    log_issues: list[str] = field(default_factory=list)  # [DEV] log completion
     # [DEV] add new error category fields here ↓
 
     @property
@@ -105,6 +106,7 @@ class GroupResult:
             len(self.missing_files) == 0
             and len(self.corrupted_files) == 0
             and len(self.timing_issues) == 0
+            and len(self.log_issues) == 0
         )
 
 
@@ -145,6 +147,11 @@ class SessionResult:
     def total_timing_issues(self) -> int:
         # [DEV] timing — mirrors GroupResult.timing_issues
         return sum(len(g.timing_issues) for g in self.groups.values())
+
+    @property
+    def total_log_issues(self) -> int:
+        # [DEV] log completion — mirrors GroupResult.log_issues
+        return sum(len(g.log_issues) for g in self.groups.values())
 
     @property
     def extra_groups(self) -> dict[str, "GroupResult"]:
@@ -334,6 +341,19 @@ def check_one_session(
             issue = spec._check_timing(session_dir, group_label)
             if issue:
                 gresult.timing_issues.append(issue)
+
+    # ── Log-completion check — duck-typed: only specs with _check_log_completion ──
+    # [DEV] implement _check_log_completion(session_dir, group_label) -> str | None
+    #       on a spec to verify log file content (e.g. exit signal).
+    if hasattr(spec, "_check_log_completion"):
+        for group_label, gresult in result.groups.items():
+            if group_label.startswith("EXTRA:"):
+                continue
+            if gresult.missing_files:
+                continue
+            issue = spec._check_log_completion(session_dir, group_label)
+            if issue:
+                gresult.log_issues.append(issue)
 
     return result
 
@@ -576,6 +596,11 @@ def write_detailed_log(
                     for ti in gresult.timing_issues:
                         f.write(f"        ~ {ti}\n")
 
+                if gresult.log_issues:
+                    f.write(f"      [{glabel}] — log incomplete:\n")
+                    for li in gresult.log_issues:
+                        f.write(f"        % {li}\n")
+
             # Extra groups — informational, separate section
             if r.extra_groups:
                 f.write(f"      Extra runs found ({len(r.extra_groups)}):\n")
@@ -627,6 +652,24 @@ def write_time_mismatch_list(
                         f.write(f"{bold_path}  {issue.strip()}\n")
 
 
+def write_log_issues_list(
+    results: list[SessionResult],
+    output_path: Path,
+    spec: AnalysisSpec,
+    analysis_dir: Path,
+) -> None:
+    """Write sub/ses pairs where the pipeline log did not finish cleanly."""
+    with open(output_path, "w") as f:
+        for r in results:
+            session_dir = spec.get_session_dir(analysis_dir, r.sub, r.ses)
+            for glabel, gresult in r.groups.items():
+                if glabel.startswith("EXTRA:"):
+                    continue
+                if gresult.log_issues:
+                    for issue in gresult.log_issues:
+                        f.write(f"{session_dir}  {issue.strip()}\n")
+
+
 def write_extra_runs_list(
     results: list[SessionResult],
     output_path: Path,
@@ -676,6 +719,7 @@ def print_summary(results: list[SessionResult], spec: AnalysisSpec) -> None:
     complete_groups = sum(r.complete_groups for r in results)
     total_corrupted = sum(r.total_corrupted for r in results)
     total_timing = sum(r.total_timing_issues for r in results)
+    total_log_issues = sum(r.total_log_issues for r in results)
 
     table = Table(title=f"{spec.name.upper()} Integrity Summary")
     table.add_column("sub", style="cyan")
@@ -685,6 +729,7 @@ def print_summary(results: list[SessionResult], spec: AnalysisSpec) -> None:
     table.add_column("Missing", justify="center")
     table.add_column("Corrupted", justify="center")  # [DEV] new column template
     table.add_column("Timing", justify="center")  # [DEV] new column template
+    table.add_column("Log", justify="center")  # [DEV] log completion column
     table.add_column("Extra", justify="center")
     # [DEV] add new columns here ↓
 
@@ -699,12 +744,14 @@ def print_summary(results: list[SessionResult], spec: AnalysisSpec) -> None:
             missing_str = "—"
             corrupted_str = "—"
             timing_str = "—"
+            log_str = "—"
             extra_str = "—"
         elif r.num_groups == 0:
             groups_str = "0"
             missing_str = "—"
             corrupted_str = "—"
             timing_str = "—"
+            log_str = "—"
             extra_str = "—"
         else:
             expected_n = r.num_groups - r.total_extra_groups
@@ -718,6 +765,11 @@ def print_summary(results: list[SessionResult], spec: AnalysisSpec) -> None:
             timing_str = (
                 f"[yellow bold]{r.total_timing_issues}[/yellow bold]"
                 if r.total_timing_issues
+                else "0"
+            )
+            log_str = (
+                f"[red bold]{r.total_log_issues}[/red bold]"
+                if r.total_log_issues
                 else "0"
             )
             extra_str = (
@@ -735,6 +787,7 @@ def print_summary(results: list[SessionResult], spec: AnalysisSpec) -> None:
             missing_str,
             corrupted_str,
             timing_str,
+            log_str,
             extra_str,
             # [DEV] add new cell value here ↓
         )
@@ -751,6 +804,8 @@ def print_summary(results: list[SessionResult], spec: AnalysisSpec) -> None:
         console.print(f"[red bold]Corrupted files: {total_corrupted}[/red bold]")
     if total_timing:
         console.print(f"[yellow bold]Timing issues: {total_timing}[/yellow bold]")
+    if total_log_issues:
+        console.print(f"[red bold]Log incomplete: {total_log_issues}[/red bold]")
     if n_no_dir:
         console.print(f"[yellow]Missing session dirs: {n_no_dir}[/yellow]")
     if n_no_groups:
@@ -867,6 +922,11 @@ def print_detailed_results(
                 console.print(f"    [yellow]⏱ {glabel}[/yellow] — timing mismatch:")
                 for ti in gresult.timing_issues:
                     console.print(f"      [yellow]{ti}[/yellow]")
+
+            if gresult.log_issues:
+                console.print(f"    [red]✗ {glabel}[/red] — log incomplete:")
+                for li in gresult.log_issues:
+                    console.print(f"      [red]{li}[/red]")
 
     console.print()
 
@@ -995,6 +1055,7 @@ SPEC_REGISTRY: dict[str, AnalysisSpec] = {
     "fmriprep": FMRIPrepSpec(),
     "glm": GLMSpec(),
     "rtp": RTPSpec(),
+    "rtppipeline": RTPPipelineSpec(),
     # [DEV] register new spec here ↓
 }
 
@@ -1009,16 +1070,53 @@ def parse_subses(raw: str) -> tuple[str, str]:
 def load_subseslist_from_file(filepath: Path) -> list[tuple[str, str]]:
     pairs = []
     with open(filepath) as f:
-        for row in csv.reader(f):
-            if not row or row[0].strip().lower() in ("sub", "subject", "#", ""):
-                continue
-            if len(row) >= 2:
-                pairs.append(
-                    (
+        # Peek at the first non-comment line to detect whether a header exists.
+        reader = csv.reader(f)
+        first = None
+        for row in reader:
+            if row and row[0].strip().lower() not in ("#", ""):
+                first = row
+                break
+        if first is None:
+            return pairs
+
+        has_header = first[0].strip().lower() in ("sub", "subject")
+        has_run_col = len(first) >= 3 and first[2].strip().upper() == "RUN"
+
+        if has_header:
+            # Re-open with DictReader so we can filter on RUN by name.
+            f.seek(0)
+            for row in csv.DictReader(f):
+                sub = str(row.get("sub", row.get("subject", ""))).strip().replace("sub-", "")
+                ses = str(row.get("ses", "")).strip().replace("ses-", "")
+                run = str(row.get("RUN", "True")).strip()
+                if not sub or not ses:
+                    continue
+                if run != "True":
+                    continue
+                pairs.append((sub, ses))
+        else:
+            # No header — fall back to positional parsing (col 0=sub, 1=ses, 2=RUN).
+            # Process the already-read first row, then continue the iterator.
+            def _include(row):
+                if len(row) >= 3:
+                    return row[2].strip() == "True"
+                return True  # no RUN column → include all
+
+            if _include(first):
+                pairs.append((
+                    first[0].strip().replace("sub-", ""),
+                    first[1].strip().replace("ses-", ""),
+                ))
+            for row in reader:
+                if not row or len(row) < 2:
+                    continue
+                if _include(row):
+                    pairs.append((
                         row[0].strip().replace("sub-", ""),
                         row[1].strip().replace("ses-", ""),
-                    )
-                )
+                    ))
+
     return pairs
 
 
@@ -1030,7 +1128,7 @@ def check(
     analysis_type: str = typer.Argument(
         ...,
         help="Analysis type: prfprepare, prfanalyze, bids, bidsfunc, "
-        "dwinii, funcsbref, scanstsv, fmriprep, glm, rtp",
+        "dwinii, funcsbref, scanstsv, fmriprep, glm, rtp, rtppipeline",
     ),
     subses: list[str] | None = typer.Option(
         None,
@@ -1151,6 +1249,11 @@ def check(
         p = output_dir / f"{spec.name}_timing_mismatch.txt"
         write_time_mismatch_list(results, p, spec, analysis_dir)
         console.print(f"[bold]Timing mismatch list:[/bold] {p}")
+
+    if any(r.total_log_issues > 0 for r in results):
+        p = output_dir / f"{spec.name}_log_incomplete.txt"
+        write_log_issues_list(results, p, spec, analysis_dir)
+        console.print(f"[bold]Log incomplete list:[/bold] {p}")
 
     if any(r.total_extra_groups > 0 for r in results):
         p = output_dir / f"{spec.name}_extra_runs.txt"
