@@ -2,9 +2,9 @@ name: launchcontainers CI
 
 on:
   push:
-    branches: ["main", "data_cleaning"]
+    branches: ["main", "WC_matching_mat"]
   pull_request:
-    branches: ["main", "data_cleaning"]
+    branches: ["main", "WC_matching_mat"]
 
 jobs:
   # ---------------------------------------------------------------------------
