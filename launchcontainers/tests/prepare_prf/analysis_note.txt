@@ -1,0 +1,17 @@
+manually what I do is:
+
+I screening the session dir using prepare_fmriprep 00_
+
+then it will give me a time table
+
+I will compare it with the VOTCLOC_subseslist.xlsx, find the run of ret that I will drop, and get the acq time
+
+then I will go to the sourcedata dir to rename that .mat to something not starting with 20*
+
+then I will rerun the prepare_vistadislpog code so that It will create new log link names
+
+then I will remove the corresponding runs in the BIDS dir
+
+then I will do a reordering using the prepare_fmriprep 00_ code
+
+right now this work flow is stupid, but I just need to make the job done, no time to develop the workflow
