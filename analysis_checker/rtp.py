@@ -53,7 +53,7 @@ class RTPSpec(AnalysisSpec):
         return default_combinations()
 
 
-class RTPPipelineSpec(AnalysisSpec):
+class RTP2PipelineSpec(AnalysisSpec):
     """
     Checker for rtp2-pipeline output completeness.
 
@@ -96,9 +96,7 @@ class RTPPipelineSpec(AnalysisSpec):
             "pipeline_log": [str(self._LOG_SUBPATH)],
         }
 
-    def _check_log_completion(
-        self, session_dir: Path, group_label: str
-    ) -> str | None:
+    def _check_log_completion(self, session_dir: Path, group_label: str) -> str | None:
         """
         Duck-typed hook called by the engine after file-existence checks.
 

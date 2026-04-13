@@ -7,6 +7,8 @@ import json
 from rich.console import Console
 from rich.table import Table
 
+from launchcontainers.utils import atomic_rename_pairs
+
 app = typer.Typer()
 console = Console()
 
@@ -358,46 +360,44 @@ def rename(
             f"[cyan]Processing MAT: {m['mat_task']} run-{m['mat_run']:02d}[/cyan]"
         )
 
-        # Rename bold
+        # Collect all rename pairs for this match group (bold + sbref)
+        rename_pairs: list[tuple[Path, Path]] = []
+
         if m["bold"] and m["bold"]["needs_rename"]:
             old_nii = m["bold"]["nii_file"]
             old_json = m["bold"]["json_file"]
-
             old_base = old_nii.stem.replace(".nii", "")
             new_base = old_base.replace(
                 f"task-{m['bold']['file_task']}_run-{m['bold']['file_run']:02d}",
                 f"task-{m['mat_task']}_run-{m['mat_run']:02d}",
             )
-
             new_nii = old_nii.parent / f"{new_base}.nii.gz"
             new_json = old_json.parent / f"{new_base}.json"
-
             console.print(f"  [yellow]Bold:[/yellow] {old_nii.name} → {new_nii.name}")
+            rename_pairs.append((old_nii, new_nii))
+            if old_json.exists():
+                rename_pairs.append((old_json, new_json))
 
-            if not dry_run:
-                old_nii.rename(new_nii)
-                old_json.rename(new_json)
-
-        # Rename sbref
         if m["sbref"] and m["sbref"]["needs_rename"]:
             old_nii = m["sbref"]["nii_file"]
             old_json = m["sbref"]["json_file"]
-
             old_base = old_nii.stem.replace(".nii", "")
             new_base = old_base.replace(
                 f"task-{m['sbref']['file_task']}_run-{m['sbref']['file_run']:02d}",
                 f"task-{m['mat_task']}_run-{m['mat_run']:02d}",
             )
-
             new_nii = old_nii.parent / f"{new_base}.nii.gz"
             new_json = old_json.parent / f"{new_base}.json"
-
             console.print(f"  [yellow]SBRef:[/yellow] {old_nii.name} → {new_nii.name}")
+            rename_pairs.append((old_nii, new_nii))
+            if old_json.exists():
+                rename_pairs.append((old_json, new_json))
 
-            if not dry_run:
-                old_nii.rename(new_nii)
-                if old_json.exists():
-                    old_json.rename(new_json)
+        if rename_pairs:
+            try:
+                atomic_rename_pairs(rename_pairs, dry_run=dry_run)
+            except RuntimeError as exc:
+                console.print(f"  [red]ERROR[/red] {exc}")
 
         if m["bold"] or m["sbref"]:
             rename_count += 1

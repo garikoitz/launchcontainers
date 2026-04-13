@@ -50,19 +50,19 @@ from rich.table import Table
 
 try:
     from .base import AnalysisSpec
-    from .bids import DWINiiSpec, FuncSBRefSpec, BIDSfuncSpec, ScanstsvSpec, BIDSSpec
+    from .bids import DWINiiSpec, FuncSBRefSpec, BIDSfuncSpec, BIDSSpec
     from .fmriprep import FMRIPrepSpec
     from .glm import GLMSpec
     from .prf_analyze import PRFAnalyzeSpec
     from .prf_prepare import PRFPrepareSpec
-    from .rtp import RTPSpec, RTPPipelineSpec
+    from .rtp import RTPSpec, RTP2PipelineSpec
 except ImportError:
     import sys
     import os
 
     sys.path.insert(0, os.path.dirname(__file__))
     from base import AnalysisSpec
-    from bids import DWINiiSpec, FuncSBRefSpec, BIDSfuncSpec, ScanstsvSpec, BIDSSpec
+    from bids import DWINiiSpec, FuncSBRefSpec, BIDSfuncSpec, BIDSSpec
     from fmriprep import FMRIPrepSpec
     from glm import GLMSpec
     from prf_analyze import PRFAnalyzeSpec
@@ -1051,11 +1051,10 @@ SPEC_REGISTRY: dict[str, AnalysisSpec] = {
     "dwinii": DWINiiSpec(),
     "funcsbref": FuncSBRefSpec(),
     "bidsfunc": BIDSfuncSpec(),
-    "scanstsv": ScanstsvSpec(),
     "fmriprep": FMRIPrepSpec(),
     "glm": GLMSpec(),
     "rtp": RTPSpec(),
-    "rtppipeline": RTPPipelineSpec(),
+    "rtp2pipeline": RTP2PipelineSpec(),
     # [DEV] register new spec here ↓
 }
 
@@ -1081,13 +1080,15 @@ def load_subseslist_from_file(filepath: Path) -> list[tuple[str, str]]:
             return pairs
 
         has_header = first[0].strip().lower() in ("sub", "subject")
-        has_run_col = len(first) >= 3 and first[2].strip().upper() == "RUN"
-
         if has_header:
             # Re-open with DictReader so we can filter on RUN by name.
             f.seek(0)
             for row in csv.DictReader(f):
-                sub = str(row.get("sub", row.get("subject", ""))).strip().replace("sub-", "")
+                sub = (
+                    str(row.get("sub", row.get("subject", "")))
+                    .strip()
+                    .replace("sub-", "")
+                )
                 ses = str(row.get("ses", "")).strip().replace("ses-", "")
                 run = str(row.get("RUN", "True")).strip()
                 if not sub or not ses:
@@ -1104,18 +1105,22 @@ def load_subseslist_from_file(filepath: Path) -> list[tuple[str, str]]:
                 return True  # no RUN column → include all
 
             if _include(first):
-                pairs.append((
-                    first[0].strip().replace("sub-", ""),
-                    first[1].strip().replace("ses-", ""),
-                ))
+                pairs.append(
+                    (
+                        first[0].strip().replace("sub-", ""),
+                        first[1].strip().replace("ses-", ""),
+                    )
+                )
             for row in reader:
                 if not row or len(row) < 2:
                     continue
                 if _include(row):
-                    pairs.append((
-                        row[0].strip().replace("sub-", ""),
-                        row[1].strip().replace("ses-", ""),
-                    ))
+                    pairs.append(
+                        (
+                            row[0].strip().replace("sub-", ""),
+                            row[1].strip().replace("ses-", ""),
+                        )
+                    )
 
     return pairs
 
@@ -1128,7 +1133,7 @@ def check(
     analysis_type: str = typer.Argument(
         ...,
         help="Analysis type: prfprepare, prfanalyze, bids, bidsfunc, "
-        "dwinii, funcsbref, scanstsv, fmriprep, glm, rtp, rtppipeline",
+        "dwinii, funcsbref, fmriprep, glm, rtp, rtp2pipeline",
     ),
     subses: list[str] | None = typer.Option(
         None,

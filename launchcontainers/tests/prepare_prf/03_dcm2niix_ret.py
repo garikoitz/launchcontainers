@@ -5,13 +5,13 @@
 Convert retCB (and other ret*) DICOM series to BIDS NIfTI using dcm2niix.
 
 Each run produces four DICOM folders:
-    retCB_run01_40          raw magnitude  → task-retCB_run-01_bold
+    retCB_run01_40          raw magnitude  → task-retCB_run-01_magnitude
     retCB_run01_Pha_41      phase          → task-retCB_run-01_phase
     retCB_run01_SBRef_38    sbref mag      → task-retCB_run-01_sbref
     retCB_run01_SBRef_Pha_39  (skipped)
 
 Classification by folder name:
-    neither 'SBRef' nor 'Pha'  →  bold
+    neither 'SBRef' nor 'Pha'  →  magnitude
     'Pha' only                  →  phase
     'SBRef' only                →  sbref
     both 'SBRef' and 'Pha'      →  skip
@@ -55,7 +55,7 @@ _TASK_RE = re.compile(r"^([A-Za-z]+CB|[A-Za-z]+RW|[A-Za-z]+FF)")  # e.g. retCB, 
 
 
 def classify(folder: Path) -> str | None:
-    """Return 'bold', 'phase', 'sbref', or None (skip)."""
+    """Return 'magnitude', 'phase', 'sbref', or None (skip)."""
     name = folder.name
     has_sbref = bool(_HAS_SBREF.search(name))
     has_pha = bool(_HAS_PHA.search(name))
@@ -65,7 +65,7 @@ def classify(folder: Path) -> str | None:
         return "sbref"
     if has_pha:
         return "phase"
-    return "bold"
+    return "magnitude"
 
 
 def run_number(folder: Path) -> int | None:
@@ -193,7 +193,7 @@ def main(
         False, "--dry-run", help="Print plan without running dcm2niix"
     ),
 ) -> None:
-    """Convert ret* DICOM bold/phase/sbref series to BIDS NIfTI."""
+    """Convert ret* DICOM magnitude/phase/sbref series to BIDS NIfTI."""
 
     setup_module("dcm2niix/2025")
     t_total = time.perf_counter()
@@ -238,15 +238,15 @@ def main(
 
     # ── Preview table ─────────────────────────────────────────────────────────
     mode_tag = (
-        "[bold yellow]DRY-RUN[/bold yellow]"
+        "[magnitude yellow]DRY-RUN[/magnitude yellow]"
         if dry_run
-        else "[bold red]EXECUTE[/bold red]"
+        else "[magnitude red]EXECUTE[/magnitude red]"
     )
     console.rule(f"sub-{sub}  ses-{ses}  task-{task}  {mode_tag}")
 
     tbl = Table(show_lines=False, box=None)
     tbl.add_column("run", style="cyan", width=6)
-    tbl.add_column("bold", width=40)
+    tbl.add_column("magnitude", width=40)
     tbl.add_column("phase", width=40)
     tbl.add_column("sbref", width=40)
 
@@ -254,7 +254,7 @@ def main(
         grp = by_run[rn]
         tbl.add_row(
             f"{rn:02d}",
-            grp.get("bold", Path("")).name or "[red]MISSING[/red]",
+            grp.get("magnitude", Path("")).name or "[red]MISSING[/red]",
             grp.get("phase", Path("")).name or "[red]MISSING[/red]",
             grp.get("sbref", Path("")).name or "[red]MISSING[/red]",
         )
@@ -269,7 +269,7 @@ def main(
         run_label = f"run-{rn:02d}"
         console.rule(f"{bids_prefix}  task-{task}  {run_label}")
 
-        for suffix in ("bold", "phase", "sbref"):
+        for suffix in ("magnitude", "phase", "sbref"):
             if suffix not in grp:
                 console.print(
                     f"  [yellow]{suffix} folder not found — skipping[/yellow]"
@@ -286,7 +286,9 @@ def main(
     tbl2.add_column("sec", justify="right")
     for label, t in _timings:
         tbl2.add_row(label, f"{t:.1f}")
-    tbl2.add_row("[bold]TOTAL[/bold]", f"[bold]{total_elapsed:.1f}[/bold]")
+    tbl2.add_row(
+        "[magnitude]TOTAL[/magnitude]", f"[magnitude]{total_elapsed:.1f}[/magnitude]"
+    )
     console.print(tbl2)
 
 

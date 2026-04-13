@@ -148,6 +148,56 @@ def substitute_run(name: str, new_run_int: int, zero_pad: int = 2) -> str:
     return _RUN_RE.sub(f"_run-{new_run_int:0{zero_pad}d}", name, count=1)
 
 
+def atomic_rename_pairs(
+    pairs: list[tuple[Path, Path]],
+    dry_run: bool = True,
+) -> None:
+    """Rename a list of (src, dst) pairs atomically using a two-phase UUID strategy.
+
+    Phase 1: every src is renamed to a unique temp name in the same directory.
+    Phase 2: every temp is renamed to its final dst.
+
+    This prevents any file being overwritten — if any dst already exists before
+    we start, a RuntimeError is raised and nothing is touched.
+
+    Parameters
+    ----------
+    pairs : list[tuple[Path, Path]]
+        List of (source, destination) path pairs. Pairs where src == dst are
+        skipped. Non-existent sources are skipped silently.
+    dry_run : bool
+        When True, do nothing on disk (pairs are validated but not renamed).
+    """
+    # Filter out no-ops and missing sources
+    ops = [(s, d) for s, d in pairs if s != d and s.exists()]
+    if not ops or dry_run:
+        return
+
+    # Guard: refuse to overwrite any pre-existing destination that is NOT
+    # itself a source in this same batch (those will be safely parked in
+    # phase 1 before phase 2 needs the slot — handles swap cases).
+    src_set = {s for s, _ in ops}
+    conflicts = [d for _, d in ops if d.exists() and d not in src_set]
+    if conflicts:
+        names = ", ".join(c.name for c in conflicts)
+        raise RuntimeError(
+            f"Rename aborted — destination(s) already exist: {names}\n"
+            "Remove or rename them manually before re-running."
+        )
+
+    tag = uuid.uuid4().hex
+    # Phase 1: park every source under a unique tmp name
+    tmps: list[tuple[Path, Path]] = []
+    for src, dst in ops:
+        tmp = src.parent / f"._rnm_{tag}_{src.name}"
+        src.rename(tmp)
+        tmps.append((tmp, dst))
+
+    # Phase 2: rename each tmp to its final destination
+    for tmp, dst in tmps:
+        tmp.rename(dst)
+
+
 def reorder_bids_runs(
     files: list[Path],
     run_map: dict[int, int],

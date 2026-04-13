@@ -50,6 +50,7 @@ from rich.console import Console
 from rich.table import Table
 
 from launchcontainers.utils import (
+    atomic_rename_pairs,
     hms_to_sec,
     parse_hms,
     parse_subses_list,
@@ -768,22 +769,19 @@ def process_session(
     if rename_ops:
         _vprint(f"\n  [yellow]Renaming {len(kept_runs)} fmap run(s):[/]", level=2)
         for old, new in rename_ops:
-            if dry_run:
-                _vprint(
-                    f"    [dim][DRY][/] rename  {op.basename(old)}  →  {op.basename(new)}",
-                    level=2,
+            _vprint(
+                f"    {'[dim][DRY][/]' if dry_run else '[green][RENAME][/]'}"
+                f" {op.basename(old)}  →  {op.basename(new)}",
+                level=2,
+            )
+        if not dry_run:
+            try:
+                atomic_rename_pairs(
+                    [(Path(old), Path(new)) for old, new in rename_ops],
+                    dry_run=False,
                 )
-            else:
-                if op.exists(old):
-                    os.rename(old, new)
-                    _vprint(
-                        f"    [green]✓[/] renamed  {op.basename(old)}  →  {op.basename(new)}",
-                        level=2,
-                    )
-                else:
-                    _vprint(
-                        f"    [yellow][WARN][/] not found: {op.basename(old)}", level=0
-                    )
+            except RuntimeError as exc:
+                _vprint(f"  [red][ERROR][/] {exc}", level=0)
 
     if not dry_run and rename_ops:
         kept_runs = _update_json_paths_after_rename(kept_runs, rename_ops)

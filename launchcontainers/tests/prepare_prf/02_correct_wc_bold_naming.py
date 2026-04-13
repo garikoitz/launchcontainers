@@ -44,8 +44,6 @@ import glob
 import os
 import os.path as op
 import re
-import shutil
-import tempfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Optional
@@ -55,6 +53,7 @@ from rich.console import Console
 from rich.table import Table
 
 from launchcontainers.utils import (
+    atomic_rename_pairs,
     hms_to_sec,
     parse_hms,
     parse_subses_list,
@@ -65,8 +64,8 @@ console = Console()
 app = typer.Typer(pretty_exceptions_show_locals=False)
 
 # Expected offset range: params.mat is written ~5-6 min after scan start
-MAT_BIDS_OFFSET_MIN = 300  # seconds
-MAT_BIDS_OFFSET_MAX = 550  # seconds
+MAT_BIDS_OFFSET_MIN = 280  # seconds
+MAT_BIDS_OFFSET_MAX = 590  # seconds
 
 # Extensions that travel together for every bold/sbref pair
 _BOLD_EXTS = ["_bold.nii.gz", "_bold.json"]
@@ -213,51 +212,6 @@ def build_match_table(
 
 
 # ---------------------------------------------------------------------------
-# Rename logic
-# ---------------------------------------------------------------------------
-
-
-def _rename_files(
-    func_dir: str,
-    old_stem: str,  # e.g. sub-06_ses-10_task-retfixRW_run-01
-    new_stem: str,  # e.g. sub-06_ses-10_task-retfixRW_run-02
-    dry_run: bool,
-) -> list[str]:
-    """
-    Rename all 4 files (bold.nii.gz, bold.json, sbref.nii.gz, sbref.json)
-    from old_stem → new_stem.
-
-    Uses a tmp directory as staging area to avoid partial-rename collisions.
-    Returns list of (old_name → new_name) description strings.
-    """
-    ops: list[tuple[str, str]] = []
-    for ext in _ALL_EXTS:
-        src = op.join(func_dir, old_stem + ext)
-        dst = op.join(func_dir, new_stem + ext)
-        if op.exists(src):
-            ops.append((src, dst))
-
-    if dry_run:
-        return [f"{op.basename(s)} → {op.basename(d)}" for s, d in ops]
-
-    # Stage in tmp, then move to func_dir atomically
-    with tempfile.TemporaryDirectory(dir=func_dir) as tmp:
-        staged: list[tuple[str, str]] = []
-        for src, dst in ops:
-            tmp_path = op.join(tmp, op.basename(dst))
-            shutil.copy2(src, tmp_path)
-            staged.append((tmp_path, dst))
-
-        # Remove originals then move staged files into place
-        for src, _ in ops:
-            os.remove(src)
-        for tmp_path, dst in staged:
-            shutil.move(tmp_path, dst)
-
-    return [f"{op.basename(s)} → {op.basename(d)}" for s, d in ops]
-
-
-# ---------------------------------------------------------------------------
 # Per-session check + fix
 # ---------------------------------------------------------------------------
 
@@ -328,7 +282,13 @@ def check_and_fix_session(
         console.print(msg)
         warnings.append(f"unmatched bids: {ub['bids_stem']}")
 
-    # Rename mismatched pairs
+    # Collect all rename pairs for this session, then execute atomically in one
+    # batched call. This handles swaps (e.g. retCB_run-01 ↔ retFF_run-02)
+    # correctly: phase 1 parks all sources as tmp names before phase 2 places
+    # anything, so no destination can be clobbered by a sibling rename.
+    all_pairs: list[tuple[Path, Path]] = []
+    stem_map: list[tuple[str, str]] = []  # for display only
+
     for m in matched:
         if m["label_match"]:
             continue
@@ -345,12 +305,24 @@ def check_and_fix_session(
             f"task-{m['bids_task']}_run-{m['bids_run']}",
             f"task-{m['mat_task']}_run-{m['mat_run']}",
         )
-        tag = "[dim][DRY][/]" if dry_run else "[green][RENAME][/]"
+        stem_map.append((old_stem, new_stem))
+        for ext in _ALL_EXTS:
+            src = Path(op.join(func_dir, old_stem + ext))
+            dst = Path(op.join(func_dir, new_stem + ext))
+            if src.exists():
+                all_pairs.append((src, dst))
+
+    tag = "[dim][DRY][/]" if dry_run else "[green][RENAME][/]"
+    for old_stem, new_stem in stem_map:
         console.print(f"  {tag} {old_stem} → {new_stem}")
-        ops = _rename_files(func_dir, old_stem, new_stem, dry_run)
-        for op_str in ops:
-            console.print(f"      {op_str}")
-        renamed.extend(ops)
+
+    if all_pairs:
+        try:
+            atomic_rename_pairs(all_pairs, dry_run=dry_run)
+            renamed = [f"{s.name} → {d.name}" for s, d in all_pairs]
+        except RuntimeError as exc:
+            console.print(f"  [red]ERROR[/] {exc}")
+            warnings.append(str(exc))
 
     return {
         "sub": sub,
