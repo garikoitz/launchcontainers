@@ -1,5 +1,5 @@
 """
-rename_wc_bold.py
+02_correct_wc_bold_naming.py
 -----------------
 For WC sessions: match vistadisplog *_params.mat files to BIDS func bold/sbref
 by AcquisitionTime, check whether task/run labels agree, and rename BIDS files
@@ -28,27 +28,25 @@ How matching works
 Usage
 -----
     # check only — dry run (default)
-    python rename_wc_bold.py --bidsdir /path/BIDS -s 06,10
+    python 02_correct_wc_bold_naming.py --bidsdir /path/BIDS -s 06,10
 
     # batch from WC subseslist
-    python rename_wc_bold.py --bidsdir /path/BIDS -f wc_subseslist.txt
+    python 02_correct_wc_bold_naming    .py --bidsdir /path/BIDS -f wc_subseslist.txt
 
     # actually rename (parallel)
-    python rename_wc_bold.py --bidsdir /path/BIDS -f wc_subseslist.txt \\
+    python 02_correct_wc_bold_naming.py --bidsdir /path/BIDS -f wc_subseslist.txt \\
         --no-dry-run -w 8
 """
 
 from __future__ import annotations
 
 import glob
-import json
 import os
 import os.path as op
 import re
 import shutil
 import tempfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -56,7 +54,12 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from launchcontainers.utils import parse_subses_list
+from launchcontainers.utils import (
+    hms_to_sec,
+    parse_hms,
+    parse_subses_list,
+    read_json_acqtime,
+)
 
 console = Console()
 app = typer.Typer(pretty_exceptions_show_locals=False)
@@ -69,34 +72,6 @@ MAT_BIDS_OFFSET_MAX = 550  # seconds
 _BOLD_EXTS = ["_bold.nii.gz", "_bold.json"]
 _SBREF_EXTS = ["_sbref.nii.gz", "_sbref.json"]
 _ALL_EXTS = _BOLD_EXTS + _SBREF_EXTS
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _hms_to_sec(ts: str) -> float:
-    """HH:MM:SS[.f] → total seconds; NaN on failure."""
-    try:
-        h, m, s = str(ts).strip().split(":")
-        return int(h) * 3600 + int(m) * 60 + float(s)
-    except Exception:
-        return float("nan")
-
-
-def _parse_hms(ts: str) -> str:
-    """Normalise any time string to HH:MM:SS."""
-    s = str(ts).strip()
-    if "T" in s:
-        s = s.split("T")[1]
-    s = s.split(".")[0]
-    for fmt in ("%H:%M:%S", "%H:%M"):
-        try:
-            return datetime.strptime(s, fmt).strftime("%H:%M:%S")
-        except ValueError:
-            continue
-    return s
 
 
 # ---------------------------------------------------------------------------
@@ -143,7 +118,7 @@ def _read_params_mats(bidsdir: str, sub: str, ses: str) -> list[dict]:
                 "mat_acq_time": acq_time,
             }
         )
-    rows.sort(key=lambda r: _hms_to_sec(r["mat_acq_time"]))
+    rows.sort(key=lambda r: hms_to_sec(r["mat_acq_time"]))
     return rows
 
 
@@ -163,12 +138,7 @@ def _read_bids_bold(bidsdir: str, sub: str, ses: str) -> list[dict]:
         if not m:
             continue
         bids_task, bids_run = m.group(1), m.group(2)
-        acq_time = ""
-        try:
-            with open(jf) as fh:
-                acq_time = _parse_hms(json.load(fh).get("AcquisitionTime", ""))
-        except Exception:
-            pass
+        acq_time = parse_hms(read_json_acqtime(jf))
         stem = basename.replace("_bold.json", "")
         rows.append(
             {
@@ -178,7 +148,7 @@ def _read_bids_bold(bidsdir: str, sub: str, ses: str) -> list[dict]:
                 "bids_acq_time": acq_time,
             }
         )
-    rows.sort(key=lambda r: _hms_to_sec(r["bids_acq_time"]))
+    rows.sort(key=lambda r: hms_to_sec(r["bids_acq_time"]))
     return rows
 
 
@@ -214,8 +184,8 @@ def build_match_table(
     for i in range(n):
         mr = mat_rows[i]
         br = bids_rows[i]
-        mat_sec = _hms_to_sec(mr["mat_acq_time"])
-        bids_sec = _hms_to_sec(br["bids_acq_time"])
+        mat_sec = hms_to_sec(mr["mat_acq_time"])
+        bids_sec = hms_to_sec(br["bids_acq_time"])
         diff = round(mat_sec - bids_sec, 2)  # positive = mat is later (expected)
         offset_ok = offset_min <= diff <= offset_max
         label_match = (
@@ -430,7 +400,7 @@ def main(
     offset_max: int = typer.Option(
         MAT_BIDS_OFFSET_MAX,
         "--offset-max",
-        help="Max expected mat−bids offset in seconds (default 400).",
+        help="Max expected mat−bids offset in seconds (default 550).",
     ),
 ):
     """

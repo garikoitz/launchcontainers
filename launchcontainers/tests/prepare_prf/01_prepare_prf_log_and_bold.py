@@ -169,9 +169,6 @@ def match_bids_files(mat_map, bids_dir: Path, sub: str, ses: str, max_gap: int =
                 f" [{file_type}] {nii_file.name}: NO ACQUISITION TIME in JSON"
             )
             return None
-        # debug to find the max gap
-        # console.print(f" [{file_type}] {nii_file.name}: has time {file_dt.strftime('%H:%M:%S')}")
-
         # Parse filename
         parts = nii_file.stem.replace(".nii", "").split("_")
         file_task = file_run = None
@@ -191,13 +188,10 @@ def match_bids_files(mat_map, bids_dir: Path, sub: str, ses: str, max_gap: int =
             file_time = datetime.combine(dummy_date, file_dt.time())
             diff = abs((mat_time - file_time).total_seconds())
 
-            # if file_type == 'sbref':
-            #     console.print(f"   Checking SBRef against MAT {mat_item['task']}-{mat_item['run']} at {mat_dt.strftime('%H:%M:%S')} (diff: {int(diff)}s)")
             if diff < min_diff.total_seconds() and diff <= max_gap:
                 min_diff = timedelta(seconds=diff)
                 best_match = mat_item
 
-        # In match_file_to_mat function, add:
         if best_match:
             console.print(
                 f"  [{file_type}] {nii_file.name}: {file_task}-{file_run} ({file_dt.strftime('%H:%M:%S')}) → {best_match['task']}-{best_match['run']} (diff: {int(min_diff.total_seconds())}s)"
@@ -221,10 +215,6 @@ def match_bids_files(mat_map, bids_dir: Path, sub: str, ses: str, max_gap: int =
     # Match all three types
     bold_matches = [match_file_to_mat(f, "bold") for f in bold_files]
     sbref_matches = [match_file_to_mat(f, "sbref") for f in sbref_files]
-
-    # DEBUG
-    # console.print(f"[blue]Bold matches: {len([m for m in bold_matches if m])}[/blue]")
-    # console.print(f"[blue]SBRef matches: {len([m for m in sbref_matches if m])}[/blue]")
 
     # Remove None values
     bold_matches = [m for m in bold_matches if m]

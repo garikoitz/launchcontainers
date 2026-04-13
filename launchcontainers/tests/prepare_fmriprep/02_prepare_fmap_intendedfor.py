@@ -42,7 +42,6 @@ import os
 import os.path as op
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -50,7 +49,12 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from launchcontainers.utils import parse_subses_list
+from launchcontainers.utils import (
+    hms_to_sec,
+    parse_hms,
+    parse_subses_list,
+    read_json_acqtime,
+)
 
 console = Console()
 app = typer.Typer(pretty_exceptions_show_locals=False)
@@ -87,34 +91,6 @@ def _vprint(msg: str, level: int = 1) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _hms_to_sec(ts: str) -> float:
-    """HH:MM:SS[.f] → total seconds; NaN on failure."""
-    try:
-        h, m, s = str(ts).strip().split(":")
-        return int(h) * 3600 + int(m) * 60 + float(s)
-    except Exception:
-        return float("nan")
-
-
-def _parse_hms(ts: str) -> str:
-    """Normalise any AcquisitionTime string to HH:MM:SS."""
-    s = str(ts).strip()
-    if "T" in s:
-        s = s.split("T")[1]
-    s = s.split(".")[0]
-    for fmt in ("%H:%M:%S", "%H:%M"):
-        try:
-            return datetime.strptime(s, fmt).strftime("%H:%M:%S")
-        except ValueError:
-            continue
-    return s
-
-
-# ---------------------------------------------------------------------------
 # Core: read func and fmap files
 # ---------------------------------------------------------------------------
 
@@ -136,18 +112,13 @@ def _read_func_files(bidsdir: str, sub: str, ses: str) -> list[dict]:
         if not m:
             continue
         nii_name = basename.replace(".json", ".nii.gz")
-        acq_time = ""
-        try:
-            with open(jf) as fh:
-                acq_time = _parse_hms(json.load(fh).get("AcquisitionTime", ""))
-        except Exception:
-            pass
+        acq_time = parse_hms(read_json_acqtime(jf))
         rows.append(
             {
                 "basename": basename,
                 "suffix": m.group(1),
                 "acq_time": acq_time,
-                "acq_sec": _hms_to_sec(acq_time),
+                "acq_sec": hms_to_sec(acq_time),
                 "intended_for_path": f"ses-{ses}/func/{nii_name}",
             }
         )
@@ -176,19 +147,15 @@ def _read_fmap_files(bidsdir: str, sub: str, ses: str) -> list[dict]:
     for run, json_paths in by_run.items():
         acq_time = ""
         for jf in json_paths:
-            try:
-                with open(jf) as fh:
-                    raw = json.load(fh).get("AcquisitionTime", "")
-                if raw:
-                    acq_time = _parse_hms(raw)
-                    break
-            except Exception:
-                continue
+            raw = read_json_acqtime(jf)
+            if raw:
+                acq_time = parse_hms(raw)
+                break
         rows.append(
             {
                 "run": run,
                 "acq_time": acq_time,
-                "acq_sec": _hms_to_sec(acq_time),
+                "acq_sec": hms_to_sec(acq_time),
                 "json_paths": json_paths,
             }
         )

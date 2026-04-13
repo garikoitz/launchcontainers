@@ -124,6 +124,7 @@ def drop_run(
     run: str,  # zero-padded, e.g. "01"
     bids_dir: Path,
     dry_run: bool,
+    skip_mat: bool = False,
 ) -> None:
     func_dir = bids_dir / f"sub-{sub}" / f"ses-{ses}" / "func"
     vdl_dir = bids_dir / "sourcedata" / "vistadisplog" / f"sub-{sub}" / f"ses-{ses}"
@@ -131,7 +132,7 @@ def drop_run(
     if not func_dir.exists():
         console.print(f"[red]func dir not found:[/red] {func_dir}")
         raise typer.Exit(1)
-    if not vdl_dir.exists():
+    if not skip_mat and not vdl_dir.exists():
         console.print(f"[red]vistadisplog dir not found:[/red] {vdl_dir}")
         raise typer.Exit(1)
 
@@ -160,32 +161,39 @@ def drop_run(
     console.print(
         "\n[bold]Step 2 — Retire vistadisplog source file and remove symlink[/bold]"
     )
-    link = symlink_for_run(vdl_dir, sub, ses, task, run)
-    if link is None:
+    if skip_mat:
+        console.print("  [dim]--skip-mat: skipping vistadisplog changes.[/dim]")
+    elif not vdl_dir.exists():
         console.print(
-            f"  [yellow]No params.mat symlink found for task-{task} run-{run}[/yellow]"
+            "  [yellow]vistadisplog dir not found — skipping mat step.[/yellow]"
         )
     else:
-        if link.is_symlink():
-            target_name = Path(link).readlink().name  # e.g. 20250506T104255.mat
-            target_path = vdl_dir / target_name
+        link = symlink_for_run(vdl_dir, sub, ses, task, run)
+        if link is None:
+            console.print(
+                f"  [yellow]No params.mat symlink found for task-{task} run-{run}[/yellow]"
+            )
+        else:
+            if link.is_symlink():
+                target_name = Path(link).readlink().name  # e.g. 20250506T104255.mat
+                target_path = vdl_dir / target_name
 
-            # Rename source to wrongrun_*
-            wrongrun_name = f"wrongrun_{target_name}"
-            wrongrun_path = vdl_dir / wrongrun_name
-            if target_path.exists():
-                action_rename(target_path, wrongrun_path, dry_run)
+                # Rename source to wrongrun_*
+                wrongrun_name = f"wrongrun_{target_name}"
+                wrongrun_path = vdl_dir / wrongrun_name
+                if target_path.exists():
+                    action_rename(target_path, wrongrun_path, dry_run)
+                else:
+                    console.print(
+                        f"  [yellow]Target {target_name} not found in vdl_dir — skip rename[/yellow]"
+                    )
+
+                # Remove the symlink
+                action_remove_symlink(link, dry_run)
             else:
                 console.print(
-                    f"  [yellow]Target {target_name} not found in vdl_dir — skip rename[/yellow]"
+                    f"  [yellow]{link.name} exists but is not a symlink — skipping[/yellow]"
                 )
-
-            # Remove the symlink
-            action_remove_symlink(link, dry_run)
-        else:
-            console.print(
-                f"  [yellow]{link.name} exists but is not a symlink — skipping[/yellow]"
-            )
 
     # -------------------------------------------------------------------------
     # Step 3: renumber surviving runs (run > dropped_run get decremented)
@@ -207,8 +215,11 @@ def drop_run(
         reorder_bids_runs(all_surviving_files, run_map, zero_pad=2, dry_run=dry_run)
 
     # vistadisplog symlink renumbering
-    all_links = all_task_symlinks(vdl_dir, sub, ses, task)
-    surviving_links = {r: p for r, p in all_links.items() if int(r) > drop_int}
+    if skip_mat or not vdl_dir.exists():
+        surviving_links = {}
+    else:
+        all_links = all_task_symlinks(vdl_dir, sub, ses, task)
+        surviving_links = {r: p for r, p in all_links.items() if int(r) > drop_int}
 
     if not surviving_links:
         console.print("  No symlinks to renumber in vistadisplog.")
@@ -274,6 +285,11 @@ def main(
     execute: bool = typer.Option(
         False, "--execute", help="Apply changes (default is dry-run)"
     ),
+    skip_mat: bool = typer.Option(
+        False,
+        "--skip-mat",
+        help="Skip vistadisplog changes (use when .mat was already renamed manually).",
+    ),
 ) -> None:
     """Drop a bad ret run from BIDS and vistadisplog, then renumber surviving runs."""
 
@@ -292,6 +308,7 @@ def main(
         run=run_padded,
         bids_dir=bids_dir,
         dry_run=not execute,
+        skip_mat=skip_mat,
     )
 
 
