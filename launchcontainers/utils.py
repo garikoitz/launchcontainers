@@ -16,12 +16,17 @@
 # """
 from __future__ import annotations
 
+import csv
+import json
 import os
 import os.path as op
+import re
 import shutil
 import sys
 import errno
+import uuid
 from datetime import datetime
+from pathlib import Path
 
 import pandas as pd
 import yaml
@@ -57,6 +62,146 @@ def times_match(t1: str, t2: str, max_diff_sec: int = 30) -> bool:
     except ValueError:
         return False
     return abs((dt1 - dt2).total_seconds()) <= max_diff_sec
+
+
+def read_json_acqtime(json_path: str | Path) -> str:
+    """
+    Read the AcquisitionTime field from a BIDS JSON sidecar.
+
+    Parameters
+    ----------
+    json_path : str or Path
+        Path to the JSON sidecar file.
+
+    Returns
+    -------
+    str
+        The raw AcquisitionTime string (e.g. ``"10:05:32.500000"``),
+        or an empty string if the field is absent or the file cannot be read.
+    """
+    try:
+        with open(json_path) as fh:
+            return json.load(fh).get("AcquisitionTime", "")
+    except Exception:
+        return ""
+
+
+def parse_subses_list(path: str | Path) -> list[tuple[str, str]]:
+    """
+    Read a subseslist CSV or TSV file and return (sub, ses) pairs.
+
+    The file must have a header row with at least ``sub`` and ``ses`` columns.
+    Values are stripped of whitespace and zero-padded to two digits.
+    TSV files (``.tsv`` extension) are auto-detected; everything else is
+    treated as comma-separated.
+
+    Parameters
+    ----------
+    path : str or Path
+        Path to the subseslist file.
+
+    Returns
+    -------
+    list[tuple[str, str]]
+        Ordered list of ``(sub, ses)`` string pairs.
+    """
+    path = Path(path)
+    delimiter = "\t" if path.suffix.lower() == ".tsv" else ","
+    pairs: list[tuple[str, str]] = []
+    with open(path, newline="") as fh:
+        for row in csv.DictReader(fh, delimiter=delimiter):
+            sub = str(row["sub"]).strip().zfill(2)
+            ses = str(row["ses"]).strip().zfill(2)
+            pairs.append((sub, ses))
+    return pairs
+
+
+_RUN_RE = re.compile(r"_run-(\d+)")
+
+
+def substitute_run(name: str, new_run_int: int, zero_pad: int = 2) -> str:
+    """Return *name* with its ``_run-NN`` entity replaced.
+
+    Parameters
+    ----------
+    name : str
+        BIDS filename or stem (e.g. ``sub-10_ses-02_task-retFF_run-01_bold``).
+    new_run_int : int
+        The new run number to substitute in.
+    zero_pad : int
+        Digit width for the replacement label (``2`` → ``run-01``; ``1`` → ``run-1``).
+
+    Returns
+    -------
+    str
+        The name with the first ``_run-NN`` occurrence replaced.
+    """
+    return _RUN_RE.sub(f"_run-{new_run_int:0{zero_pad}d}", name, count=1)
+
+
+def reorder_bids_runs(
+    files: list[Path],
+    run_map: dict[int, int],
+    zero_pad: int = 2,
+    dry_run: bool = True,
+) -> list[tuple[Path, Path]]:
+    """Rename BIDS files in-place by substituting run numbers per *run_map*.
+
+    Only files whose ``_run-NN`` label is a key in *run_map* are touched; all
+    others are skipped silently.  A two-phase rename (source → UUID temp →
+    final) prevents clobbering when source and destination run ranges overlap
+    (e.g. renumbering run-02 → run-01 while run-01 still exists).
+
+    Parameters
+    ----------
+    files : list[Path]
+        Candidate files.  May contain any mix of regular files, symlinks, or
+        paths that don't exist; only those whose name contains ``_run-NN``
+        and whose run integer appears in *run_map* are processed.
+    run_map : dict[int, int]
+        ``{old_run_int: new_run_int}`` mapping.
+    zero_pad : int
+        Digit width for the new run label (default ``2`` → ``run-01``).
+    dry_run : bool
+        When ``True``, log the planned renames and return the list without
+        modifying anything on disk.
+
+    Returns
+    -------
+    list[tuple[Path, Path]]
+        ``(old_path, new_path)`` for every rename that was planned (and
+        executed when *dry_run* is ``False``).
+    """
+    moves: list[tuple[Path, Path]] = []
+    for f in sorted(files):
+        m = _RUN_RE.search(f.name)
+        if not m:
+            continue
+        old_int = int(m.group(1))
+        if old_int not in run_map:
+            continue
+        new_name = substitute_run(f.name, run_map[old_int], zero_pad)
+        dst = f.parent / new_name
+        if dst == f:
+            continue
+        console.print(f"  [cyan]RENUMBER[/cyan]  {f.name}  \u2192  {new_name}")
+        moves.append((f, dst))
+
+    if dry_run or not moves:
+        return moves
+
+    # Phase 1: rename all sources to temp names
+    tmps: list[tuple[Path, Path, Path]] = []
+    for src, dst in moves:
+        tmp = src.parent / f"._rnm_{uuid.uuid4().hex[:8]}_{src.name}"
+        src.rename(tmp)
+        tmps.append((src, tmp, dst))
+
+    # Phase 2: rename temp names to final destinations
+    for _, tmp, dst in tmps:
+        tmp.rename(dst)
+
+    return moves
 
 
 def die(*args):
