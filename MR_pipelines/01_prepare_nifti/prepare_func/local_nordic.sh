@@ -19,7 +19,7 @@ DOTSNR=false
 usage() {
     echo "Usage:"
     echo "  $0 -s <sub>,<ses>          # run a single sub/ses pair"
-    echo "  $0 -f <subseslist_name>    # run all pairs in codedir/<subseslist_name>"
+    echo "  $0 -f <full_path_to_subseslist>    # batch mode"
     exit 1
 }
 
@@ -46,7 +46,7 @@ if [[ -n "$subses_arg" ]]; then
     echo "$subses_arg" > "$tmpfile"
 else
     # File mode: skip header line (first line), read the rest
-    subseslist_path="$codedir/$file_arg"
+    subseslist_path="$file_arg"
     if [[ ! -f "$subseslist_path" ]]; then
         echo "Error: subseslist not found: $subseslist_path"
         exit 1
@@ -77,7 +77,7 @@ mkdir -p "$logdir"
 # ---------------------------------------------------------------------------
 # Run
 # ---------------------------------------------------------------------------
-while IFS=',' read -r sub ses; do
+while IFS=',' read -r sub ses _; do
     # Skip empty lines
     [[ -z "$sub" || -z "$ses" ]] && continue
 

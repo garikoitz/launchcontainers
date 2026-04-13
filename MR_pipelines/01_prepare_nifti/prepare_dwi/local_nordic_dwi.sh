@@ -22,7 +22,7 @@ DONORDIC=true
 usage() {
     echo "Usage:"
     echo "  $0 -s <sub>,<ses>         # single sub/ses pair"
-    echo "  $0 -f <subseslist_name>   # batch from codedir/<subseslist_name>"
+    echo "  $0 -f <full_path_to_subseslist>   # batch mode"
     exit 1
 }
 
@@ -50,7 +50,7 @@ if [[ -n "$subses_arg" ]]; then
     echo "$subses_arg" > "$tmpfile"
     analysis_name="sub$(echo "$subses_arg" | cut -d',' -f1)ses$(echo "$subses_arg" | cut -d',' -f2)"
 else
-    subseslist_path="$codedir/$file_arg"
+    subseslist_path="$file_arg"
     if [[ ! -f "$subseslist_path" ]]; then
         echo "Error: subseslist not found: $subseslist_path"
         exit 1
@@ -74,7 +74,7 @@ cp "$0" "$logdir"
 # ---------------------------------------------------------------------------
 # Run jobs locally
 # ---------------------------------------------------------------------------
-while IFS=',' read -r sub ses; do
+while IFS=',' read -r sub ses _; do
     [[ -z "$sub" || -z "$ses" ]] && continue
 
     echo "=== Running sub-${sub} ses-${ses} ==="

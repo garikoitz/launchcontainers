@@ -58,7 +58,7 @@ if [[ -n "$subses_arg" ]]; then
     echo "$subses_arg" > "$tmpfile"
     analysis_name="sub$(echo "$subses_arg" | cut -d',' -f1)ses$(echo "$subses_arg" | cut -d',' -f2)"
 else
-    subseslist_path="$codedir/$file_arg"
+    subseslist_path="$file_arg"
     if [[ ! -f "$subseslist_path" ]]; then
         echo "Error: subseslist not found: $subseslist_path"
         exit 1
@@ -82,7 +82,7 @@ cp "$script_dir/src_heudiconv_${step}.sh" "$logdir"
 # ---------------------------------------------------------------------------
 # Run jobs locally
 # ---------------------------------------------------------------------------
-while IFS=',' read -r sub ses; do
+while IFS=',' read -r sub ses _; do
     [[ -z "$sub" || -z "$ses" ]] && continue
 
     echo "### CONVERTING TO NIFTI: sub-${sub} ses-${ses} ###"
