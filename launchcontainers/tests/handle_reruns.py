@@ -13,45 +13,33 @@ the end of the session to compensate.  The lab note records these in
 
 meaning run-11 is the extra acquisition that compensates for run-04.
 
-Workflow
---------
-1. Run ``check_analysis_integrity`` (BIDSfuncSpec) to find sessions with extra
-   runs.  The checker writes ``func_integrity.tsv``.
-
-2. Feed that TSV here as ``--checker-tsv``.  For each flagged session this
-   script reads the lab note AND scans the real BIDS dir to check alignment.
-
-3. Then use ``fix`` to apply corrections (dry-run by default).
-
 Sub-commands
 ------------
-**check-session** — check a single sub/ses (for development / debugging)
-**check**         — batch check: sessions from checker TSV or subseslist
-**fix**           — apply corrections (dry-run unless --execute)
-**parse**         — print all rerun rows parsed from the lab note
+**check**  — compare lab note reruns vs BIDS extra runs
+**fix**    — apply corrections (dry-run unless --execute)
+**parse**  — print all rerun rows parsed from the lab note
 
 CLI examples
 ------------
 Single session::
 
-    python handle_reruns.py check-session \\
-        --lab-note /path/to/xlsx --bidsdir /path/to/BIDS --sub 11 --ses 10
+    python handle_reruns.py check \\
+        --lab-note /path/to/xlsx --bidsdir /path/to/BIDS -s 11,10
 
-Batch from checker output::
+Batch from subseslist::
 
     python handle_reruns.py check \\
-        --lab-note /path/to/xlsx --bidsdir /path/to/BIDS \\
-        --checker-tsv /path/to/sourcedata/qc/func_integrity.tsv
+        --lab-note /path/to/xlsx --bidsdir /path/to/BIDS -f subseslist.tsv
 
 Fix (dry-run)::
 
     python handle_reruns.py fix \\
-        --lab-note /path/to/xlsx --bidsdir /path/to/BIDS
+        --lab-note /path/to/xlsx --bidsdir /path/to/BIDS -s 11,10
 
 Fix (execute)::
 
     python handle_reruns.py fix \\
-        --lab-note /path/to/xlsx --bidsdir /path/to/BIDS --execute
+        --lab-note /path/to/xlsx --bidsdir /path/to/BIDS -f subseslist.tsv --execute
 """
 
 from __future__ import annotations
@@ -63,6 +51,7 @@ import json
 import os
 import os.path as op
 import re
+import sys
 from pathlib import Path
 from typing import Optional
 
@@ -70,6 +59,10 @@ import pandas as pd
 import typer
 from rich.console import Console
 from rich.table import Table
+
+# Import rename helpers from the sibling package (no __init__.py, use path injection)
+sys.path.insert(0, str(Path(__file__).parent / "renaming_ret_bold"))
+from correct_wc_bold_naming import check_and_fix_session  # noqa: E402
 
 console = Console()
 app = typer.Typer(pretty_exceptions_show_locals=False)
@@ -543,24 +536,6 @@ def fix_single_session(
 # ---------------------------------------------------------------------------
 
 
-def _pairs_from_checker_tsv(tsv_path: Path) -> list[tuple[str, str]]:
-    """
-    Read a subseslist TSV (columns: sub, ses, RUN) and return pairs where
-    RUN == 'False'.  Strips Windows carriage returns and zero-pads sub/ses.
-    """
-    pairs = []
-    with open(tsv_path, newline="") as fh:
-        reader = csv.DictReader(fh, delimiter="\t")
-        for row in reader:
-            RUN = row.get("RUN", "").strip().replace("\r", "")
-            if RUN != "False":
-                continue
-            sub = str(row["sub"]).strip().zfill(2)
-            ses = str(row["ses"]).strip().zfill(2)
-            pairs.append((sub, ses))
-    return pairs
-
-
 def _cross_check_subseslist_vs_labnote(
     pairs: list[tuple[str, str]],
     df_note: pd.DataFrame,
@@ -616,56 +591,45 @@ def _pairs_from_subses_list(path: Path) -> list[tuple[str, str]]:
 # ---------------------------------------------------------------------------
 
 
-@app.command("check-session")
-def cmd_check_session(
-    lab_note: Path = typer.Option(..., "--lab-note"),
-    bidsdir: Path = typer.Option(..., "--bidsdir"),
-    sub: str = typer.Option(..., "--sub"),
-    ses: str = typer.Option(..., "--ses"),
-    debug: bool = typer.Option(False, "--debug"),
-):
-    """Check a single sub/ses: compare lab note reruns vs BIDS extra runs."""
-    sub = sub.zfill(2)
-    ses = ses.zfill(2)
-    console.print(f"\n[bold cyan]### check-session  sub-{sub}  ses-{ses}[/]")
-
-    df_note = parse_lab_note(lab_note)
-
-    if debug:
-        console.print("\n[bold yellow]--- DEBUG df_note ---[/]")
-        console.print(f"df_note shape : {df_note.shape}")
-        console.print(f"df_note dtypes:\n{df_note.dtypes}")
-        console.print(f"df_note values:\n{df_note.to_string()}")
-        console.print(f"\nFilter target: sub={repr(sub)}  ses={repr(ses)}")
-        console.print(f"row-0 sub repr : {repr(df_note.iloc[0]['sub'])}")
-        console.print(f"row-0 ses repr : {repr(df_note.iloc[0]['ses'])}")
-        console.print(f"row-0 sub type : {type(df_note.iloc[0]['sub'])}")
-        console.print(f"sub match row-0: {df_note.iloc[0]['sub'] == sub}")
-        console.print(f"ses match row-0: {df_note.iloc[0]['ses'] == ses}")
-        note_rows = df_note[(df_note.sub == sub) & (df_note.ses == ses)]
-        console.print(f"note_rows ({len(note_rows)} row(s)):\n{note_rows.to_string()}")
-        console.print("\nbids_extras (raw scan):")
-        bids_extras = _bids_extras_for_session(str(bidsdir), sub, ses)
-        for t, r in bids_extras:
-            console.print(f"  task={repr(t)}  run={repr(r)}")
-        console.print("[bold yellow]--- END DEBUG ---[/]\n")
-
-    r = check_single_session(str(bidsdir), sub, ses, df_note)
-    _print_session_result(r)
+def _resolve_pairs(
+    subses: Optional[str], subses_file: Optional[Path], df_note: pd.DataFrame
+) -> list[tuple[str, str]]:
+    """
+    Resolve sub/ses pairs from -s or -f options.
+    Falls back to all sessions in the lab note when neither is given.
+    """
+    if subses_file is not None:
+        pairs = _pairs_from_subses_list(subses_file)
+        console.print(
+            f"  [cyan]{len(pairs)} sub/ses pair(s) from {subses_file.name}.[/]"
+        )
+        return pairs
+    if subses is not None:
+        parts = [p.strip().zfill(2) for p in subses.split(",")]
+        if len(parts) != 2:
+            console.print("[red]--subses must be sub,ses e.g. 06,10[/]")
+            raise typer.Exit(1)
+        console.print(f"  [cyan]Single session: sub-{parts[0]}  ses-{parts[1]}.[/]")
+        return [(parts[0], parts[1])]
+    # fall back to all sessions in the lab note
+    pairs = [
+        tuple(r) for r in df_note[["sub", "ses"]].drop_duplicates().values.tolist()
+    ]
+    console.print(
+        f"  [dim]No -s or -f provided; using all {len(pairs)} lab note session(s).[/]"
+    )
+    return pairs
 
 
 @app.command("check")
 def cmd_check(
     lab_note: Path = typer.Option(..., "--lab-note"),
     bidsdir: Path = typer.Option(..., "--bidsdir"),
-    checker_tsv: Optional[Path] = typer.Option(
-        None,
-        "--checker-tsv",
-        help="func_integrity.tsv from check_analysis_integrity.  "
-        "Sessions with total_groups > 16 are checked.",
+    subses: Optional[str] = typer.Option(
+        None, "--subses", "-s", help="Single sub,ses pair e.g. 06,10"
     ),
-    subses_list: Optional[Path] = typer.Option(
-        None, "--subses-list", help="TSV/CSV/TXT with columns 'sub' and 'ses'."
+    subses_file: Optional[Path] = typer.Option(
+        None, "--file", "-f", help="Subseslist TSV/CSV with sub and ses columns."
     ),
     output_tsv: Optional[Path] = typer.Option(
         None,
@@ -674,8 +638,9 @@ def cmd_check(
     ),
 ):
     """
-    Batch check: read sessions from checker output or subseslist,
-    then compare lab note reruns vs BIDS extra runs for each.
+    Check sessions: compare lab note reruns vs BIDS extra runs.
+
+    Pass -s 06,10 for a single session or -f subseslist.tsv for batch.
     """
     console.print("\n[bold cyan]### Reading lab note...[/]")
     df_note = parse_lab_note(lab_note)
@@ -684,23 +649,9 @@ def cmd_check(
         f"{df_note[['sub', 'ses']].drop_duplicates().shape[0]} session(s)."
     )
 
-    if checker_tsv is not None:
-        pairs = _pairs_from_checker_tsv(checker_tsv)
-        console.print(
-            f"  [cyan]{len(pairs)} session(s) with RUN=False from subseslist.[/]"
-        )
+    pairs = _resolve_pairs(subses, subses_file, df_note)
+    if subses_file is not None or subses is None:
         _cross_check_subseslist_vs_labnote(pairs, df_note)
-    elif subses_list is not None:
-        pairs = _pairs_from_subses_list(subses_list)
-        console.print(f"  [cyan]{len(pairs)} sub/ses pair(s) from subseslist.[/]")
-        _cross_check_subseslist_vs_labnote(pairs, df_note)
-    else:
-        # Fall back: check all sessions that appear in the lab note
-        pairs = df_note[["sub", "ses"]].drop_duplicates().values.tolist()
-        console.print(
-            f"  [dim]No --checker-tsv or --subses-list provided; "
-            f"using all {len(pairs)} lab note session(s).[/]"
-        )
 
     table = Table(show_header=True, header_style="bold magenta", title="Rerun Check")
     table.add_column("sub")
@@ -775,39 +726,73 @@ def cmd_check(
 
 @app.command("fix")
 def cmd_fix(
-    lab_note: Path = typer.Option(..., "--lab-note"),
     bidsdir: Path = typer.Option(..., "--bidsdir"),
-    checker_tsv: Optional[Path] = typer.Option(None, "--checker-tsv"),
-    subses_list: Optional[Path] = typer.Option(None, "--subses-list"),
+    subses: Optional[str] = typer.Option(
+        None, "--subses", "-s", help="Single sub,ses pair e.g. 06,10"
+    ),
+    subses_file: Optional[Path] = typer.Option(
+        None, "--file", "-f", help="Subseslist TSV/CSV with sub and ses columns."
+    ),
     execute: bool = typer.Option(
         False, "--execute", help="Apply changes (default: dry-run)."
     ),
+    offset_min: int = typer.Option(
+        300,
+        "--offset-min",
+        help="Min expected mat−bids offset in seconds (default 300).",
+    ),
+    offset_max: int = typer.Option(
+        550,
+        "--offset-max",
+        help="Max expected mat−bids offset in seconds (default 550).",
+    ),
 ):
     """
-    Apply rerun fixes.  Dry-run by default — pass --execute to make real changes.
+    Fix BIDS task/run label mismatches by matching params.mat to BIDS bold files.
 
-    fLoc : symlink events.tsv from rerun slot → bad original slot.
-    ret* : delete poor-quality original run from BIDS func + sourcedata .mat.
+    Dry-run by default — pass --execute to rename files.
+    Pass -s 06,10 for a single session or -f subseslist.tsv for batch.
     """
     dry_run = not execute
-    label = "[yellow]DRY-RUN[/]" if dry_run else "[bold red]EXECUTE[/]"
-    console.print(f"\n[bold cyan]### Fix reruns  {label}[/]")
 
-    df_note = parse_lab_note(lab_note)
-    if df_note.empty:
-        console.print("[yellow]No rerun rows found in lab note.[/]")
-        raise typer.Exit()
-
-    if checker_tsv is not None:
-        pairs = _pairs_from_checker_tsv(checker_tsv)
-    elif subses_list is not None:
-        pairs = _pairs_from_subses_list(subses_list)
+    if dry_run:
+        console.print("\n[bold yellow]─── DRY-RUN ─── (no files changed)[/bold yellow]")
     else:
-        pairs = df_note[["sub", "ses"]].drop_duplicates().values.tolist()
+        console.print("\n[bold green]─── EXECUTE ─── (renaming files)[/bold green]")
 
+    # Resolve pairs without lab note (not needed for rename-based fix)
+    if subses_file is not None:
+        pairs = _pairs_from_subses_list(subses_file)
+    elif subses is not None:
+        parts = [p.strip().zfill(2) for p in subses.split(",")]
+        if len(parts) != 2:
+            console.print("[red]--subses must be sub,ses e.g. 06,10[/]")
+            raise typer.Exit(1)
+        pairs = [(parts[0], parts[1])]
+    else:
+        console.print("[red]Provide -s sub,ses or -f subseslist.[/]")
+        raise typer.Exit(1)
+
+    total_renamed = 0
     for sub, ses in pairs:
-        console.print(f"\n[bold]sub-{sub}  ses-{ses}[/]")
-        fix_single_session(str(bidsdir), sub, ses, df_note, dry_run=dry_run)
+        result = check_and_fix_session(
+            str(bidsdir),
+            sub,
+            ses,
+            dry_run=dry_run,
+            offset_min=offset_min,
+            offset_max=offset_max,
+        )
+        total_renamed += result.get("renamed", 0)
+
+    if dry_run:
+        console.print(
+            "\n[dim]Pass [bold]--execute[/bold] to apply the renames above.[/dim]"
+        )
+    else:
+        console.print(
+            f"\n[bold green]Done:[/bold green] {total_renamed} file(s) renamed."
+        )
 
 
 @app.command("parse")
