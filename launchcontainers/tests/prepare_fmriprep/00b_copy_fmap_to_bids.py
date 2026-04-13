@@ -41,7 +41,6 @@ Usage
 
 from __future__ import annotations
 
-import csv
 import glob
 import os
 import os.path as op
@@ -52,6 +51,8 @@ from typing import Optional
 import typer
 from rich.console import Console
 from rich.table import Table
+
+from launchcontainers.utils import parse_subses_list
 
 console = Console()
 app = typer.Typer(pretty_exceptions_show_locals=False)
@@ -68,21 +69,6 @@ BIDS_COMPONENTS = [
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def _parse_subses_list(path: Path) -> list[tuple[str, str]]:
-    ext = path.suffix.lower()
-    delimiter = "\t" if ext == ".tsv" else ","
-    pairs = []
-    with open(path, newline="") as fh:
-        for row in csv.DictReader(fh, delimiter=delimiter):
-            pairs.append(
-                (
-                    str(row["sub"]).strip().zfill(2),
-                    str(row["ses"]).strip().zfill(2),
-                )
-            )
-    return pairs
 
 
 def _rsync(src: str, dst: str, extra_args: list[str] | None = None) -> bool:
@@ -346,7 +332,7 @@ def main(
         python 00b_copy_fmap_to_bids.py -b /raw_nifti -t /BIDS -f subseslist.tsv --execute
     """
     if subses_file is not None:
-        pairs = _parse_subses_list(subses_file)
+        pairs = parse_subses_list(subses_file)
     elif subses:
         pairs = []
         for token in subses:

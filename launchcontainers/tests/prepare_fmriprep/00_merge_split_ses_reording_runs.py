@@ -51,7 +51,6 @@ from __future__ import annotations
 
 import csv
 import glob
-import json
 import os
 import os.path as op
 import re
@@ -65,6 +64,8 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from launchcontainers.utils import parse_subses_list, read_json_acqtime, substitute_run
+
 console = Console()
 app = typer.Typer(pretty_exceptions_show_locals=False)
 
@@ -74,18 +75,6 @@ MODALITIES = ("anat", "func", "dwi", "fmap")
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def _parse_subses_list(path: Path) -> list[tuple[str, str]]:
-    ext = path.suffix.lower()
-    delimiter = "\t" if ext == ".tsv" else ","
-    pairs = []
-    with open(path, newline="") as fh:
-        for row in csv.DictReader(fh, delimiter=delimiter):
-            pairs.append(
-                (str(row["sub"]).strip().zfill(2), str(row["ses"]).strip().zfill(2))
-            )
-    return pairs
 
 
 def _to_sec(t: str | None) -> float:
@@ -114,14 +103,6 @@ def _find_ses_dirs(bidsdir: str, sub: str, ses: str) -> list[str]:
     sub_dir = op.join(bidsdir, f"sub-{sub}")
     matches = sorted(glob.glob(op.join(sub_dir, f"ses-{ses}*")))
     return [d for d in matches if op.isdir(d)]
-
-
-def _acq_time_from_json(jf: str) -> str:
-    try:
-        with open(jf) as fh:
-            return json.load(fh).get("AcquisitionTime", "")
-    except Exception:
-        return ""
 
 
 # ---------------------------------------------------------------------------
@@ -159,7 +140,7 @@ def _collect_all_files(bidsdir: str, sub: str, ses: str) -> list[dict]:
                 continue
             for jf in sorted(glob.glob(op.join(mod_dir, "*.json"))):
                 stem = re.sub(r"\.json$", "", op.basename(jf))
-                acq_time = _acq_time_from_json(jf)
+                acq_time = read_json_acqtime(jf)
                 run_m = re.search(r"_run-(\d+)_", stem)
                 task_m = re.search(r"_task-(\w+)_", stem)
                 acq_m = re.search(r"_acq-(\w+)_", stem)
@@ -191,6 +172,54 @@ def _collect_all_files(bidsdir: str, sub: str, ses: str) -> list[dict]:
                         "acq_sec": _to_sec(acq_time),
                         "run_int": int(run_m.group(1)) if run_m else None,
                         "task": task_m.group(1) if task_m else None,
+                        "acq": acq_m.group(1) if acq_m else None,
+                    }
+                )
+
+    # ── Pass 2: collect json-less NII files (e.g. gfactor) ──────────────────
+    # Build acq_time lookup from JSON-backed rows so gfactor inherits timing.
+    acq_lookup: dict[tuple, tuple[str, float]] = {}
+    for r in rows:
+        if r["run_int"] is not None and r.get("task"):
+            key = (r["ses_label"], r["mod"], r["task"], r["run_int"])
+            acq_lookup.setdefault(key, (r["acq_time"], r["acq_sec"]))
+
+    json_stems = {r["stem"] for r in rows}
+    for ses_dir in ses_dirs:
+        ses_label = op.basename(ses_dir).replace("ses-", "")
+        for mod in MODALITIES:
+            mod_dir = op.join(ses_dir, mod)
+            if not op.isdir(mod_dir):
+                continue
+            for nii in sorted(glob.glob(op.join(mod_dir, "*.nii.gz"))):
+                stem_nii = re.sub(r"\.nii\.gz$", "", op.basename(nii))
+                if stem_nii in json_stems:
+                    continue
+                if op.exists(op.join(mod_dir, stem_nii + ".json")):
+                    continue
+                run_m = re.search(r"_run-(\d+)_", stem_nii)
+                task_m = re.search(r"_task-(\w+)_", stem_nii)
+                acq_m = re.search(r"_acq-(\w+)_", stem_nii)
+                run_int = int(run_m.group(1)) if run_m else None
+                task = task_m.group(1) if task_m else None
+                suffix = stem_nii.split("_")[-1]
+                key = (ses_label, mod, task, run_int)
+                acq_time, acq_sec = acq_lookup.get(key, ("", float("inf")))
+                rows.append(
+                    {
+                        "ses_dir": ses_dir,
+                        "ses_label": ses_label,
+                        "mod": mod,
+                        "mod_dir": mod_dir,
+                        "stem": stem_nii,
+                        "suffix": suffix,
+                        "json_path": "",
+                        "nii_path": nii,
+                        "extra_paths": [],
+                        "acq_time": acq_time,
+                        "acq_sec": acq_sec,
+                        "run_int": run_int,
+                        "task": task,
                         "acq": acq_m.group(1) if acq_m else None,
                     }
                 )
@@ -339,11 +368,8 @@ def _maybe_add(
     new_stem = r["stem"].replace(f"ses-{label}", f"ses-{primary_label}")
 
     if old_run != new_run_int:
-        run_m = re.search(r"_run-(\d+)_", new_stem)
-        if run_m:
-            old_tag = f"_run-{run_m.group(1)}_"
-            new_tag = f"_run-{_run_fmt(r['mod'], new_run_int)}_"
-            new_stem = new_stem.replace(old_tag, new_tag, 1)
+        zero_pad = 1 if r["mod"] == "fmap" else 2
+        new_stem = substitute_run(new_stem, new_run_int, zero_pad=zero_pad)
 
     needs_change = (label != primary_label) or (old_run != new_run_int)
     if needs_change:
@@ -462,18 +488,37 @@ def _execute_plan(plan: list[dict], dry_run: bool) -> dict:
         temp_id = uuid.uuid4().hex[:8]
         temp_stem = f"._tmp_{temp_id}"
 
-        paths: list[tuple[str, str]] = []  # (src, temp)
-        for src, ext in [
-            (r["json_path"], ".json"),
-            (r["nii_path"], ".nii.gz"),
-        ] + [(ep, op.splitext(ep)[1]) for ep in r["extra_paths"]]:
-            if op.exists(src):
-                temp_dst = op.join(r["mod_dir"], temp_stem + ext)
-                paths.append((src, temp_dst))
+        # Compute run-tagged prefix for proper companion (extra) naming
+        old_pfx_m = re.search(r"^(.*?_run-\d+_)", r["stem"])
+        new_pfx_m = re.search(r"^(.*?_run-\d+_)", p["new_stem"])
+        old_pfx = old_pfx_m.group(1) if old_pfx_m else None
+        new_pfx = new_pfx_m.group(1) if new_pfx_m else None
+
+        paths: list[tuple[str, str, str]] = []  # (src, temp, final_name)
+        slot = 0
+
+        def _add(src: str, final_name: str) -> None:
+            nonlocal slot
+            if src and op.exists(src):
+                ext = ".nii.gz" if src.endswith(".nii.gz") else op.splitext(src)[1]
+                temp_dst = op.join(r["mod_dir"], f"{temp_stem}_{slot}{ext}")
+                paths.append((src, temp_dst, final_name))
+                slot += 1  # noqa: F821
+
+        _add(r["json_path"], p["new_stem"] + ".json")
+        _add(r["nii_path"], p["new_stem"] + ".nii.gz")
+        for ep in r["extra_paths"]:
+            ep_bn = op.basename(ep)
+            ep_ext = ".nii.gz" if ep_bn.endswith(".nii.gz") else op.splitext(ep_bn)[1]
+            if old_pfx and new_pfx and ep_bn.startswith(old_pfx):
+                ep_final = new_pfx + ep_bn[len(old_pfx) :]
+            else:
+                ep_final = p["new_stem"] + ep_ext
+            _add(ep, ep_final)
 
         if not dry_run:
             try:
-                for src, tmp in paths:
+                for src, tmp, _ in paths:
                     os.rename(src, tmp)
             except Exception as exc:
                 console.print(f"  [red][ERROR] phase-1 move: {exc}[/]")
@@ -484,7 +529,6 @@ def _execute_plan(plan: list[dict], dry_run: bool) -> dict:
         temp_records.append(
             {
                 "paths": paths,
-                "new_stem": p["new_stem"],
                 "dst_mod_dir": p["dst_mod_dir"],
             }
         )
@@ -497,11 +541,8 @@ def _execute_plan(plan: list[dict], dry_run: bool) -> dict:
         if not dry_run:
             os.makedirs(dst_dir, exist_ok=True)
         ok = True
-        for src, tmp in rec["paths"]:
-            ext = op.splitext(tmp)[1]
-            if ext == ".gz":
-                ext = ".nii.gz"
-            final = op.join(dst_dir, rec["new_stem"] + ext)
+        for _src, tmp, final_name in rec["paths"]:
+            final = op.join(dst_dir, final_name)
             if not dry_run:
                 try:
                     shutil.move(tmp, final)
@@ -788,7 +829,7 @@ def main(
         python 00_merge_split_ses_reording_runs.py -b /BIDS -f subseslist.tsv --execute
     """
     if subses_file is not None:
-        pairs = _parse_subses_list(subses_file)
+        pairs = parse_subses_list(subses_file)
     elif subses:
         pairs = []
         for token in subses:

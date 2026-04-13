@@ -36,7 +36,6 @@ Usage
 
 from __future__ import annotations
 
-import csv
 import glob
 import json
 import os
@@ -51,6 +50,8 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from launchcontainers.utils import parse_subses_list
+
 console = Console()
 app = typer.Typer(pretty_exceptions_show_locals=False)
 
@@ -58,8 +59,8 @@ SESSION_GAP_MAX_SEC = (
     30 * 60
 )  # 30 min — consecutive scan gap that indicates a session break
 FMAP_FUNC_MAX_GAP_SEC = (
-    5 * 60
-)  # 5 min  — fmap must be followed by func within this window
+    8 * 60
+)  # 8   min  — fmap must be followed by func within this window
 
 # ---------------------------------------------------------------------------
 # Verbosity gate — set once by CLI, read everywhere
@@ -111,21 +112,6 @@ def _parse_hms(ts: str) -> str:
         except ValueError:
             continue
     return s
-
-
-def _parse_subses_list(path: Path) -> list[tuple[str, str]]:
-    ext = path.suffix.lower()
-    delimiter = "\t" if ext == ".tsv" else ","
-    pairs = []
-    with open(path, newline="") as fh:
-        for row in csv.DictReader(fh, delimiter=delimiter):
-            pairs.append(
-                (
-                    str(row["sub"]).strip().zfill(2),
-                    str(row["ses"]).strip().zfill(2),
-                )
-            )
-    return pairs
 
 
 # ---------------------------------------------------------------------------
@@ -270,12 +256,40 @@ def _assign_intendedfor(func_files: list[dict], fmap_runs: list[dict]) -> list[d
         next_sec = (
             fmap_runs[i + 1]["acq_sec"] if i + 1 < len(fmap_runs) else float("inf")
         )
-        fm["intended_for"] = [
-            f["intended_for_path"]
-            for f in func_files
-            if fm["acq_sec"] < f["acq_sec"] < next_sec
+        funcs_in_window = [
+            f for f in func_files if fm["acq_sec"] < f["acq_sec"] < next_sec
         ]
+        fm["intended_for"] = [f["intended_for_path"] for f in funcs_in_window]
+        # Store the acq_sec of the first func in the window for session-gap check
+        fm["first_func_in_window_sec"] = (
+            min(f["acq_sec"] for f in funcs_in_window) if funcs_in_window else None
+        )
     return fmap_runs
+
+
+def _prune_session_gap_fmaps(
+    kept: list[dict], removed: list[dict]
+) -> tuple[list[dict], list[dict]]:
+    """
+    Pass 3 — drop fmaps whose gap to the first func in their window exceeds
+    SESSION_GAP_MAX_SEC.  This handles the case where a morning fmap is
+    incorrectly assigned to cover an evening/part2 func block after a session
+    break.  The dropped fmap's funcs then become NOT COVERED → ERROR.
+    """
+    still_kept: list[dict] = []
+    for fm in kept:
+        first_sec = fm.get("first_func_in_window_sec")
+        if first_sec is not None:
+            gap = first_sec - fm["acq_sec"]
+            if gap > SESSION_GAP_MAX_SEC:
+                fm["drop_reason"] = (
+                    f"session gap to first func in window: {gap / 60:.1f} min "
+                    f"(>{SESSION_GAP_MAX_SEC // 60} min)"
+                )
+                removed.append(fm)
+                continue
+        still_kept.append(fm)
+    return still_kept, removed
 
 
 def _prune_fmaps(fmap_runs: list[dict]) -> tuple[list[dict], list[dict]]:
@@ -331,7 +345,7 @@ def _check_first_func_coverage(
         has no field-map coverage for its first run → conversion will fail.
         Flagged as ERROR (blocks writing IntendedFor).
 
-    Check B — fmap→first-func gap > 5 min (WARNING):
+    Check B — fmap→first-func gap > 8 min (WARNING):
         The fmap that immediately precedes the first func has a time gap larger
         than FMAP_FUNC_MAX_GAP_SEC → suspicious, may indicate a wrong fmap.
 
@@ -739,6 +753,7 @@ def process_session(
     # --- 5. Assign IntendedFor windows, then prune ---
     fmap_runs = _assign_intendedfor(func_files, fmap_runs)
     kept_runs, removed_runs = _prune_fmaps(fmap_runs)
+    kept_runs, removed_runs = _prune_session_gap_fmaps(kept_runs, removed_runs)
 
     # --- 6. Warn if any kept fmap → func gap > 3 min ---
     gap_func_warns = _warn_fmap_func_gap(kept_runs, func_files)
@@ -943,7 +958,7 @@ def main(
         ln_fmap_counts = _load_labnote_fmap_counts(str(labnote))
 
     if subses_file is not None:
-        pairs = _parse_subses_list(subses_file)
+        pairs = parse_subses_list(subses_file)
     elif subses is not None:
         parts = [p.strip().zfill(2) for p in subses.split(",")]
         if len(parts) != 2:

@@ -52,6 +52,8 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from launchcontainers.utils import parse_subses_list
+
 console = Console()
 app = typer.Typer(pretty_exceptions_show_locals=False)
 
@@ -61,18 +63,6 @@ DEFAULT_MAX_GAP = 30  # seconds — sbrefs farther than this from any func are o
 # ---------------------------------------------------------------------------
 # Generic helpers  (shared pattern with show_bids_acqtimes.py)
 # ---------------------------------------------------------------------------
-
-
-def _parse_subses_list(path: Path) -> list[tuple[str, str]]:
-    ext = path.suffix.lower()
-    delimiter = "\t" if ext == ".tsv" else ","
-    pairs = []
-    with open(path, newline="") as fh:
-        for row in csv.DictReader(fh, delimiter=delimiter):
-            pairs.append(
-                (str(row["sub"]).strip().zfill(2), str(row["ses"]).strip().zfill(2))
-            )
-    return pairs
 
 
 def _to_sec(t: str | None) -> float:
@@ -592,7 +582,7 @@ def main(
         python 01_drop_sbref.py -b /BIDS -f subseslist.tsv --execute
     """
     if subses_file is not None:
-        pairs = _parse_subses_list(subses_file)
+        pairs = parse_subses_list(subses_file)
     elif subses:
         pairs = []
         for token in subses:
