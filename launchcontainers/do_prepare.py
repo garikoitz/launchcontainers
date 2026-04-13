@@ -60,7 +60,7 @@ def _create_analysis_dir(lc_config: dict) -> str:
 
     if deriv_layout == "legacy":
         container_folder = op.join(
-            basedir, bidsdir_name, "derivatives", f"{container}-{version}"
+            basedir, bidsdir_name, "derivatives", f"{container}_{version}"
         )
         analysis_dir = op.join(container_folder, f"analysis-{analysis_name}")
     else:
