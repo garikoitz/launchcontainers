@@ -54,13 +54,13 @@ only as an entry point — do not run heavy computations on it.
 
    **Home directory paths differ between systems (the ~ represents):**
 
-   +--------------------+------------------------+
-   | System             | Home path              |
-   +====================+========================+
-   | brodmann           | ``/home/<user>``       |
-   +--------------------+------------------------+
+   +--------------------+-------------------------+
+   | System             | Home path               |
+   +====================+=========================+
+   | brodmann           | ``/home/<user>``        |
+   +--------------------+-------------------------+
    | Cajal / IPS        | ``/export/home/<user>`` |
-   +--------------------+------------------------+
+   +--------------------+-------------------------+
 
    Always store your work **under your user directory （/export/home/<user>/<user>）** so it is
    available across systems.
@@ -106,7 +106,7 @@ We use three tools together:
 +--------------------+--------------------------------------------------+-----------------------------------------+
 | Tool               | Purpose                                          | Install location                        |
 +====================+==================================================+=========================================+
-| **micromamba**     | Environment management (fast conda replacement)  | ``/export/home/<user>/<user>/soft/``                             |
+| **micromamba**     | Environment management (fast conda replacement)  | ``/export/home/<user>/<user>/soft/``    |
 +--------------------+--------------------------------------------------+-----------------------------------------+
 | **pipx**           | Isolated tool installation                       | ``pip install to ~/.local/bin/pipx``    |
 +--------------------+--------------------------------------------------+-----------------------------------------+
