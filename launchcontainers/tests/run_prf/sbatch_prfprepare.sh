@@ -27,21 +27,31 @@ sif_path="/scratch/tlei/containers/${step}_${version}.sif"
 # ---------------------------------------------------------------------------
 usage() {
     echo "Usage:"
-    echo "  $0 -s <sub>,<ses>               # single sub/ses pair, e.g. -s 03,01"
-    echo "  $0 -f <full_path_to_subseslist> # batch from file"
+    echo "  $0 -n <log_note> -s <sub>,<ses>               # single sub/ses pair, e.g. -s 03,01"
+    echo "  $0 -n <log_note> -f <full_path_to_subseslist> # batch from file"
+    echo ""
+    echo "Required:"
+    echo "  -n <log_note>   Short label written into the log directory name."
     exit 1
 }
 
 subses_arg=""
 file_arg=""
+log_note=""
 
-while getopts ":s:f:" opt; do
+while getopts ":n:s:f:" opt; do
     case $opt in
+        n) log_note="$OPTARG"   ;;
         s) subses_arg="$OPTARG" ;;
         f) file_arg="$OPTARG"   ;;
         *) usage ;;
     esac
 done
+
+if [[ -z "$log_note" ]]; then
+    echo "Error: -n <log_note> is required"
+    usage
+fi
 
 if [[ -z "$subses_arg" && -z "$file_arg" ]]; then
     usage
@@ -68,7 +78,7 @@ fi
 # ---------------------------------------------------------------------------
 # Logging setup
 # ---------------------------------------------------------------------------
-LOG_DIR="$baseP/dipc_${step}_logs/$(date +"%Y-%m-%d")_${analysis_name}"
+LOG_DIR="$baseP/dipc_${step}_logs/$(date +"%Y-%m-%d")_${log_note}_${analysis_name}"
 mkdir -p "$LOG_DIR"
 mkdir -p "$HOME_DIR"
 
@@ -77,6 +87,7 @@ cp "$0" "$LOG_DIR/"
 
 echo "Log dir  : $LOG_DIR"
 echo "JSON dir : $json_dir"
+echo "Log note : $log_note"
 echo ""
 
 # ---------------------------------------------------------------------------
@@ -102,7 +113,7 @@ while IFS=',' read -r sub ses _; do
         --qos=${qos} \
         -o ${LOG_DIR}/${now}_%J_%x_${sub}-${ses}.o \
         -e ${LOG_DIR}/${now}_%J_%x_${sub}-${ses}.e \
-        --export=ALL,baseP=${baseP},license_path=${license_path},version=${version},sub=${sub},ses=${ses},json_path=${json_path},sif_path=${sif_path} \
+        --export=ALL,baseP=${baseP},license_path=${license_path},version=${version},sub=${sub},ses=${ses},json_path=${json_path},sif_path=${sif_path},LOG_DIR=${LOG_DIR} \
         ${script_dir}/${step}_dipc.sh"
 
     echo "Submitting: sub-${sub} ses-${ses}"

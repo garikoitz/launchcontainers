@@ -25,9 +25,10 @@ Use --execute to apply.
 Usage:
     python drop_ret_run.py -s 10,01 --task retRW --run 01 --bidsdir /path/BIDS
     python drop_ret_run.py -s 10,01 --task retRW --run 01 --bidsdir /path/BIDS --execute
+## Note this code is not so automatic, need to check more carefully before and after and need to according to the subseslist xlsx
 """
 
-from __future__ import annotations
+from __future__ import annotationsnot
 
 import re
 from pathlib import Path

@@ -34,10 +34,7 @@ CODE_DIR="${output_base}/code"
 fp_output_dir="${output_base}/derivatives_new/fmriprep-${fp_version}_${analysis_name}"
 # Prepare output folder (on scratch — writable)
 mkdir -p ${fp_output_dir}
-
-LOG_DIR="${fp_output_dir}/logs"
 echo "fp_output_dir: $fp_output_dir"
-mkdir -p ${LOG_DIR}
 
 export cache_dir=/scratch/tlei/fmriprep_tmps_${fp_version}_${analysis_name}
 
@@ -168,10 +165,12 @@ echo Commandline: $cmd_runall
 eval $cmd_runall
 exitcode=$?
 
-echo "Coping the log files to the $LOG_DIR"
-rsync -av $slurm_log_dir $LOG_DIR
+# Post-job: write one summary line to job_results.tsv in slurm_log_dir.
+# Matches the PRF sbatch pattern — single log dir, no rsync needed.
+if [[ -n "$slurm_log_dir" ]]; then
+    echo -e "$(date +"%Y-%m-%d %H:%M:%S")\tsub-${subject}\tses-${ses}\t${SLURM_JOB_NAME}\t${SLURM_JOB_ID}\texit=${exitcode}" \
+        >> "${slurm_log_dir}/job_results.tsv"
+fi
 
-# Output results to a table
-echo "sub-$subject   ${SLURM_ARRAY_TASK_ID} $exitcode" >> ${LOG_DIR}/${SLURM_JOB_NAME}_${SLURM_ARRAY_JOB_ID}.tsv
-echo Finished tasks ${SLURM_ARRAY_TASK_ID} with exit code $exitcode
+echo "Finished sub-${subject} ses-${ses} (array task ${SLURM_ARRAY_TASK_ID}) with exit code ${exitcode}"
 exit $exitcode

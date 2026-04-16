@@ -45,5 +45,20 @@ cmd="unset PYTHONPATH; singularity run \
 echo "This is the command running :$cmd"
 echo "start running ####################"
 eval $cmd
+exitcode=$?
 
 module unload Apptainer
+
+# ---------------------------------------------------------------------------
+# Post-job: write one summary line to the shared job_results.tsv in LOG_DIR.
+# Mirrors the fmriprep slurm pattern (no rsync needed — SLURM already writes
+# .o/.e directly to LOG_DIR via the sbatch -o/-e flags).
+# ---------------------------------------------------------------------------
+if [[ -n "$LOG_DIR" ]]; then
+    mkdir -p "$LOG_DIR"
+    echo -e "$(date +"%Y-%m-%d %H:%M:%S")\tsub-${sub}\tses-${ses}\t${SLURM_JOB_NAME}\t${SLURM_JOB_ID}\texit=${exitcode}" \
+        >> "${LOG_DIR}/job_results.tsv"
+fi
+
+echo "Finished sub-${sub} ses-${ses} with exit code ${exitcode}"
+exit $exitcode

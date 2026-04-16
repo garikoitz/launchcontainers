@@ -14,6 +14,7 @@ from __future__ import annotations
 import copy
 import json
 import os
+import re
 from pathlib import Path
 from typing import Optional
 
@@ -25,22 +26,25 @@ from launchcontainers.utils import parse_subses_list
 console = Console()
 app = typer.Typer(pretty_exceptions_show_locals=False)
 
-_TASKS_PRFANALYZE = [
-    "retRW",
-    "retFF",
-    "retCB",
-    "retfixRW",
-    "retfixFF",
-    "retfixRWblock",
-    "retfixRWblock01",
-    "retfixRWblock02",
-]
+# All task labels that are valid PRF tasks.  Only these are recognised when
+# scanning BIDS func/ — any other task label in the filenames is ignored.
+_ALL_VALID_TASKS: set[str] = {
+    "retRW", "retFF", "retCB",
+    "retfixFF", "retfixRW",
+    "retfixRWblock", "retfixRWblock01", "retfixRWblock02",
+}
 
 # ---------------------------------------------------------------------------
 # Base templates — static fields only.
 # Dynamic fields (subjects, sessions, subjectName, sessionName, tasks, and the
 # step-specific IDs) are inserted at runtime from CLI arguments.
 # ---------------------------------------------------------------------------
+
+# Maps the short CLI label to the value written into the JSON "model" field.
+_MODEL_LABELS: dict[str, str] = {
+    "og":  "one gaussian",
+    "css": "css",
+}
 
 _BASE: dict[str, dict] = {
     "prfprepare": {
@@ -65,7 +69,7 @@ _BASE: dict[str, dict] = {
         "isPRFSynthData": False,
         "options": {
             # "prfprepareAnalysis" is injected from --prepid at runtime
-            "model": "one gaussian",
+            # "model" is injected from --model at runtime (og → "one gaussian", css → "css")
             "grid": False,
             "wsearch": "5",
             "detrend": 1,
@@ -119,6 +123,29 @@ _VALID_STEPS = set(_BASE)
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _discover_tasks_for_session(bids_dir: Path, sub: str, ses: str) -> list[str]:
+    """Return sorted list of valid PRF task names found in BIDS raw func for this sub/ses.
+
+    Scans ``bids_dir/sub-{sub}/ses-{ses}/func/`` for ``*_bold.nii.gz`` files,
+    extracts the task label from the filename, and filters against
+    ``_ALL_VALID_TASKS``.  Unknown task labels are silently ignored.
+    """
+    func_dir = bids_dir / f"sub-{sub}" / f"ses-{ses}" / "func"
+    if not func_dir.exists():
+        return []
+    pattern = re.compile(rf"sub-{sub}_ses-{ses}_task-([^_]+)_run-")
+    found: set[str] = set()
+    for f in func_dir.iterdir():
+        if not f.name.endswith("_bold.nii.gz"):
+            continue
+        m = pattern.match(f.name)
+        if m:
+            task = m.group(1)
+            if task in _ALL_VALID_TASKS:
+                found.add(task)
+    return sorted(found)
 
 
 def _check_and_create_symlinks(fmriprep_analysis: str, bids_dir: Path) -> None:
@@ -184,10 +211,10 @@ def main(
         "--analyzeid",
         help="[prfresult] prfanalyze analysis ID string, e.g. 03.",
     ),
-    model: str = typer.Option(
-        "og",
+    model: Optional[str] = typer.Option(
+        None,
         "--model",
-        help="Model label used in prfanalyze-vista output filenames (e.g. og, css).",
+        help="[prfanalyze-vista] Model: og (one gaussian) or css.",
     ),
     force: bool = typer.Option(
         True,
@@ -228,6 +255,8 @@ def main(
         raise typer.BadParameter("--fp is required for step prfprepare")
     if step == "prfanalyze-vista" and not prepid:
         raise typer.BadParameter("--prepid is required for step prfanalyze-vista")
+    if step == "prfanalyze-vista" and model not in _MODEL_LABELS:
+        raise typer.BadParameter(f"--model is required for step prfanalyze-vista; choose: {', '.join(_MODEL_LABELS)}")
     if step == "prfresult" and not analyzeid:
         raise typer.BadParameter("--analyzeid is required for step prfresult")
 
@@ -236,7 +265,6 @@ def main(
 
     pairs = parse_subses_list(file) if file else [(sub.zfill(2), ses.zfill(2))]
     output_dir.mkdir(parents=True, exist_ok=True)
-    tasks = _TASKS_PRFANALYZE if step == "prfanalyze-vista" else ["all"]
 
     if step == "prfprepare":
         console.print("\n[bold]Checking fmriprep analysis setup...[/bold]")
@@ -261,9 +289,20 @@ def main(
             generated += 1
 
         elif step == "prfanalyze-vista":
+            tasks = _discover_tasks_for_session(bids_dir, sub, ses)
+            if not tasks:
+                console.print(
+                    f"[yellow]sub-{sub} ses-{ses}[/yellow] — no valid PRF tasks found in "
+                    f"BIDS func, skipping"
+                )
+                continue
+            console.print(
+                f"[dim]sub-{sub} ses-{ses}[/dim] — tasks detected: {tasks}"
+            )
             for task in tasks:
                 base = copy.deepcopy(_BASE["prfanalyze-vista"])
                 base["options"]["prfprepareAnalysis"] = prepid
+                base["options"]["model"] = _MODEL_LABELS[model]
                 config = {"subjectName": sub, "sessionName": ses, "tasks": task, **base}
                 out_path = output_dir / f"{task}_{model}_sub-{sub}_ses-{ses}.json"
 
