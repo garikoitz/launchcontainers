@@ -10,7 +10,7 @@ BIDS_DIR="/data/tlei/VOTCLOC/BIDS_new"  # read-only data source
 
 script_dir="/scratch/tlei/soft/launchcontainers/MR_pipelines/03_fmriprep"
 
-fp_version=25.2.5
+fp_version=25.1.4
 
 # ---------------------------------------------------------------------------
 # Parse arguments

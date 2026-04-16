@@ -124,7 +124,6 @@ cmd_runall="module load Apptainer/1.3.5 &&  \
       --omp-nthreads 10 --nthreads 20 --mem_mb 50000 \
       --skip-bids-validation \
       --fs-subjects-dir /fsdir \
-      --stop-on-first-crash \
       --force bbr \
       --bold2anat-init t2w \
       --output-spaces T1w func MNI152NLin2009cAsym fsnative fsaverage "
@@ -142,14 +141,35 @@ cmd_runall="module load Apptainer/1.3.5 &&  \
 #     --slice-time-ref 0 \
 #     --project-goodvoxels \
 #     --notrack \
+# --stop-on-first-crash \ this is dangerous, since the rendering step can fail for some subjects, but the rest of the pipeline is fine. Use with caution.
+# Pre-warm the TemplateFlow cache before running the main command.
+# Multiple array tasks starting simultaneously on a fresh cache will race
+# on templateflow registry initialization, causing some tasks to see only
+# partially-populated template lists (e.g. missing MNI152NLin2009cAsym).
+# Task 1 runs fmriprep --version (triggers tf registry init) while others wait.
+if [ "${SLURM_ARRAY_TASK_ID}" -eq 1 ]; then
+    echo "Task 1: pre-warming TemplateFlow cache..."
+    module load Apptainer/1.3.5
+    eval "${SINGULARITY_CMD} --version"
+    echo "TemplateFlow cache pre-warm done."
+    touch "${FMRIPREP_WORK_DIR}/.tf_cache_ready"
+else
+    echo "Task ${SLURM_ARRAY_TASK_ID}: waiting for TemplateFlow cache pre-warm..."
+    for i in $(seq 1 60); do
+        [ -f "${FMRIPREP_WORK_DIR}/.tf_cache_ready" ] && break
+        sleep 5
+    done
+    echo "Task ${SLURM_ARRAY_TASK_ID}: proceeding."
+fi
+
 # Setup done, run the command
 echo Running task ${SLURM_ARRAY_TASK_ID}, for subject ${subject}
 echo Commandline: $cmd_runall
 eval $cmd_runall
+exitcode=$?
 
 echo "Coping the log files to the $LOG_DIR"
 rsync -av $slurm_log_dir $LOG_DIR
-exitcode=$?
 
 # Output results to a table
 echo "sub-$subject   ${SLURM_ARRAY_TASK_ID} $exitcode" >> ${LOG_DIR}/${SLURM_JOB_NAME}_${SLURM_ARRAY_JOB_ID}.tsv
