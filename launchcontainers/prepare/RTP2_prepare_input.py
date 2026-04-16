@@ -29,9 +29,10 @@ import subprocess as sp
 import sys
 
 import nibabel as nib
+import pandas as pd
 
 from launchcontainers.check import check_dwi_pipelines as check
-from launchcontainers.utils import read_df, force_symlink
+from launchcontainers.utils import force_symlink
 from launchcontainers.log_setup import console
 
 
@@ -880,7 +881,7 @@ def rtppipeline(dict_store_cs_configs, analysis_dir, lc_config, sub, ses):
         src_path_tractparams = op.join(analysis_dir, fname_tractparams)
         dst_path_tractparams = op.join(dstDir_input, "tractparams", "tractparams.csv")
         # the tractparams check, at the analysis folder
-        tractparam_df, _ = read_df(src_path_tractparams)
+        tractparam_df = pd.read_csv(src_path_tractparams, sep=",", dtype=str)
         check.check_tractparam(lc_config, sub, ses, tractparam_df)
         if not op.exists(op.join(dstDir_input, "tractparams")):
             os.makedirs(op.join(dstDir_input, "tractparams"))

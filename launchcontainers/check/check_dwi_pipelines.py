@@ -219,9 +219,7 @@ def backup_old_rtp2pipeline_log(
     """
     # read LC config yml from analysis dir
     analysis_dir = parse_namespace.workdir
-    for row in df_subses.itertuples(index=True, name="Pandas"):
-        sub = row.sub
-        ses = row.ses
+    for sub, ses in df_subses:
         subses_dir_output = op.join(
             analysis_dir,
             "sub-" + sub,

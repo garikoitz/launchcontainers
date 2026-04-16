@@ -100,6 +100,8 @@ def parse_subses_list(path: str | Path) -> list[tuple[str, str]]:
     Read a subseslist CSV or TSV file and return (sub, ses) pairs.
 
     The file must have a header row with at least ``sub`` and ``ses`` columns.
+    If a ``RUN`` column is present, only rows where ``RUN == "True"`` are
+    returned; otherwise all rows are included.
     Values are stripped of whitespace and zero-padded to two digits.
     TSV files (``.tsv`` extension) are auto-detected; everything else is
     treated as comma-separated.
@@ -119,6 +121,8 @@ def parse_subses_list(path: str | Path) -> list[tuple[str, str]]:
     pairs: list[tuple[str, str]] = []
     with open(path, newline="") as fh:
         for row in csv.DictReader(fh, delimiter=delimiter):
+            if "RUN" in row and str(row["RUN"]).strip() != "True":
+                continue
             sub = str(row["sub"]).strip().zfill(2)
             ses = str(row["ses"]).strip().zfill(2)
             pairs.append((sub, ses))
@@ -296,34 +300,6 @@ def read_yaml(path_to_config_file):
     return config
 
 
-def read_df(path_to_df_file):
-    """
-    Read a CSV file into a dataframe and count runnable rows.
-
-    This helper is primarily used for ``subseslist`` files, where the
-    ``RUN`` column marks which rows should be scheduled.
-
-    Parameters
-    ----------
-    path_to_df_file : str or path-like
-        Path to the CSV file to read.
-
-    Returns
-    -------
-    tuple[pandas.DataFrame, int | None]
-        The loaded dataframe and the number of rows where ``RUN == 'True'``.
-        If the file does not contain a ``RUN`` column, the count is ``None``.
-    """
-    df = pd.read_csv(path_to_df_file, sep=",", dtype=str)
-    try:
-        num_of_true_run = len(df.loc[df["RUN"] == "True"])
-    except Exception:
-        num_of_true_run = None
-        # logger.warn(f'The df you are reading is not subseslist'
-        #    +f'or something is wrong {e}')
-    console.print(df.head(5), style="cyan")
-
-    return df, num_of_true_run
 
 
 def copy_file(src_file, dst_file, force):

@@ -15,3 +15,26 @@ then I will remove the corresponding runs in the BIDS dir
 then I will do a reordering using the prepare_fmriprep 00_ code
 
 right now this work flow is stupid, but I just need to make the job done, no time to develop the workflow
+
+For running prfprepare:
+
+prepare the path of json file, if it is not matching across code and the preparation, we will have problem when binding
+the jsons to the container
+
+remeber the fs license it needs to be in one place, now it is being hardcoded
+
+
+
+we should clean all the events.tsv since they are going to have the same name, baster!
+
+    how to aviod this in the task label? 
+
+Special note:
+For the PRF wordcenter condition,
+sub-01 ses 09 and 10 I am using retfixRWblock01 and 02 both in one session
+what I did is to rename the .mat link _params.mat and the BIDS (sbref, bold, jsons and nii.gz (also don't forget the fMRIprep and the fmap)) into retfixRWblock02_run-01 into retfixRWblock01_run-02
+
+another thing: 
+I forgot to drop the 09 retfixRWblock01_run-01, going to drop it manually
+the same story drop it from fmap, func in BIDS and drop it in the fMRIprep
+

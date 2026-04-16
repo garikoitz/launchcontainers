@@ -244,7 +244,8 @@ def main(workdir: str, run_lc: bool = False):
     container = lc_config["general"]["container"]
     # get stuff from subseslist for future jobs scheduling
     sub_ses_list_path = op.join(analysis_dir, "subseslist.txt")
-    df_subses, num_of_jobs = do.read_df(sub_ses_list_path)
+    df_subses = do.parse_subses_list(sub_ses_list_path)
+    num_of_jobs = len(df_subses)
     # 2. do a independent check to see if everything is in place
     parse_namespace = Namespace(workdir=workdir, run_lc=run_lc)
     if container in [
@@ -259,16 +260,8 @@ def main(workdir: str, run_lc: bool = False):
         if container in ["rtp2-pipeline", "rtp-pipeline"]:
             # do a second check for the RTP file, if exist, backup
             check_dwi_pipelines.backup_old_rtp2pipeline_log(parse_namespace, df_subses)
-    # use RUN to control the running logic
-    mask = df_subses["RUN"] == "True"
-    df_subses = df_subses.loc[mask]
-    num_of_jobs = len(df_subses)
     # 3. tree sub-/ses- structure for checking
-    # select the first row matching that mask
-    first_row = df_subses.iloc[0]
-    # extract sub and ses
-    sub = first_row["sub"]
-    ses = first_row["ses"]
+    sub, ses = df_subses[0]
     console.print("\n### output example subject folder structure \n", style="bold red")
     general_checks.cli_show_folder_struc(analysis_dir, sub, ses)
 

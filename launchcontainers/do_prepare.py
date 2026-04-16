@@ -133,8 +133,7 @@ def main(parse_namespace) -> tuple[bool, str | None]:
     bidsdir_name = lc_config["general"]["bidsdir_name"]
 
     sub_ses_list_path = parse_namespace.sub_ses_list
-    df_subses, _ = do.read_df(sub_ses_list_path)
-    df_subses = df_subses.loc[df_subses["RUN"] == "True"]
+    df_subses = do.parse_subses_list(sub_ses_list_path)
 
     if container in _DWI_PIPELINES:
         analysis_dir = _create_analysis_dir(lc_config)

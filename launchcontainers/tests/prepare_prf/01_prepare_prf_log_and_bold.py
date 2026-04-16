@@ -7,10 +7,23 @@ import json
 from rich.console import Console
 from rich.table import Table
 
-from launchcontainers.utils import atomic_rename_pairs
+from launchcontainers.utils import atomic_rename_pairs, parse_subses_list
 
 app = typer.Typer()
 console = Console()
+
+# ---------------------------------------------------------------------------
+# Verbosity gate — set once by check command, read everywhere
+# ---------------------------------------------------------------------------
+
+_verbose: bool = False
+
+
+def _vprint(msg: str) -> None:
+    """Print only when -v is passed."""
+    if _verbose:
+        console.print(msg)
+
 
 
 def parse_mat_datetime(mat_filename: str):
@@ -145,33 +158,19 @@ def get_bids_datetime(json_file: Path):
 
 
 def match_bids_files(mat_map, bids_dir: Path, sub: str, ses: str, max_gap: int = 200):
-    """Match BIDS files (bold, sbref, gfactor) to .mat files by datetime."""
+    """Match BIDS files (bold, sbref) to .mat files by positional order (both sorted by time)."""
 
-    # Get ALL ret files (bold, sbref, gfactor)
     all_ret_files = list(bids_dir.glob(f"sub-{sub}/ses-{ses}/func/*task-ret*.nii.gz"))
-
-    # Separate by type
     bold_files = [f for f in all_ret_files if "_bold.nii.gz" in f.name]
     sbref_files = [f for f in all_ret_files if "_sbref.nii.gz" in f.name]
 
-    console.print(f"[yellow]Found: {len(bold_files)} bold, {len(sbref_files)} sbref")
+    _vprint(f"[yellow]Found: {len(bold_files)} bold, {len(sbref_files)} sbref")
 
-    # Debug the sbref
-    console.print("[blue]SBRef files:[/blue]")
-    for f in sbref_files:
-        console.print(f"{f.name}")
     dummy_date = datetime(2000, 1, 1)
 
-    def match_file_to_mat(nii_file, file_type):
+    def file_info(nii_file, file_type):
         json_file = nii_file.with_suffix("").with_suffix(".json")
         file_dt = get_bids_datetime(json_file)
-
-        if not file_dt:
-            console.print(
-                f" [{file_type}] {nii_file.name}: NO ACQUISITION TIME in JSON"
-            )
-            return None
-        # Parse filename
         parts = nii_file.stem.replace(".nii", "").split("_")
         file_task = file_run = None
         for part in parts:
@@ -179,236 +178,306 @@ def match_bids_files(mat_map, bids_dir: Path, sub: str, ses: str, max_gap: int =
                 file_task = part.replace("task-", "")
             elif part.startswith("run-"):
                 file_run = int(part.replace("run-", ""))
+        return {
+            "nii_file": nii_file,
+            "json_file": json_file,
+            "file_dt": file_dt,
+            "file_task": file_task,
+            "file_run": file_run,
+            "file_type": file_type,
+        }
 
-        # Find closest .mat match by time
-        best_match = None
-        min_diff = timedelta(days=999)
+    # Build info lists sorted by acquisition time
+    bold_infos = sorted(
+        [file_info(f, "bold") for f in bold_files],
+        key=lambda x: datetime.combine(dummy_date, x["file_dt"].time()) if x["file_dt"] else datetime.min,
+    )
+    sbref_infos = sorted(
+        [file_info(f, "sbref") for f in sbref_files],
+        key=lambda x: datetime.combine(dummy_date, x["file_dt"].time()) if x["file_dt"] else datetime.min,
+    )
 
-        for mat_item in mat_map:
-            mat_dt = mat_item["datetime"]
-            mat_time = datetime.combine(dummy_date, mat_dt.time())
-            file_time = datetime.combine(dummy_date, file_dt.time())
-            diff = abs((mat_time - file_time).total_seconds())
+    # Sort mat_map by datetime
+    sorted_mats = sorted(
+        mat_map,
+        key=lambda m: datetime.combine(dummy_date, m["datetime"].time()) if m["datetime"] else datetime.min,
+    )
 
-            if diff < min_diff.total_seconds() and diff <= max_gap:
-                min_diff = timedelta(seconds=diff)
-                best_match = mat_item
+    mat_labels = [m["task"] + "-" + str(m["run"]) for m in sorted_mats]
+    bold_labels = [str(b["file_task"]) + "-" + str(b["file_run"]) for b in bold_infos]
+    _vprint(f"[cyan]Mats ({len(sorted_mats)}): {mat_labels}")
+    _vprint(f"[cyan]Bolds ({len(bold_infos)}): {bold_labels}")
 
-        if best_match:
-            console.print(
-                f"  [{file_type}] {nii_file.name}: {file_task}-{file_run} ({file_dt.strftime('%H:%M:%S')}) → {best_match['task']}-{best_match['run']} (diff: {int(min_diff.total_seconds())}s)"
-            )
-            return {
-                "nii_file": nii_file,
-                "json_file": json_file,
-                "file_task": file_task,
-                "file_run": file_run,
-                "mat_task": best_match["task"],
-                "mat_run": best_match["run"],
-                "time_diff": int(min_diff.total_seconds()),
-                "file_type": file_type,
-                "needs_rename": not (
-                    file_task == best_match["task"] and file_run == best_match["run"]
-                ),
-            }
+    def make_entry(nii_info, mat_item):
+        return {
+            "nii_file": nii_info["nii_file"],
+            "json_file": nii_info["json_file"],
+            "file_task": nii_info["file_task"],
+            "file_run": nii_info["file_run"],
+            "mat_task": mat_item["task"],
+            "mat_run": mat_item["run"],
+            "file_type": nii_info["file_type"],
+            "needs_rename": not (
+                nii_info["file_task"] == mat_item["task"]
+                and nii_info["file_run"] == mat_item["run"]
+            ),
+        }
 
-        return None
-
-    # Match all three types
-    bold_matches = [match_file_to_mat(f, "bold") for f in bold_files]
-    sbref_matches = [match_file_to_mat(f, "sbref") for f in sbref_files]
-
-    # Remove None values
-    bold_matches = [m for m in bold_matches if m]
-    sbref_matches = [m for m in sbref_matches if m]
-
-    # Group by mat_task + mat_run
-    from collections import defaultdict
-
-    grouped = defaultdict(lambda: {"bold": None, "sbref": None})
-
-    for match in bold_matches:
-        key = (match["mat_task"], match["mat_run"])
-        grouped[key]["bold"] = match
-
-    for match in sbref_matches:
-        key = (match["mat_task"], match["mat_run"])
-        grouped[key]["sbref"] = match
-
-    # Convert to list of matches
+    # Match positionally: mat[i] → bold[i], mat[i] → sbref[i]
+    n = min(len(sorted_mats), len(bold_infos))
     matches = []
-    for (mat_task, mat_run), files in grouped.items():
-        matches.append(
-            {
-                "mat_task": mat_task,
-                "mat_run": mat_run,
-                "bold": files["bold"],
-                "sbref": files["sbref"],
-            }
+
+    for i in range(n):
+        mat_item = sorted_mats[i]
+        bold = make_entry(bold_infos[i], mat_item)
+        sbref = make_entry(sbref_infos[i], mat_item) if i < len(sbref_infos) else None
+        _vprint(
+            f"  [{i}] mat={mat_item['task']}-{mat_item['run']}  "
+            f"bold={bold_infos[i]['file_task']}-{bold_infos[i]['file_run']}"
         )
+        matches.append({"mat_task": mat_item["task"], "mat_run": mat_item["run"], "bold": bold, "sbref": sbref})
+
+    # Mats without a bold (missing BIDS files)
+    for i in range(n, len(sorted_mats)):
+        matches.append({"mat_task": sorted_mats[i]["task"], "mat_run": sorted_mats[i]["run"], "bold": None, "sbref": None})
 
     return matches
 
 
 @app.command()
+def setup(
+    bids_dir: Path = typer.Option(..., "--bids", "-b"),
+    sub: str = typer.Option(None, "--sub", "-s"),
+    ses: str = typer.Option(None, "--ses"),
+    file: Path = typer.Option(None, "--file", help="subseslist CSV/TSV with sub,ses columns"),
+    force: bool = typer.Option(False, "--force", "-f", help="Overwrite existing symlinks"),
+    dry_run: bool = typer.Option(True, "--dry-run/--execute"),
+):
+    """Create vistadisplog/sub-xx/ses-xx symlinks pointing to sourcedata/sub-xx/ses-xx."""
+    if file is None and (sub is None or ses is None):
+        raise typer.BadParameter("Provide either --file or both --sub and --ses")
+
+    pairs = parse_subses_list(file) if file else [(sub, ses)]
+    vistadisplog = bids_dir / "sourcedata" / "vistadisplog"
+
+    for sub, ses in pairs:
+        target = bids_dir / "sourcedata" / f"sub-{sub}" / f"ses-{ses}"
+        link_dir = vistadisplog / f"sub-{sub}"
+        link_path = link_dir / f"ses-{ses}"
+        console.print(f"[cyan]sub-{sub} ses-{ses}[/cyan]")
+        console.print(f"  link : {link_path}")
+        console.print(f"  → target : {target}")
+
+        if not target.exists():
+            console.print(f"  [red]✗ target does not exist, skipping[/red]")
+            continue
+
+        if link_path.exists() or link_path.is_symlink():
+            if not force:
+                console.print(f"  [yellow]already exists, skipping (use --force to overwrite)[/yellow]")
+                continue
+            if not dry_run:
+                link_path.unlink()
+                console.print(f"  [yellow]removed existing symlink[/yellow]")
+
+        if not dry_run:
+            link_dir.mkdir(parents=True, exist_ok=True)
+            link_path.symlink_to(target)
+            console.print(f"  [green]✓ created[/green]")
+        else:
+            console.print(f"  [yellow](dry run)[/yellow]")
+
+    if dry_run:
+        console.print("\n[yellow]DRY RUN — use --execute to create symlinks.[/yellow]")
+
+
+@app.command()
 def link(
     bids_dir: Path = typer.Option(..., "--bids", "-b"),
-    sub: str = typer.Option(..., "--sub", "-s"),
-    ses: str = typer.Option(..., "--ses"),
+    sub: str = typer.Option(None, "--sub", "-s"),
+    ses: str = typer.Option(None, "--ses"),
+    file: Path = typer.Option(None, "--file", help="subseslist CSV/TSV with sub,ses columns"),
     force: bool = typer.Option(False, "--force", "-f"),
     dry_run: bool = typer.Option(True, "--dry-run/--execute"),
 ):
     """Create symlinks for .mat files based on stimName."""
+    if file is None and (sub is None or ses is None):
+        raise typer.BadParameter("Provide either --file or both --sub and --ses")
+
+    pairs = parse_subses_list(file) if file else [(sub, ses)]
     vistadisplog = bids_dir / "sourcedata" / "vistadisplog"
 
-    console.print(f"[cyan]Creating .mat symlinks for sub-{sub} ses-{ses}[/cyan]")
-    console.print(f"[yellow]Dry run: {dry_run}, Force: {force}[/yellow]\n")
+    for sub, ses in pairs:
+        console.print(f"[cyan]Creating .mat symlinks for sub-{sub} ses-{ses}[/cyan]")
+        console.print(f"[yellow]Dry run: {dry_run}, Force: {force}[/yellow]\n")
 
-    symlink_map = create_mat_symlinks(vistadisplog, sub, ses, dry_run, force)
+        symlink_map = create_mat_symlinks(vistadisplog, sub, ses, dry_run, force)
 
-    table = Table(show_header=True, header_style="bold magenta")
-    table.add_column("Original File")
-    table.add_column("Task")
-    table.add_column("Run")
-    table.add_column("DateTime")
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("Original File")
+        table.add_column("Task")
+        table.add_column("Run")
+        table.add_column("DateTime")
 
-    for item in symlink_map:
-        table.add_row(
-            item["original"].name,
-            item["task"],
-            str(item["run"]),
-            item["datetime"].strftime("%Y-%m-%d %H:%M:%S"),
-        )
+        for item in symlink_map:
+            table.add_row(
+                item["original"].name,
+                item["task"],
+                str(item["run"]),
+                item["datetime"].strftime("%Y-%m-%d %H:%M:%S"),
+            )
 
-    console.print(table)
+        console.print(table)
 
-    if dry_run:
-        console.print(
-            "\n[yellow]This is a DRY RUN. Use --execute to create symlinks.[/yellow]"
-        )
+        if dry_run:
+            console.print(
+                "\n[yellow]This is a DRY RUN. Use --execute to create symlinks.[/yellow]"
+            )
 
 
 @app.command()
 def check(
     bids_dir: Path = typer.Option(..., "--bids", "-b"),
-    sub: str = typer.Option(..., "--sub", "-s"),
-    ses: str = typer.Option(..., "--ses"),
+    sub: str = typer.Option(None, "--sub", "-s"),
+    ses: str = typer.Option(None, "--ses"),
+    file: Path = typer.Option(None, "--file", help="subseslist CSV/TSV with sub,ses columns"),
     max_gap: int = typer.Option(200, "--max-gap"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Print per-run match details"),
 ):
     """Check if BIDS files match .mat files."""
+    global _verbose
+    _verbose = verbose
+
+    if file is None and (sub is None or ses is None):
+        raise typer.BadParameter("Provide either --file or both --sub and --ses")
+
+    pairs = parse_subses_list(file) if file else [(sub, ses)]
     vistadisplog = bids_dir / "sourcedata" / "vistadisplog"
 
-    console.print(f"[cyan]Checking matches for sub-{sub} ses-{ses}[/cyan]\n")
+    for sub, ses in pairs:
+        symlink_map = create_mat_symlinks(vistadisplog, sub, ses, dry_run=True)
+        matches = match_bids_files(symlink_map, bids_dir, sub, ses, max_gap)
 
-    symlink_map = create_mat_symlinks(vistadisplog, sub, ses, dry_run=True)
-    matches = match_bids_files(symlink_map, bids_dir, sub, ses, max_gap)
+        n_ok = sum(1 for m in matches if m["bold"] and not m["bold"]["needs_rename"])
+        n_mismatch = sum(1 for m in matches if m["bold"] and m["bold"]["needs_rename"])
+        n_missing = sum(1 for m in matches if not m["bold"])
 
-    # Show matches
-    table = Table(show_header=True, header_style="bold magenta")
-    table.add_column("MAT Task")
-    table.add_column("MAT Run")
-    table.add_column("Bold")
-    table.add_column("SBRef")
+        status = "[green]OK[/green]" if n_mismatch == 0 and n_missing == 0 else "[red]ISSUES[/red]"
+        console.print(
+            f"sub-{sub} ses-{ses}  {status}  "
+            f"matched={n_ok}  mismatch={n_mismatch}  missing={n_missing}"
+        )
 
-    for m in matches:
-        # Bold status
-        if m["bold"]:
-            bold_str = (
-                f"[green]✓[/green] {m['bold']['file_task']}-{m['bold']['file_run']:02d}"
-                if not m["bold"]["needs_rename"]
-                else f"[red]✗[/red] {m['bold']['file_task']}-{m['bold']['file_run']:02d}"
-            )
-        else:
-            bold_str = "[red]Missing[/red]"
+        if verbose:
+            table = Table(show_header=True, header_style="bold magenta")
+            table.add_column("MAT Task")
+            table.add_column("MAT Run")
+            table.add_column("Bold")
+            table.add_column("SBRef")
 
-        # SBRef status
-        if m["sbref"]:
-            sbref_str = (
-                f"[green]✓[/green] {m['sbref']['file_task']}-{m['sbref']['file_run']:02d}"
-                if not m["sbref"]["needs_rename"]
-                else f"[red]✗[/red] {m['sbref']['file_task']}-{m['sbref']['file_run']:02d}"
-            )
-        else:
-            sbref_str = "[yellow]Missing[/yellow]"
+            for m in matches:
+                if m["bold"]:
+                    bold_str = (
+                        f"[green]✓[/green] {m['bold']['file_task']}-{m['bold']['file_run']:02d}"
+                        if not m["bold"]["needs_rename"]
+                        else f"[red]✗[/red] {m['bold']['file_task']}-{m['bold']['file_run']:02d}"
+                    )
+                else:
+                    bold_str = "[red]Missing[/red]"
 
-        table.add_row(m["mat_task"], str(m["mat_run"]), bold_str, sbref_str)
+                if m["sbref"]:
+                    sbref_str = (
+                        f"[green]✓[/green] {m['sbref']['file_task']}-{m['sbref']['file_run']:02d}"
+                        if not m["sbref"]["needs_rename"]
+                        else f"[red]✗[/red] {m['sbref']['file_task']}-{m['sbref']['file_run']:02d}"
+                    )
+                else:
+                    sbref_str = "[yellow]Missing[/yellow]"
 
-    console.print(table)
+                table.add_row(m["mat_task"], str(m["mat_run"]), bold_str, sbref_str)
+
+            console.print(table)
 
 
 @app.command()
 def rename(
     bids_dir: Path = typer.Option(..., "--bids", "-b"),
-    sub: str = typer.Option(..., "--sub", "-s"),
-    ses: str = typer.Option(..., "--ses"),
+    sub: str = typer.Option(None, "--sub", "-s"),
+    ses: str = typer.Option(None, "--ses"),
+    file: Path = typer.Option(None, "--file", help="subseslist CSV/TSV with sub,ses columns"),
     max_gap: int = typer.Option(200, "--max-gap"),
     dry_run: bool = typer.Option(True, "--dry-run/--execute"),
 ):
     """Rename BIDS files to match .mat task names."""
+    if file is None and (sub is None or ses is None):
+        raise typer.BadParameter("Provide either --file or both --sub and --ses")
+
+    pairs = parse_subses_list(file) if file else [(sub, ses)]
     vistadisplog = bids_dir / "sourcedata" / "vistadisplog"
 
-    console.print(f"[cyan]Renaming files for sub-{sub} ses-{ses}[/cyan]")
-    console.print(f"[yellow]Dry run: {dry_run}[/yellow]\n")
+    for sub, ses in pairs:
+        console.print(f"[cyan]Renaming files for sub-{sub} ses-{ses}[/cyan]")
+        console.print(f"[yellow]Dry run: {dry_run}[/yellow]\n")
 
-    symlink_map = create_mat_symlinks(vistadisplog, sub, ses, dry_run=True)
-    matches = match_bids_files(symlink_map, bids_dir, sub, ses, max_gap)
+        symlink_map = create_mat_symlinks(vistadisplog, sub, ses, dry_run=True)
+        matches = match_bids_files(symlink_map, bids_dir, sub, ses, max_gap)
 
-    rename_count = 0
+        rename_count = 0
 
-    for m in matches:
-        console.print(
-            f"[cyan]Processing MAT: {m['mat_task']} run-{m['mat_run']:02d}[/cyan]"
-        )
-
-        # Collect all rename pairs for this match group (bold + sbref)
-        rename_pairs: list[tuple[Path, Path]] = []
-
-        if m["bold"] and m["bold"]["needs_rename"]:
-            old_nii = m["bold"]["nii_file"]
-            old_json = m["bold"]["json_file"]
-            old_base = old_nii.stem.replace(".nii", "")
-            new_base = old_base.replace(
-                f"task-{m['bold']['file_task']}_run-{m['bold']['file_run']:02d}",
-                f"task-{m['mat_task']}_run-{m['mat_run']:02d}",
+        for m in matches:
+            console.print(
+                f"[cyan]Processing MAT: {m['mat_task']} run-{m['mat_run']:02d}[/cyan]"
             )
-            new_nii = old_nii.parent / f"{new_base}.nii.gz"
-            new_json = old_json.parent / f"{new_base}.json"
-            console.print(f"  [yellow]Bold:[/yellow] {old_nii.name} → {new_nii.name}")
-            rename_pairs.append((old_nii, new_nii))
-            if old_json.exists():
-                rename_pairs.append((old_json, new_json))
 
-        if m["sbref"] and m["sbref"]["needs_rename"]:
-            old_nii = m["sbref"]["nii_file"]
-            old_json = m["sbref"]["json_file"]
-            old_base = old_nii.stem.replace(".nii", "")
-            new_base = old_base.replace(
-                f"task-{m['sbref']['file_task']}_run-{m['sbref']['file_run']:02d}",
-                f"task-{m['mat_task']}_run-{m['mat_run']:02d}",
+            # Collect all rename pairs for this match group (bold + sbref)
+            rename_pairs: list[tuple[Path, Path]] = []
+
+            if m["bold"] and m["bold"]["needs_rename"]:
+                old_nii = m["bold"]["nii_file"]
+                old_json = m["bold"]["json_file"]
+                old_base = old_nii.stem.replace(".nii", "")
+                new_base = old_base.replace(
+                    f"task-{m['bold']['file_task']}_run-{m['bold']['file_run']:02d}",
+                    f"task-{m['mat_task']}_run-{m['mat_run']:02d}",
+                )
+                new_nii = old_nii.parent / f"{new_base}.nii.gz"
+                new_json = old_json.parent / f"{new_base}.json"
+                console.print(f"  [yellow]Bold:[/yellow] {old_nii.name} → {new_nii.name}")
+                rename_pairs.append((old_nii, new_nii))
+                if old_json.exists():
+                    rename_pairs.append((old_json, new_json))
+
+            if m["sbref"] and m["sbref"]["needs_rename"]:
+                old_nii = m["sbref"]["nii_file"]
+                old_json = m["sbref"]["json_file"]
+                old_base = old_nii.stem.replace(".nii", "")
+                new_base = old_base.replace(
+                    f"task-{m['sbref']['file_task']}_run-{m['sbref']['file_run']:02d}",
+                    f"task-{m['mat_task']}_run-{m['mat_run']:02d}",
+                )
+                new_nii = old_nii.parent / f"{new_base}.nii.gz"
+                new_json = old_json.parent / f"{new_base}.json"
+                console.print(f"  [yellow]SBRef:[/yellow] {old_nii.name} → {new_nii.name}")
+                rename_pairs.append((old_nii, new_nii))
+                if old_json.exists():
+                    rename_pairs.append((old_json, new_json))
+
+            if rename_pairs:
+                try:
+                    atomic_rename_pairs(rename_pairs, dry_run=dry_run)
+                except RuntimeError as exc:
+                    console.print(f"  [red]ERROR[/red] {exc}")
+
+            if m["bold"] or m["sbref"]:
+                rename_count += 1
+                console.print()
+
+        if dry_run:
+            console.print(
+                f"\n[yellow]DRY RUN - would rename {rename_count} groups. Use --execute.[/yellow]"
             )
-            new_nii = old_nii.parent / f"{new_base}.nii.gz"
-            new_json = old_json.parent / f"{new_base}.json"
-            console.print(f"  [yellow]SBRef:[/yellow] {old_nii.name} → {new_nii.name}")
-            rename_pairs.append((old_nii, new_nii))
-            if old_json.exists():
-                rename_pairs.append((old_json, new_json))
-
-        if rename_pairs:
-            try:
-                atomic_rename_pairs(rename_pairs, dry_run=dry_run)
-            except RuntimeError as exc:
-                console.print(f"  [red]ERROR[/red] {exc}")
-
-        if m["bold"] or m["sbref"]:
-            rename_count += 1
-            console.print()
-
-    if dry_run:
-        console.print(
-            f"\n[yellow]DRY RUN - would rename {rename_count} groups. Use --execute.[/yellow]"
-        )
-    else:
-        console.print(f"\n[green]Renamed {rename_count} groups (bold+sbref)[/green]")
+        else:
+            console.print(f"\n[green]Renamed {rename_count} groups (bold+sbref)[/green]")
 
 
 if __name__ == "__main__":
