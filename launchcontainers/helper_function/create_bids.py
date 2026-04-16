@@ -62,7 +62,8 @@ def main():
 
     # get stuff from subseslist for future jobs scheduling
     sub_ses_list_path = parser_namespace.sub_ses_list
-    sub_ses_list, num_of_true_run = do.read_df(sub_ses_list_path)
+    sub_ses_list = do.parse_subses_list(sub_ses_list_path)
+    num_of_true_run = len(sub_ses_list)
 
     bids_dir = op.join(
         basedir,
@@ -96,9 +97,7 @@ def main():
     console.file = console_file
 
     # figure out a way to copy the bids componement to the corresponding bids folder
-    for row in sub_ses_list.itertuples(index=True, name="Pandas"):
-        sub = row.sub
-        ses = row.ses
+    for sub, ses in sub_ses_list:
 
         bids_dir_subses = op.join(
             bids_dir,

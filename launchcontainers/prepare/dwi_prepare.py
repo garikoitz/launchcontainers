@@ -467,9 +467,7 @@ def main(parser_namespace, analysis_dir, df_subses, layout):
         style="cyan",
     )
 
-    for row in df_subses.itertuples(index=True, name="Pandas"):
-        sub = row.sub
-        ses = row.ses
+    for sub, ses in df_subses:
 
         console.print(
             "\n"

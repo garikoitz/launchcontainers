@@ -2,10 +2,12 @@
 # All shared ABCs and utilities — no imports from within analysis_checker
 from __future__ import annotations
 
+import csv
 import json
 from abc import ABC, abstractmethod
-from datetime import datetime
 from pathlib import Path
+
+from launchcontainers.utils import hms_to_sec, parse_hms, times_match  # noqa: F401
 
 
 # =============================================================================
@@ -101,7 +103,7 @@ class AnalysisSpec(ABC):
         Return None to require explicit input from the user.
         """
         return None
-    
+
     def get_group_dimension(self, group_label: str) -> tuple[str, str] | None:
         """
         Extract (dimension_name, dimension_value) from a group label for
@@ -119,7 +121,38 @@ class AnalysisSpec(ABC):
 # 6. SHARED CONSTANTS
 # =============================================================================
 
-EXCLUDED_SESSIONS: set[tuple[str, str]] = set()
+EXCLUDED_SESSIONS: set[tuple[str, str]] = {
+    ("10", "02"),
+    ("09", "01"),
+    ("10", "05"),
+    ("06", "10"),
+    ("05", "08"),
+    ("08", "04"),
+}
+# Path to the WC subseslist — two levels up from analysis_checker/
+_WC_SUBSESLIST_PATH = (
+    Path(__file__).parent.parent / "launchcontainers" / "tests" / "wc_subseslist.txt"
+)
+
+
+def _load_wc_sessions() -> set[tuple[str, str]]:
+    """Load WC (wide-column / retfix) sessions from wc_subseslist.txt."""
+    wc: set[tuple[str, str]] = set()
+    if not _WC_SUBSESLIST_PATH.exists():
+        return wc
+    try:
+        with open(_WC_SUBSESLIST_PATH, newline="") as fh:
+            for row in csv.DictReader(fh):
+                sub = str(row["sub"]).strip().zfill(2)
+                ses = str(row["ses"]).strip().zfill(2)
+                wc.add((sub, ses))
+    except Exception:
+        pass
+    return wc
+
+
+# Loaded once at import time.
+WC_SESSIONS: set[tuple[str, str]] = _load_wc_sessions()
 
 
 def default_combinations() -> list[tuple[str, str]]:
@@ -146,32 +179,3 @@ def read_json(p: Path) -> dict:
 def json_for(nii: Path) -> Path:
     """Return the JSON sidecar path for a .nii.gz file."""
     return nii.with_name(nii.name.replace(".nii.gz", ".json"))
-
-
-def parse_hms(ts: str) -> str:
-    """
-    Normalise any time string to zero-padded HH:MM:SS.
-    Handles ISO datetime, sub-seconds, single-digit hours.
-    """
-    s = str(ts).strip()
-    if "T" in s:
-        s = s.split("T")[1]
-    s = s.split(".")[0]
-    for fmt in ("%H:%M:%S", "%H:%M"):
-        try:
-            return datetime.strptime(s, fmt).strftime("%H:%M:%S")
-        except ValueError:
-            continue
-    return s
-
-
-def times_match(t1: str, t2: str, max_diff_sec: int = 30) -> bool:
-    """Return True if |t1 - t2| <= max_diff_sec."""
-    if t1 is None or t2 is None:
-        return False
-    try:
-        dt1 = datetime.strptime(parse_hms(t1), "%H:%M:%S")
-        dt2 = datetime.strptime(parse_hms(t2), "%H:%M:%S")
-    except ValueError:
-        return False
-    return abs((dt1 - dt2).total_seconds()) <= max_diff_sec

@@ -1,0 +1,3 @@
+remember to module load dcm2niix/2025 for the dcm2niix code
+
+remember to module load fsl/6.0.3 to the avg codem remember, 6.0.7 can't work it will cause typer issue

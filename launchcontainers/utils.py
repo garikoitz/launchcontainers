@@ -16,12 +16,17 @@
 # """
 from __future__ import annotations
 
+import csv
+import json
 import os
 import os.path as op
+import re
 import shutil
 import sys
 import errno
+import uuid
 from datetime import datetime
+from pathlib import Path
 
 import pandas as pd
 import yaml
@@ -47,6 +52,15 @@ def parse_hms(ts: str) -> str:
     return s
 
 
+def hms_to_sec(ts: str) -> float:
+    """HH:MM:SS[.f] → total seconds as float; returns NaN on failure."""
+    try:
+        h, m, s = str(ts).strip().split(":")
+        return int(h) * 3600 + int(m) * 60 + float(s)
+    except Exception:
+        return float("nan")
+
+
 def times_match(t1: str, t2: str, max_diff_sec: int = 30) -> bool:
     """Return True if \|t1 - t2\| <= max_diff_sec."""
     if t1 is None or t2 is None:
@@ -57,6 +71,200 @@ def times_match(t1: str, t2: str, max_diff_sec: int = 30) -> bool:
     except ValueError:
         return False
     return abs((dt1 - dt2).total_seconds()) <= max_diff_sec
+
+
+def read_json_acqtime(json_path: str | Path) -> str:
+    """
+    Read the AcquisitionTime field from a BIDS JSON sidecar.
+
+    Parameters
+    ----------
+    json_path : str or Path
+        Path to the JSON sidecar file.
+
+    Returns
+    -------
+    str
+        The raw AcquisitionTime string (e.g. ``"10:05:32.500000"``),
+        or an empty string if the field is absent or the file cannot be read.
+    """
+    try:
+        with open(json_path) as fh:
+            return json.load(fh).get("AcquisitionTime", "")
+    except Exception:
+        return ""
+
+
+def parse_subses_list(path: str | Path) -> list[tuple[str, str]]:
+    """
+    Read a subseslist CSV or TSV file and return (sub, ses) pairs.
+
+    The file must have a header row with at least ``sub`` and ``ses`` columns.
+    If a ``RUN`` column is present, only rows where ``RUN == "True"`` are
+    returned; otherwise all rows are included.
+    Values are stripped of whitespace and zero-padded to two digits.
+    TSV files (``.tsv`` extension) are auto-detected; everything else is
+    treated as comma-separated.
+
+    Parameters
+    ----------
+    path : str or Path
+        Path to the subseslist file.
+
+    Returns
+    -------
+    list[tuple[str, str]]
+        Ordered list of ``(sub, ses)`` string pairs.
+    """
+    path = Path(path)
+    delimiter = "\t" if path.suffix.lower() == ".tsv" else ","
+    pairs: list[tuple[str, str]] = []
+    with open(path, newline="") as fh:
+        for row in csv.DictReader(fh, delimiter=delimiter):
+            if "RUN" in row and str(row["RUN"]).strip() != "True":
+                continue
+            sub = str(row["sub"]).strip().zfill(2)
+            ses = str(row["ses"]).strip().zfill(2)
+            pairs.append((sub, ses))
+    return pairs
+
+
+_RUN_RE = re.compile(r"_run-(\d+)")
+
+
+def substitute_run(name: str, new_run_int: int, zero_pad: int = 2) -> str:
+    """Return *name* with its ``_run-NN`` entity replaced.
+
+    Parameters
+    ----------
+    name : str
+        BIDS filename or stem (e.g. ``sub-10_ses-02_task-retFF_run-01_bold``).
+    new_run_int : int
+        The new run number to substitute in.
+    zero_pad : int
+        Digit width for the replacement label (``2`` → ``run-01``; ``1`` → ``run-1``).
+
+    Returns
+    -------
+    str
+        The name with the first ``_run-NN`` occurrence replaced.
+    """
+    return _RUN_RE.sub(f"_run-{new_run_int:0{zero_pad}d}", name, count=1)
+
+
+def atomic_rename_pairs(
+    pairs: list[tuple[Path, Path]],
+    dry_run: bool = True,
+) -> None:
+    """Rename a list of (src, dst) pairs atomically using a two-phase UUID strategy.
+
+    Phase 1: every src is renamed to a unique temp name in the same directory.
+    Phase 2: every temp is renamed to its final dst.
+
+    This prevents any file being overwritten — if any dst already exists before
+    we start, a RuntimeError is raised and nothing is touched.
+
+    Parameters
+    ----------
+    pairs : list[tuple[Path, Path]]
+        List of (source, destination) path pairs. Pairs where src == dst are
+        skipped. Non-existent sources are skipped silently.
+    dry_run : bool
+        When True, do nothing on disk (pairs are validated but not renamed).
+    """
+    # Filter out no-ops and missing sources
+    ops = [(s, d) for s, d in pairs if s != d and s.exists()]
+    if not ops or dry_run:
+        return
+
+    # Guard: refuse to overwrite any pre-existing destination that is NOT
+    # itself a source in this same batch (those will be safely parked in
+    # phase 1 before phase 2 needs the slot — handles swap cases).
+    src_set = {s for s, _ in ops}
+    conflicts = [d for _, d in ops if d.exists() and d not in src_set]
+    if conflicts:
+        names = ", ".join(c.name for c in conflicts)
+        raise RuntimeError(
+            f"Rename aborted — destination(s) already exist: {names}\n"
+            "Remove or rename them manually before re-running."
+        )
+
+    tag = uuid.uuid4().hex
+    # Phase 1: park every source under a unique tmp name
+    tmps: list[tuple[Path, Path]] = []
+    for src, dst in ops:
+        tmp = src.parent / f"._rnm_{tag}_{src.name}"
+        src.rename(tmp)
+        tmps.append((tmp, dst))
+
+    # Phase 2: rename each tmp to its final destination
+    for tmp, dst in tmps:
+        tmp.rename(dst)
+
+
+def reorder_bids_runs(
+    files: list[Path],
+    run_map: dict[int, int],
+    zero_pad: int = 2,
+    dry_run: bool = True,
+) -> list[tuple[Path, Path]]:
+    """Rename BIDS files in-place by substituting run numbers per *run_map*.
+
+    Only files whose ``_run-NN`` label is a key in *run_map* are touched; all
+    others are skipped silently.  A two-phase rename (source → UUID temp →
+    final) prevents clobbering when source and destination run ranges overlap
+    (e.g. renumbering run-02 → run-01 while run-01 still exists).
+
+    Parameters
+    ----------
+    files : list[Path]
+        Candidate files.  May contain any mix of regular files, symlinks, or
+        paths that don't exist; only those whose name contains ``_run-NN``
+        and whose run integer appears in *run_map* are processed.
+    run_map : dict[int, int]
+        ``{old_run_int: new_run_int}`` mapping.
+    zero_pad : int
+        Digit width for the new run label (default ``2`` → ``run-01``).
+    dry_run : bool
+        When ``True``, log the planned renames and return the list without
+        modifying anything on disk.
+
+    Returns
+    -------
+    list[tuple[Path, Path]]
+        ``(old_path, new_path)`` for every rename that was planned (and
+        executed when *dry_run* is ``False``).
+    """
+    moves: list[tuple[Path, Path]] = []
+    for f in sorted(files):
+        m = _RUN_RE.search(f.name)
+        if not m:
+            continue
+        old_int = int(m.group(1))
+        if old_int not in run_map:
+            continue
+        new_name = substitute_run(f.name, run_map[old_int], zero_pad)
+        dst = f.parent / new_name
+        if dst == f:
+            continue
+        console.print(f"  [cyan]RENUMBER[/cyan]  {f.name}  \u2192  {new_name}")
+        moves.append((f, dst))
+
+    if dry_run or not moves:
+        return moves
+
+    # Phase 1: rename all sources to temp names
+    tmps: list[tuple[Path, Path, Path]] = []
+    for src, dst in moves:
+        tmp = src.parent / f"._rnm_{uuid.uuid4().hex[:8]}_{src.name}"
+        src.rename(tmp)
+        tmps.append((src, tmp, dst))
+
+    # Phase 2: rename temp names to final destinations
+    for _, tmp, dst in tmps:
+        tmp.rename(dst)
+
+    return moves
 
 
 def die(*args):
@@ -92,34 +300,6 @@ def read_yaml(path_to_config_file):
     return config
 
 
-def read_df(path_to_df_file):
-    """
-    Read a CSV file into a dataframe and count runnable rows.
-
-    This helper is primarily used for ``subseslist`` files, where the
-    ``RUN`` column marks which rows should be scheduled.
-
-    Parameters
-    ----------
-    path_to_df_file : str or path-like
-        Path to the CSV file to read.
-
-    Returns
-    -------
-    tuple[pandas.DataFrame, int | None]
-        The loaded dataframe and the number of rows where ``RUN == 'True'``.
-        If the file does not contain a ``RUN`` column, the count is ``None``.
-    """
-    df = pd.read_csv(path_to_df_file, sep=",", dtype=str)
-    try:
-        num_of_true_run = len(df.loc[df["RUN"] == "True"])
-    except Exception:
-        num_of_true_run = None
-        # logger.warn(f'The df you are reading is not subseslist'
-        #    +f'or something is wrong {e}')
-    console.print(df.head(5), style="cyan")
-
-    return df, num_of_true_run
 
 
 def copy_file(src_file, dst_file, force):

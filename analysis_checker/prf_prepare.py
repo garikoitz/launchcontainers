@@ -30,7 +30,14 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from .base import AnalysisSpec, default_combinations
+try:
+    from .base import AnalysisSpec, default_combinations
+except ImportError:
+    import sys
+    import os
+
+    sys.path.insert(0, os.path.dirname(__file__))
+    from base import AnalysisSpec, default_combinations
 
 
 # ── Valid task name sets ──────────────────────────────────────────────────────
@@ -145,6 +152,14 @@ class PRFPrepareSpec(AnalysisSpec):
     # [DEV] Change if your protocol uses a different number of tasks
     EXPECTED_N_TASKS: int = 3
 
+    # [DEV] Sessions that only acquired retRW + retCB (no retFF) → 2 tasks expected.
+    # Same set as BIDSSpec.REDUCED_RET_SESSIONS in bids.py.
+    REDUCED_RET_SESSIONS: set[tuple[str, str]] = {
+        ("sub-03", "ses-01"),
+        ("sub-04", "ses-01"),
+        ("sub-06", "ses-01"),
+    }
+
     @property
     def name(self) -> str:
         return "prfprepare"
@@ -164,10 +179,24 @@ class PRFPrepareSpec(AnalysisSpec):
 
     # ── Task discovery ────────────────────────────────────────────────────────
 
+    def _expected_n_tasks(self, sub: str, ses: str) -> int:
+        """Return the expected task count for this sub/ses.
+
+        Reduced sessions (sub-03/04/06 ses-01) only acquired retRW + retCB,
+        so only 2 tasks are expected instead of the usual 3.
+        """
+        sub_str = sub if sub.startswith("sub-") else f"sub-{sub}"
+        ses_str = ses if ses.startswith("ses-") else f"ses-{ses}"
+        if (sub_str, ses_str) in self.REDUCED_RET_SESSIONS:
+            return 2
+        return self.EXPECTED_N_TASKS
+
     def _discover_tasks(
         self,
         session_dir: Path,
         prefix: str,
+        sub: str,
+        ses: str,
     ) -> tuple[set[str], set[str], list[str]]:
         """
         Scan func/ directory to find which tasks exist.
@@ -209,9 +238,10 @@ class PRFPrepareSpec(AnalysisSpec):
             )
 
         # ── Wrong task count check ────────────────────────────────────────────
-        if len(bold_tasks) != self.EXPECTED_N_TASKS and len(bold_tasks) > 0:
+        expected_n = self._expected_n_tasks(sub, ses)
+        if len(bold_tasks) != expected_n and len(bold_tasks) > 0:
             mix_errors.append(
-                f"Expected {self.EXPECTED_N_TASKS} tasks, "
+                f"Expected {expected_n} tasks, "
                 f"found {len(bold_tasks)}: {sorted(bold_tasks)}"
             )
 
@@ -220,8 +250,8 @@ class PRFPrepareSpec(AnalysisSpec):
     # ── Group construction ────────────────────────────────────────────────────
 
     def get_expected_groups(self, session_dir: Path) -> dict[str, list[str]]:
-        sub    = session_dir.parent.parent.name
-        ses    = session_dir.parent.name
+        sub = session_dir.parent.parent.name
+        ses = session_dir.parent.name
         prefix = f"{sub}_{ses}"
         groups: dict[str, list[str]] = {}
 
@@ -232,7 +262,7 @@ class PRFPrepareSpec(AnalysisSpec):
         if not session_dir.is_dir():
             return groups
 
-        bold_tasks, event_tasks, mix_errors = self._discover_tasks(session_dir, prefix)
+        bold_tasks, event_tasks, mix_errors = self._discover_tasks(session_dir, prefix, sub, ses)
 
         # 2. Bold groups
         for task in sorted(bold_tasks):
@@ -245,12 +275,11 @@ class PRFPrepareSpec(AnalysisSpec):
         # 3. Events groups
         for task in sorted(event_tasks):
             groups[f"events-{task}"] = [
-                f"{prefix}_task-{task}_run-{run}_events.tsv"
-                for run in self.EVENTS_RUNS
+                f"{prefix}_task-{task}_run-{run}_events.tsv" for run in self.EVENTS_RUNS
             ]
 
-        # 4. Validate group count — expected 8 (2 maskinfo + 3 bold + 3 events)
-        expected_n_groups = 2 + self.EXPECTED_N_TASKS * 2
+        # 4. Validate group count — expected 2 maskinfo + N_tasks × 2 (bold + events)
+        expected_n_groups = 2 + self._expected_n_tasks(sub, ses) * 2
         if len(groups) != expected_n_groups:
             mix_errors.append(
                 f"Expected {expected_n_groups} groups total, "
@@ -266,7 +295,9 @@ class PRFPrepareSpec(AnalysisSpec):
 
     def get_group_dimension(self, group_label: str) -> tuple[str, str] | None:
         parts = group_label.split("_")
-        task = next((p.split("task-")[-1] for p in parts if p.startswith("task-")), None)
+        task = next(
+            (p.split("task-")[-1] for p in parts if p.startswith("task-")), None
+        )
         if task:
             return ("task", task)
         return None

@@ -1,68 +1,91 @@
-# """
+#!/usr/bin/env bash
 # MIT License
-
 # Copyright (c) 2024-2025 Yongning Lei
 
-# Permission is hereby granted, free of charge, to any person obtaining a copy of this software
-# and associated documentation files (the "Software"), to deal in the Software without restriction,
-# including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,
-# subject to the following conditions:
-
-# The above copyright notice and this permission notice shall be included in all copies or substantial
-# portions of the Software.
+# ---------------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------------
 step=presurfer
 basedir=/bcbl/home/public/Gari/VOTCLOC/main_exp
-bids_dirname=BIDS
+codedir=/bcbl/home/public/Gari/VOTCLOC/main_exp/code
 
-# toolbox path that stores all the matlab toolboxes
 tbPath=/export/home/tlei/tlei/toolboxes
 src_dir=$basedir/raw_nifti
-analysis_name=sub10
-outputdir=${basedir}/${bids_dirname}
-force=false # if overwrite exsting file
-
-subseslist_path=$1
+outputdir=${basedir}/BIDS
+force=false
 script_dir=/export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/01_prepare_nifti/prepare_anat
+
+# ---------------------------------------------------------------------------
+# Parse arguments
+# ---------------------------------------------------------------------------
+usage() {
+    echo "Usage:"
+    echo "  $0 -s <sub>,<ses>         # single sub/ses pair"
+    echo "  $0 -f <full_path_to_subseslist>   # batch mode"
+    exit 1
+}
+
+subses_arg=""
+file_arg=""
+
+while getopts ":s:f:" opt; do
+    case $opt in
+        s) subses_arg="$OPTARG" ;;
+        f) file_arg="$OPTARG" ;;
+        *) usage ;;
+    esac
+done
+
+if [[ -z "$subses_arg" && -z "$file_arg" ]]; then
+    usage
+fi
+
+# ---------------------------------------------------------------------------
+# Build sub/ses list
+# ---------------------------------------------------------------------------
+tmpfile=$(mktemp)
+
+if [[ -n "$subses_arg" ]]; then
+    echo "$subses_arg" > "$tmpfile"
+    analysis_name="sub$(echo "$subses_arg" | cut -d',' -f1)ses$(echo "$subses_arg" | cut -d',' -f2)"
+else
+    subseslist_path="$file_arg"
+    if [[ ! -f "$subseslist_path" ]]; then
+        echo "Error: subseslist not found: $subseslist_path"
+        exit 1
+    fi
+    tail -n +2 "$subseslist_path" > "$tmpfile"
+    analysis_name=$(basename "$file_arg" | sed 's/\.[^.]*$//')
+fi
+
+# ---------------------------------------------------------------------------
+# Logging setup
+# ---------------------------------------------------------------------------
 logdir=${outputdir}/log_${step}/${analysis_name}_$(date +"%Y-%m-%d")
 echo "The logdir is $logdir"
 echo "The outputdir is $outputdir"
-mkdir -p $logdir
+mkdir -p "$logdir"
 
+cp "$0" "$logdir"
+[[ -n "$file_arg" ]] && cp "$subseslist_path" "$logdir/subseslist.txt"
 
-echo "reading the subses"
-# Initialize a line counter
-line_number=0
-# Read the file line by line
-while IFS=',' read -r sub ses _
-do
-    echo "line number is $line_number sub is $sub ses is $ses"
-    # Increment line counter
-    ((line_number++))
+# ---------------------------------------------------------------------------
+# Run jobs locally
+# ---------------------------------------------------------------------------
+while IFS=',' read -r sub ses _; do
+    [[ -z "$sub" || -z "$ses" ]] && continue
 
-    # Skip the first line which is the header
-    if [ $line_number -eq 1 ]; then
-        continue
-    fi
-
-    # Define the name of logs
+    echo "### PRESURFER: sub-${sub} ses-${ses} ###"
     now=$(date +"%H;%M")
     log_file="${logdir}/presurfer_${sub}_${ses}_${now}.o"
     error_file="${logdir}/presurfer_${sub}_${ses}_${now}.e"
-	# Export variables for use in the called script
-    export tbPath
-    export src_dir
-    export outputdir
-    export sub
-    export ses
-    export force
-    export script_dir
-    # Command to execute locally
-    cmd="bash $script_dir/src_${step}.sh "
 
-    # Run the command in the background
-    echo $cmd
-    eval $cmd > ${log_file} 2> ${error_file}
-    unset sub
-    unset ses
-done < "$subseslist_path"
+    export tbPath src_dir outputdir sub ses force script_dir
+
+    cmd="bash $script_dir/src_${step}.sh"
+    echo "$cmd"
+    eval "$cmd" > "${log_file}" 2> "${error_file}"
+
+done < "$tmpfile"
+
+rm -f "$tmpfile"

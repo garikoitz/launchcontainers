@@ -1,82 +1,101 @@
-# """
+#!/usr/bin/env bash
 # MIT License
-
 # Copyright (c) 2024-2025 Yongning Lei
 
-# Permission is hereby granted, free of charge, to any person obtaining a copy of this software
-# and associated documentation files (the "Software"), to deal in the Software without restriction,
-# including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,
-# subject to the following conditions:
+# ---------------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------------
+project=votcloc
+basedir=/bcbl/home/public/Gari/VOTCLOC/main_exp
+codedir=/bcbl/home/public/Gari/VOTCLOC/main_exp/code
 
-# The above copyright notice and this permission notice shall be included in all copies or substantial
-# portions of the Software.
-# """
-#### user customize
-project=bibalance
-basedir=/bcbl/home/home_n-z/tlei/BIBALANCE_MRI
-unset step
-
-###
-# user inputs
-###
-step=$1 # step1 or step2
-subseslist_name=$2 #$codedir/00_heudiconv/subseslist_heudiconv.txt
-analysis_name=$3 #may_launch_25ses
-
-#### below are not going to be changed
-codedir=$basedir/code
 outputdir=$basedir/raw_nifti
-# it will always be base/dicom, because the current workflow pre cleans the dicom dirs
-dcm_dir=/base/dicom 
+dcm_dir=/base/dicom
 script_dir=/export/home/tlei/tlei/soft/launchcontainers/MR_pipelines/00_dicom_to_nifti
-subseslist_path=$codedir/$2
 heuristicfile=$script_dir/heuristic/heuristic_all_${project}.py
 sing_path=/bcbl/home/public/Gari/containers/heudiconv_1.3.4.sif
 
+# ---------------------------------------------------------------------------
+# Parse arguments
+# ---------------------------------------------------------------------------
+usage() {
+    echo "Usage:"
+    echo "  $0 -t <step> -s <sub>,<ses>         # single sub/ses pair"
+    echo "  $0 -t <step> -f <subseslist_name>   # batch from codedir/<subseslist_name>"
+    echo ""
+    echo "  -t  heudiconv step: step1 or step2"
+    exit 1
+}
+
+step=""
+subses_arg=""
+file_arg=""
+
+while getopts ":t:s:f:" opt; do
+    case $opt in
+        t) step="$OPTARG" ;;
+        s) subses_arg="$OPTARG" ;;
+        f) file_arg="$OPTARG" ;;
+        *) usage ;;
+    esac
+done
+
+if [[ -z "$step" ]]; then
+    echo "Error: -t <step> is required (step1 or step2)."
+    usage
+fi
+
+if [[ -z "$subses_arg" && -z "$file_arg" ]]; then
+    usage
+fi
+
+# ---------------------------------------------------------------------------
+# Build sub/ses list
+# ---------------------------------------------------------------------------
+tmpfile=$(mktemp)
+
+if [[ -n "$subses_arg" ]]; then
+    echo "$subses_arg" > "$tmpfile"
+    analysis_name="sub$(echo "$subses_arg" | cut -d',' -f1)ses$(echo "$subses_arg" | cut -d',' -f2)"
+else
+    subseslist_path="$file_arg"
+    if [[ ! -f "$subseslist_path" ]]; then
+        echo "Error: subseslist not found: $subseslist_path"
+        exit 1
+    fi
+    tail -n +2 "$subseslist_path" > "$tmpfile"
+    analysis_name=$(basename "$file_arg" | sed 's/\.[^.]*$//')
+fi
+
+# ---------------------------------------------------------------------------
+# Logging setup
+# ---------------------------------------------------------------------------
 logdir=${outputdir}/log_heudiconv/${analysis_name}_$(date +"%Y-%m-%d")/${step}
 echo "The logdir is $logdir"
 echo "The outputdir is $outputdir"
-mkdir -p $logdir
-
-echo "reading the subses"
-# Initialize a line counter
-line_number=0
-# Read the file line by line
-# Loop through the subseslist
-while IFS=',' read -r sub ses _; do
-    echo "line number is $line_number sub is $sub ses is $ses"
-    ((line_number++))  # Increment line counter
-
-    # Skip the first line (header)
-    if [ $line_number -eq 1 ]; then
-        continue
-    fi
-
-    echo "### CONVERTING TO NIFTI OF SUBJECT: $sub SESSION: $ses  ###"
-    now=$(date +"%H;%M")
-    log_file="${logdir}/local_${sub}_${ses}_${now}.o"
-    error_file="${logdir}/local_${sub}_${ses}_${now}.e"
-    # Export variables for use in the called script
-    export basedir
-    export logdir
-    export dcm_dir
-    export outputdir
-    export sub
-    export ses
-    export heuristicfile
-    export sing_path
-
-    # Command to execute locally
-    cmd="bash $script_dir/src_heudiconv_${step}.sh"
-
-    # Run the command in the background
-    echo $cmd
-    eval $cmd > ${log_file} 2> ${error_file}
-	#when finish should copy the subseslist into the analysis dir
-	#echo "Coping the log files to the subsesdir"
-	#rsync -av $subseslist_path $outputdir/sub-${sub}/ses-${ses}
-done < "$subseslist_path"
+mkdir -p "$logdir"
 
 cp "$0" "$logdir"
 cp "$script_dir/src_heudiconv_${step}.sh" "$logdir"
+[[ -n "$file_arg" ]] && cp "$subseslist_path" "$logdir/subseslist.txt"
+
+# ---------------------------------------------------------------------------
+# Run jobs locally
+# ---------------------------------------------------------------------------
+while IFS=',' read -r sub ses _; do
+    [[ -z "$sub" || -z "$ses" ]] && continue
+
+    echo "### CONVERTING TO NIFTI: sub-${sub} ses-${ses} ###"
+    now=$(date +"%H;%M")
+    log_file="${logdir}/local_${sub}_${ses}_${now}.o"
+    error_file="${logdir}/local_${sub}_${ses}_${now}.e"
+
+    export basedir logdir dcm_dir outputdir sub ses heuristicfile sing_path
+
+    cmd="bash $script_dir/src_heudiconv_${step}.sh"
+    echo "$cmd"
+    eval "$cmd" > "${log_file}" 2> "${error_file}"
+
+done < "$tmpfile"
+
+rm -f "$tmpfile"

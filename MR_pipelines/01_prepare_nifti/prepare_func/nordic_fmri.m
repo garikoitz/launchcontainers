@@ -1,254 +1,299 @@
 function nordic_fmri(tbPath, src_dir, output_dir, sub, ses, nordic_scans_end, doNORDIC, dotsnr, force)
 % MIT License
-
 % Copyright (c) 2024-2025 Yongning Lei
+%
+% Permission is hereby granted, free of charge, to any person obtaining a
+% copy of this software and associated documentation files (the "Software"),
+% to deal in the Software without restriction, including without limitation
+% the rights to use, copy, modify, merge, publish, distribute, sublicense,
+% and/or sell copies of the Software, and to permit persons to whom the
+% Software is furnished to do so, subject to the following conditions:
+% The above copyright notice and this permission notice shall be included in
+% all copies or substantial portions of the Software.
 
-% Permission is hereby granted, free of charge, to any person obtaining a copy of this software
-% and associated documentation files (the "Software"), to deal in the Software without restriction,
-% including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
-% and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,
-% subject to the following conditions:
+    % -----------------------------------------------------------------------
+    % Session header
+    % -----------------------------------------------------------------------
+    fprintf('\n');
+    fprintf('==========================================================\n');
+    fprintf('  nordic_fmri  sub=%s  ses=%s\n', sub, ses);
+    fprintf('  doNORDIC=%d  dotsnr=%d  nordic_scans_end=%d  force=%d\n', ...
+            doNORDIC, dotsnr, nordic_scans_end, force);
+    fprintf('==========================================================\n');
 
-% The above copyright notice and this permission notice shall be included in all copies or substantial
-% portions of the Software.
-    disp('################### \n');
-    fprintf('this is sub, %s \n', sub);
-    fprintf('this is ses, %s \n', ses);
-    fprintf('%s \n',class(sub));
+    sub = ['sub-' sub];
+    ses = ['ses-' ses];
 
-    sub=['sub-' sub];
-    ses=['ses-' ses];
-    if ~exist(output_dir, 'dir')
-       mkdir(output_dir);
-    end
-    spm12Path = fullfile(tbPath, 'spm12');
-    bidsmatlab_path=fullfile(tbPath,'bids-matlab');
-    addpath(bidsmatlab_path);
-    addpath(spm12Path);
-    fmamtPath = fullfile(tbPath, 'freesurfer_mrtrix_afni_matlab_tools'); % tbUse if not installed
-    addpath(genpath(fmamtPath));
-    addpath(genpath(fullfile(src_dir,'..','code')));
+    % -----------------------------------------------------------------------
+    % Paths and toolboxes
+    % -----------------------------------------------------------------------
+    if ~exist(output_dir, 'dir'); mkdir(output_dir); end
+    addpath(fullfile(tbPath, 'bids-matlab'));
+    addpath(fullfile(tbPath, 'spm12'));
+    addpath(genpath(fullfile(tbPath, 'freesurfer_mrtrix_afni_matlab_tools')));
+    addpath(genpath(fullfile(src_dir, '..', 'code')));
     addpath(genpath('/bcbl/home/home_n-z/tlei/soft/launchcontainers/src/launchcontainers/MR_pipelines'));
-    nordicpath=fullfile(tbPath,'NORDIC_Raw');
-    addpath(genpath(nordicpath));
+    addpath(genpath(fullfile(tbPath, 'NORDIC_Raw')));
     setenv('FSLOUTPUTTYPE', 'NIFTI_GZ');
 
-    % start the diary, disp, fprintf , sprintf will go to diary and will be
-    % captured by .e and .o
-    % diary(log);
-    src_sesP = fullfile(src_dir, sub, ses,'func');
+    src_sesP = fullfile(src_dir, sub, ses, 'func');
     out_sesP = fullfile(output_dir, sub, ses, 'func');
-    % change permission to src_sesP, output_dir all and out_sesP
     system(['chmod -R 777 ', src_sesP]);
-    fprintf('The input dir is: %s, and the output dir is %s \n', src_sesP, out_sesP);
-    if ~exist(out_sesP, 'dir')
-       mkdir(out_sesP);
-    end
+    if ~exist(out_sesP, 'dir'); mkdir(out_sesP); end
     system(['chmod -R 777 ', out_sesP]);
 
-    % Detect all T1w.nii.gz files
-    funcmag_pattern = fullfile(src_sesP, ['*_magnitude.nii.gz']);
+    fprintf('  src : %s\n', src_sesP);
+    fprintf('  dst : %s\n', out_sesP);
+
+    % -----------------------------------------------------------------------
+    % Discover runs
+    % -----------------------------------------------------------------------
+    funcmag_pattern = fullfile(src_sesP, '*_magnitude.nii.gz');
     src_mags = dir(funcmag_pattern);
-    % Get the number of runs
     num_runs = length(src_mags);
-    runs = arrayfun(@(x) sprintf('%02d', x), 1:num_runs, 'UniformOutput', false);
-    fprintf('Number of runs for are %i \n', num_runs);
-
-
-    % nordic
-    %% Step 1, check if the BIDS has been processed, if not, create backups
-    % loop over all the mag files in src_filder
-    % if there are no mag back up files, create backups, delete the noise
-    % scans to only 1 left
-    disp('### Starting step 1, preaparing the  mag and phase for nordic \n')
-    time_start=datetime('now');
-    parfor src_magI=1:length(src_mags) % src_magI=1
-        prepare_nordic_bold_nifti(fullfile(src_mags(src_magI).folder, src_mags(src_magI).name),nordic_scans_end ,force);
+    fprintf('\n  Found %d magnitude file(s):\n', num_runs);
+    for k = 1:num_runs
+        fprintf('    [%d] %s\n', k, src_mags(k).name);
     end
 
-    %% Step 2, prepare ARG struct for each run of the the magnitude.nii.gz
-    disp('### Starting step2, preparing the ARG and file struct storing the input and output file info \n')
-    clear ARG
+    % -----------------------------------------------------------------------
+    %% STEP 1 — prepare mag/phase for NORDIC (backup + trim + dtype)
+    % -----------------------------------------------------------------------
+    fprintf('\n----------------------------------------------------------\n');
+    fprintf('  STEP 1 — prepare mag/phase (backup, trim, dtype convert)\n');
+    fprintf('----------------------------------------------------------\n');
+    time_start = datetime('now');
 
-    I = 1; %ARG file index
-    % update src_mags
-    funcmag_pattern = fullfile(src_sesP, ['*_magnitude.nii.gz']);
-    src_mags = dir(funcmag_pattern);
+    step1_logs = cell(1, num_runs);
+    parfor src_magI = 1:num_runs
+        mag_in = fullfile(src_mags(src_magI).folder, src_mags(src_magI).name);
+        orig   = strrep(mag_in, '.nii.gz', '_orig.nii.gz');
+        msgs = {};
+        msgs{end+1} = sprintf('  [run %d/%d] %s', src_magI, num_runs, src_mags(src_magI).name);
+        msgs{end+1} = sprintf('    IN  : %s', mag_in);
+        msgs{end+1} = sprintf('    ORIG: %s  (backup)', orig);
+        prepare_nordic_bold_nifti(mag_in, nordic_scans_end, force);
+        msgs{end+1} = sprintf('    DONE: dtype→float, noise scans trimmed (nordic_scans_end=%d)', nordic_scans_end);
+        step1_logs{src_magI} = strjoin(msgs, '\n');
+    end
+    for k = 1:num_runs; fprintf('%s\n', step1_logs{k}); end
+
+    % -----------------------------------------------------------------------
+    %% STEP 2 — build NORDIC ARG/file structs
+    % -----------------------------------------------------------------------
+    fprintf('\n----------------------------------------------------------\n');
+    fprintf('  STEP 2 — build NORDIC input structs\n');
+    fprintf('----------------------------------------------------------\n');
+    clear ARG
+    I = 1;
+    src_mags = dir(funcmag_pattern);   % re-read after step 1
     num_runs = length(src_mags);
-    runs = arrayfun(@(x) sprintf('%02d', x), 1:num_runs, 'UniformOutput', false);
-    fprintf('Number of runs after prepare for are %i \n', num_runs);
-    for src_magI=1:length(src_mags)
-        % define file names
+
+    for src_magI = 1:num_runs
         fn_magn_in  = fullfile(src_mags(src_magI).folder, src_mags(src_magI).name);
         fn_phase_in = strrep(fn_magn_in, '_magnitude', '_phase');
         fn_out      = fullfile(out_sesP, strrep(src_mags(src_magI).name, '_magnitude', '_bold'));
 
-        if ~(exist(strrep(fn_out, '.nii.gz', 'magn.nii'), 'file') || exist(fn_out,'file')) && doNORDIC
-
-            ARG(I).temporal_phase = 1;
+        if ~(exist(strrep(fn_out, '.nii.gz', 'magn.nii'), 'file') || exist(fn_out, 'file')) && doNORDIC
+            ARG(I).temporal_phase    = 1;
             ARG(I).phase_filter_width = 10;
             ARG(I).noise_volume_last = 1;
-            [ARG(I).DIROUT,fn_out_name,~] =fileparts(fn_out);
+            [ARG(I).DIROUT, fn_out_name, ~] = fileparts(fn_out);
             ARG(I).DIROUT = [ARG(I).DIROUT, '/'];
-            if ~exist(ARG(I).DIROUT, 'dir')
-                mkdir(ARG(I).DIROUT)
-            end
+            if ~exist(ARG(I).DIROUT, 'dir'); mkdir(ARG(I).DIROUT); end
             ARG(I).make_complex_nii = 1;
             ARG(I).save_gfactor_map = 1;
-
             file(I).phase = fn_phase_in;
             file(I).magni = fn_magn_in;
-            %file.out has no .gz only nii
             file(I).out   = strrep(fn_out_name, '.nii', '');
-
+            fprintf('  [%d] QUEUED for NORDIC\n', src_magI);
+            fprintf('    IN  mag  : %s\n', fn_magn_in);
+            fprintf('    IN  phase: %s\n', fn_phase_in);
+            fprintf('    OUT base : %s\n', fn_out);
             I = I + 1;
         else
-            disp('Step 2 will not crete ARG and file Struct, because nordic might be run before ')
+            fprintf('  [%d] SKIP NORDIC — output already exists or doNORDIC=0\n', src_magI);
+            fprintf('    %s\n', fn_out);
         end
-
     end
 
-    %% Step 3 Call NORDIC_RAW Do nordic on all functional runs under this session using parfor
+    % -----------------------------------------------------------------------
+    %% STEP 3 — run NORDIC
+    % -----------------------------------------------------------------------
+    fprintf('\n----------------------------------------------------------\n');
+    fprintf('  STEP 3 — run NIFTI_NORDIC\n');
+    fprintf('----------------------------------------------------------\n');
     if exist('ARG', 'var')
-
-        disp ('Step 3, the NORDIC using parfor \n')
-        disp(['the length of ARG is ' length(ARG)]);
-        parfor i=1:length(ARG)
-
-            sprintf("Processing Nordic on run- 0%s", i);
-            NIFTI_NORDIC(file(i).magni, file(i).phase,file(i).out,ARG(i));
-
+        n_nordic = length(ARG);
+        fprintf('  Running NORDIC on %d file(s) (parfor)\n', n_nordic);
+        step3_logs = cell(1, n_nordic);
+        parfor i = 1:n_nordic
+            msgs = {};
+            msgs{end+1} = sprintf('  [nordic %d/%d]', i, n_nordic);
+            msgs{end+1} = sprintf('    IN  mag  : %s', file(i).magni);
+            msgs{end+1} = sprintf('    IN  phase: %s', file(i).phase);
+            msgs{end+1} = sprintf('    OUT base : %s', file(i).out);
+            NIFTI_NORDIC(file(i).magni, file(i).phase, file(i).out, ARG(i));
+            msgs{end+1} = sprintf('    DONE: created *magn.nii, *phase.nii, gfactor*.nii');
+            step3_logs{i} = strjoin(msgs, '\n');
         end
+        for k = 1:n_nordic; fprintf('%s\n', step3_logs{k}); end
         clear ARG file
-        disp('This step will create 3 files: gfactorxx_bold.nii ; boldmagn.nii ; boldphase.nii \n');
+    else
+        fprintf('  No ARG struct — NORDIC skipped (doNORDIC=0 or all outputs exist)\n');
     end
-    % output of step 3 will be under output dir
-    % 1. gfactor_sub-03_ses-01_task-fLoc_run-01_bold.nii
-    % 2. sub-03_ses-01_task-fLoc_run-01_boldmagn.nii
-    % 3. sub-03_ses-01_task-fLoc_run-01_boldphase.nii
-    %% Step 4, wrap up nodric output to make BIDS nifti
-    disp('### Starting step 4, rename and gzip files as well as move json file \n');
-    fprintf('Do nordic is: %d, dotsnr is %d\n', doNORDIC, dotsnr)
-    parfor src_magI=1:length(src_mags)
-        %             try
-        % define file names
-        fn_magn_in  = fullfile(src_mags(src_magI).folder, src_mags(src_magI).name);
-        fn_phase_in = strrep(fn_magn_in, '_magnitude', '_phase');
-        fn_out      = fullfile(out_sesP,strrep(src_mags(src_magI).name, '_magnitude', '_bold'));
-        gfactorFile = strrep(strrep(fn_out, '.nii.gz', '.nii'),[sub '_ses'],['gfactor_' sub '_ses']);
 
+    % -----------------------------------------------------------------------
+    %% STEP 4 — wrap up: gzip, clean intermediates, copy JSON/sbref
+    % -----------------------------------------------------------------------
+    fprintf('\n----------------------------------------------------------\n');
+    fprintf('  STEP 4 — wrap up BIDS outputs (gzip, JSON, sbref)\n');
+    fprintf('----------------------------------------------------------\n');
+    fprintf('  doNORDIC=%d  dotsnr=%d\n', doNORDIC, dotsnr);
+
+    step4_logs = cell(1, num_runs);
+    parfor src_magI = 1:num_runs
+        fn_magn_in   = fullfile(src_mags(src_magI).folder, src_mags(src_magI).name);
+        fn_phase_in  = strrep(fn_magn_in, '_magnitude', '_phase');  %#ok<NASGU>
+        fn_out       = fullfile(out_sesP, strrep(src_mags(src_magI).name, '_magnitude', '_bold'));
+        gfactorFile  = strrep(strrep(fn_out, '.nii.gz', '.nii'), [sub '_ses'], ['gfactor_' sub '_ses']);
+
+        msgs = {};
+        msgs{end+1} = sprintf('  [run %d/%d] %s', src_magI, num_runs, src_mags(src_magI).name);
+        msgs{end+1} = sprintf('    IN  mag  : %s', fn_magn_in);
+        msgs{end+1} = sprintf('    OUT bold : %s', fn_out);
+
+        % --- doNORDIC: finalise NORDIC output ---
         if exist(gfactorFile, 'file') && doNORDIC
-
-            disp('Gfactor orig file is here, and going to gzip the gfactor');
-            % clean up
-            info = niftiinfo(strrep(fn_out, '.nii.gz', 'magn.nii'));
-            % remove the last one
-            system(['fslroi ', strrep(fn_out, '.nii.gz', 'magn.nii'), ' ', fn_out, ' 0 -1 0 -1 0 -1 0 ', num2str(info.ImageSize(end)-1)]);
-
+            magn_nii = strrep(fn_out, '.nii.gz', 'magn.nii');
+            info = niftiinfo(magn_nii);
+            n_vols_out = info.ImageSize(end) - 1;
+            system(['fslroi ', magn_nii, ' ', fn_out, ' 0 -1 0 -1 0 -1 0 ', num2str(n_vols_out)]);
+            msgs{end+1} = sprintf('    NORDIC  : fslroi %s → %s  (vols: %d→%d)', ...
+                magn_nii, fn_out, info.ImageSize(end), n_vols_out);
             gzip(gfactorFile);
-            % there will be a file called _boldphase.nii, we didn't
-            % remove it
-            system(['rm ', strrep(fn_out, '.nii.gz', 'magn.nii'), ' ', gfactorFile, ' ' , strrep(fn_out, '.nii.gz', 'phase.nii')]);
-            system(['mv ', strrep(gfactorFile, '.nii', '.nii.gz'), ' ', strrep(strrep(strrep(gfactorFile, '.nii', '.nii.gz'), '_bold', '_gfactor'), 'gfactor_', '')]);
-            fprintf (' Phase file removed, gfactor file zipped, bold.nii.gz created for mag file %s \n', src_mags(src_magI).name);
+            gfactor_gz  = strrep(gfactorFile, '.nii', '.nii.gz');
+            gfactor_dst = strrep(strrep(strrep(gfactor_gz, '_bold', '_gfactor'), 'gfactor_', ''), ...
+                                 [sub '_ses'], [sub '_ses']);  % keep sub/ses intact
+            gfactor_dst = strrep(strrep(gfactor_gz, '_bold', '_gfactor'), 'gfactor_', '');
+            system(['rm ', magn_nii, ' ', gfactorFile, ' ', strrep(fn_out, '.nii.gz', 'phase.nii')]);
+            system(['mv ', gfactor_gz, ' ', gfactor_dst]);
+            msgs{end+1} = sprintf('    NORDIC  : gfactor → %s', gfactor_dst);
+            msgs{end+1} = sprintf('    NORDIC  : cleaned up magn.nii, phase.nii, gfactor.nii');
+
+        % --- no NORDIC: copy + trim magnitude ---
+        elseif ~doNORDIC
+            if ~exist(fn_out, 'file') || force
+                info = niftiinfo(fn_magn_in);
+                n_vols_out = info.ImageSize(end) - nordic_scans_end;
+                system(['cp ', fn_magn_in, ' ', fn_out]);
+                system(['chmod 755 ', fn_out]);
+                system(['fslroi ', fn_out, ' ', fn_out, ' 0 -1 0 -1 0 -1 0 ', num2str(n_vols_out)]);
+                msgs{end+1} = sprintf('    NO-NORDIC: cp+fslroi mag→bold  (vols: %d→%d)', ...
+                    info.ImageSize(end), n_vols_out);
+            else
+                msgs{end+1} = sprintf('    NO-NORDIC: bold already exists, skipped');
+            end
+        else
+            msgs{end+1} = sprintf('    NORDIC output not yet finalised (gfactor not found) — skipped');
         end
 
-        if ~doNORDIC && ~exist(fn_out,'file')
-            disp('NOT doing nordic, but we need edit the magfile')
-            info = niftiinfo(fn_magn_in);
-            system(['cp ',fn_magn_in, ' ', fn_out]);
-            system(['chmod 755 ', fn_out]);
-            system(['fslroi ', fn_out, ' ', ...
-               fn_out, ' 0 -1 0 -1 0 -1 0 ', num2str(info.ImageSize(end)-nordic_scans_end)]);
-            fprintf(' No NORDIC, copied mag file and rename as bold, also removed the last noise scan for %s\n', src_mags(src_magI).name);
-        elseif doNORDIC
-            disp('We need do NORDIC, so not just simply edit mag')
-        elseif exist(fn_out,'file')
-            disp('Dont do NORDIC, but the fn_out file are here, do nothing')
-
-        end
-        % copy the json file
-        if ~exist(strrep(fn_out, '_bold.nii.gz', '_bold.json'), 'file')
-            system(['cp ', strrep(fn_magn_in, '_magnitude.nii.gz', '_magnitude.json'), ' ', ...
-                strrep(fn_out, '_bold.nii.gz', '_bold.json')]);
-
-            system(['chmod 755 ', strrep(fn_out, '_bold.nii.gz', '_bold.json'), ' ']);    %strrep(fn_out, '_bold.nii.gz', '_bold.json')
-            fprintf (' json sidecar copied for bold file %s\n', strrep(src_mags(src_magI).name, '_magnitude', '_bold'));
-
+        % --- JSON sidecar ---
+        bold_json_src = strrep(fn_magn_in, '_magnitude.nii.gz', '_magnitude.json');
+        bold_json_dst = strrep(fn_out, '_bold.nii.gz', '_bold.json');
+        if ~exist(bold_json_dst, 'file') || force
+            system(['cp ', bold_json_src, ' ', bold_json_dst]);
+            system(['chmod 755 ', bold_json_dst]);
+            msgs{end+1} = sprintf('    JSON    : %s → %s', bold_json_src, bold_json_dst);
+        else
+            msgs{end+1} = sprintf('    JSON    : exists, skipped  (%s)', bold_json_dst);
         end
 
-
-        % copy the sbref
-        % the sbref here is only converted the mag, and it is called
-        % _sbref.nii.gz, didn't add the _part-mag
-        src_sbref = strrep(fn_magn_in, '_magnitude.nii.gz', '_sbref.nii.gz');
+        % --- sbref ---
+        src_sbref      = strrep(fn_magn_in, '_magnitude.nii.gz', '_sbref.nii.gz');
         src_sbref_json = strrep(fn_magn_in, '_magnitude.nii.gz', '_sbref.json');
-        dst_sbref = strrep(fn_out, '_bold.nii.gz', '_sbref.nii.gz');
+        dst_sbref      = strrep(fn_out, '_bold.nii.gz', '_sbref.nii.gz');
         dst_sbref_json = strrep(fn_out, '_bold.nii.gz', '_sbref.json');
-
-        if ~(exist(dst_sbref, 'file') && (exist(dst_sbref_json, 'file')))
+        if ~(exist(dst_sbref, 'file') && exist(dst_sbref_json, 'file')) || force
             system(['cp ', src_sbref, ' ', dst_sbref]);
             system(['cp ', src_sbref_json, ' ', dst_sbref_json]);
-            fprintf('sbref copied to %s\n', dst_sbref(end-20:end));
-            system(['chmod 755 ', dst_sbref_json, ' ']);
+            system(['chmod 755 ', dst_sbref_json]);
+            msgs{end+1} = sprintf('    SBREF   : %s → %s', src_sbref, dst_sbref);
+            msgs{end+1} = sprintf('    SBREF   : %s → %s', src_sbref_json, dst_sbref_json);
+        else
+            msgs{end+1} = sprintf('    SBREF   : exists, skipped  (%s)', dst_sbref);
         end
 
+        step4_logs{src_magI} = strjoin(msgs, '\n');
     end
+    for k = 1:num_runs; fprintf('%s\n', step4_logs{k}); end
 
-
+    % -----------------------------------------------------------------------
+    %% STEP 5 (optional) — tSNR maps
+    % -----------------------------------------------------------------------
     if dotsnr
-        bolds = dir(fullfile(out_sesP, ['*_bold.nii.gz']));
-        src_mags  =dir(funcmag_pattern);
+        fprintf('\n----------------------------------------------------------\n');
+        fprintf('  STEP 5 — tSNR maps\n');
+        fprintf('----------------------------------------------------------\n');
+        bolds = dir(fullfile(out_sesP, '*_bold.nii.gz'));
         bolds(contains({bolds.name}, 'gfactor')) = [];
+        src_mags_tsnr = dir(funcmag_pattern);
+        n_bolds = length(bolds);
+        fprintf('  Computing tSNR for %d bold file(s) (parfor)\n', n_bolds);
 
-
-        parfor nb=1:length(bolds)
-
-            % Define file names
-            magFile  = fullfile(src_mags(nb).folder, src_mags(nb).name);
+        tsnr_logs = cell(1, n_bolds);
+        parfor nb = 1:n_bolds
+            magFile  = fullfile(src_mags_tsnr(nb).folder, src_mags_tsnr(nb).name);
             boldFile = fullfile(bolds(nb).folder, bolds(nb).name);
+            tsnrFile      = strrep(boldFile, 'bold', 'tsnr_postNordic');
+            magtsnrFile   = strrep(boldFile, 'bold', 'tsnr_preNordic');
+            gfactorFile   = strrep(boldFile, 'bold', 'gfactor');
+            tsnrGfactorFile = strrep(gfactorFile, 'gfactor', 'gfactorSameSpace');
 
+            msgs = {};
+            msgs{end+1} = sprintf('  [tsnr %d/%d]', nb, n_bolds);
+            msgs{end+1} = sprintf('    IN  mag : %s', magFile);
+            msgs{end+1} = sprintf('    IN  bold: %s', boldFile);
 
-            tsnrFile = strrep(boldFile,'bold','tsnr_postNordic');
-            magtsnrFile = strrep(boldFile,'bold','tsnr_preNordic');
-            gfactorFile = strrep(boldFile,'bold','gfactor');
-            tsnrGfactorFile = strrep(gfactorFile,'gfactor','gfactorSameSpace');
-
-            % pre NORDIC tSNR
             magHeader = niftiinfo(magFile);
             magData = single(niftiread(magHeader));
-            magtsnrData = mean(magData,4) ./ std(magData,1,4);
+            magtsnrData = mean(magData, 4) ./ std(magData, 1, 4);
             magtsnrData(isnan(magtsnrData)) = 0;
             magHeader.ImageSize = size(magtsnrData);
-            magHeader.PixelDimensions=magHeader.PixelDimensions(1:3);
-            magHeader.Datatype = 'single' ;
-            niftiwrite(magtsnrData, strrep(magtsnrFile, '.nii', ''), magHeader,'compressed',true)
+            magHeader.PixelDimensions = magHeader.PixelDimensions(1:3);
+            magHeader.Datatype = 'single';
+            niftiwrite(magtsnrData, strrep(magtsnrFile, '.nii', ''), magHeader, 'compressed', true);
+            msgs{end+1} = sprintf('    OUT tsnr_preNordic : %s', magtsnrFile);
 
-            % post NORDIC tSNR
             boldHeader = niftiinfo(boldFile);
             boldData = single(niftiread(boldHeader));
-
-            tsnrData = mean(boldData,4) ./ std(boldData,1,4);
+            tsnrData = mean(boldData, 4) ./ std(boldData, 1, 4);
             boldHeader.ImageSize = size(tsnrData);
-            boldHeader.PixelDimensions=boldHeader.PixelDimensions(1:3);
-            boldHeader.Datatype = 'single' ;
-            niftiwrite(tsnrData, strrep(tsnrFile, '.nii', ''),boldHeader,'compressed',true)
+            boldHeader.PixelDimensions = boldHeader.PixelDimensions(1:3);
+            boldHeader.Datatype = 'single';
+            niftiwrite(tsnrData, strrep(tsnrFile, '.nii', ''), boldHeader, 'compressed', true);
+            msgs{end+1} = sprintf('    OUT tsnr_postNordic: %s', tsnrFile);
 
-            % Write g factor in same space
-
-            gHeader =  niftiinfo(gfactorFile);
+            gHeader = niftiinfo(gfactorFile);
             gfactorData = single(niftiread(gHeader));
-            gHeader.ImageSize=size(gfactorData);
-            gHeader.PixelDimensions=gHeader.PixelDimensions(1:3);
-            gHeader.Datatype = 'single' ;
-            niftiwrite(gfactorData, strrep(tsnrGfactorFile, '.nii', ''), gHeader,'compressed',true)
-            fprintf('TSNR map created for %s\n', bolds(nb).name);
+            gHeader.ImageSize = size(gfactorData);
+            gHeader.PixelDimensions = gHeader.PixelDimensions(1:3);
+            gHeader.Datatype = 'single';
+            niftiwrite(gfactorData, strrep(tsnrGfactorFile, '.nii', ''), gHeader, 'compressed', true);
+            msgs{end+1} = sprintf('    OUT gfactorSameSpace: %s', tsnrGfactorFile);
 
-
+            tsnr_logs{nb} = strjoin(msgs, '\n');
         end
+        for k = 1:n_bolds; fprintf('%s\n', tsnr_logs{k}); end
     end
-    time_end=datetime('now');
-    fprintf('The total time for sub: %s, ses: %s, and %s of runs are %s\n', sub, ses, num_runs, time_end-time_start);
-    disp('NORDIC finished!!')
-    % diary off;
+
+    % -----------------------------------------------------------------------
+    % Session footer
+    % -----------------------------------------------------------------------
+    time_end = datetime('now');
+    fprintf('\n==========================================================\n');
+    fprintf('  DONE  %s  %s\n', sub, ses);
+    fprintf('  runs processed : %d\n', num_runs);
+    fprintf('  total time     : %s\n', time_end - time_start);
+    fprintf('==========================================================\n\n');
 end

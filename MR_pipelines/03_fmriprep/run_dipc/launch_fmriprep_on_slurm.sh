@@ -1,59 +1,115 @@
-
-# """
+#!/usr/bin/env bash
 # MIT License
-
 # Copyright (c) 2024-2025 Yongning Lei
 
-# Permission is hereby granted, free of charge, to any person obtaining a copy of this software
-# and associated documentation files (the "Software"), to deal in the Software without restriction,
-# including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,
-# subject to the following conditions:
+# ---------------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------------
+OUTPUT_BASE="/scratch/tlei/VOTCLOC"       # scratch: code, logs, output
+BIDS_DIR="/data/tlei/VOTCLOC/BIDS_new"  # read-only data source
 
-# The above copyright notice and this permission notice shall be included in all copies or substantial
-# portions of the Software.
-unset analysis_name
-unset fp_version
-unset sublist
-unset slurm_log_dir
+script_dir="/scratch/tlei/soft/launchcontainers/MR_pipelines/03_fmriprep"
 
-STUDY="/scratch/tlei/VOTCLOC"
-code_dir="/scratch/tlei/soft/launchcontainers/MR_pipelines/03_fmriprep"
-# the subseslist here is just a subseslist name, it will look for
-# subseslist under basedir/code/subseslist
-sublist_name=$1
-sublist="${STUDY}/code/$sublist_name"
-analysis_name='t2-fs_dummyscans-5_bold2anat-t2w_forcebbr'
 fp_version=25.1.4
-job_name=sub0406
 
+# ---------------------------------------------------------------------------
+# Parse arguments
+# ---------------------------------------------------------------------------
+usage() {
+    echo "Usage:"
+    echo "  $0 -a <analysis_name> -s <sub>,<ses>         # single sub/ses pair"
+    echo "  $0 -a <analysis_name> -f <subseslist_name>   # batch from codedir/<subseslist_name>"
+    echo ""
+    echo "## Note: sublist is subject-only; all sessions are processed together."
+    echo "## To target specific sessions use a bids_filter.json in the analysis config."
+    exit 1
+}
 
-slurm_log_dir=$STUDY/dipc_fmriprep/${fp_version}_${analysis_name}_$(date +"%Y-%m-%d")
-mkdir -p ${slurm_log_dir}
+subses_arg=""
+file_arg=""
+analysis_name=""
 
-export analysis_name
-export fp_version
-export sublist
-export slurm_log_dir
+while getopts ":a:s:f:" opt; do
+    case $opt in
+        a) analysis_name="$OPTARG" ;;
+        s) subses_arg="$OPTARG" ;;
+        f) file_arg="$OPTARG" ;;
+        *) usage ;;
+    esac
+done
 
+if [[ -z "$analysis_name" ]]; then
+    echo "Error: -a <analysis_name> is required"
+    usage
+fi
+
+if [[ -z "$subses_arg" && -z "$file_arg" ]]; then
+    usage
+fi
+
+# ---------------------------------------------------------------------------
+# Logging setup (must happen before building sublist — sublist lives in logdir)
+# ---------------------------------------------------------------------------
+slurm_log_dir=$OUTPUT_BASE/dipc_fmriprep/${fp_version}_${analysis_name}_$(date +"%Y-%m-%d")
+mkdir -p "${slurm_log_dir}"
+
+cp "$0" "${slurm_log_dir}/"
+
+# ---------------------------------------------------------------------------
+# Build persistent sublist in logdir (SLURM workers read it asynchronously)
+# ---------------------------------------------------------------------------
+sublist="${slurm_log_dir}/subseslist.txt"
+
+if [[ -n "$subses_arg" ]]; then
+    job_name="sub$(echo "$subses_arg" | cut -d',' -f1)ses$(echo "$subses_arg" | cut -d',' -f2)"
+    printf "sub,ses\n%s\n" "$subses_arg" > "$sublist"
+else
+    src_sublist="$file_arg"
+    if [[ ! -f "$src_sublist" ]]; then
+        echo "Error: subseslist not found: $src_sublist"
+        exit 1
+    fi
+    cp "$src_sublist" "$sublist"
+    first_sub=$(awk -F',' 'NR==2{print $1}' "$sublist")
+    first_ses=$(awk -F',' 'NR==2{print $2}' "$sublist")
+    job_name="fp_s${first_sub}_${first_ses}"
+fi
+
+# ---------------------------------------------------------------------------
+# Submit SLURM array
+# ---------------------------------------------------------------------------
 TOTAL_LINES=$(wc -l < "$sublist")
-
-echo "Total lines is $TOTAL_LINES"
-
 DATA_LINES=$((TOTAL_LINES - 1))
+
+echo ""
+echo "========================================"
+echo "  fMRIPrep SLURM submission"
+echo "========================================"
+echo "  analysis    : ${analysis_name}"
+echo "  fp_version  : ${fp_version}"
+echo "  bids_dir    : ${BIDS_DIR}"
+echo "  output_base : ${OUTPUT_BASE}"
+echo "  log_dir     : ${slurm_log_dir}"
+echo "  sublist     : ${sublist}"
+echo "  n_jobs      : ${DATA_LINES}"
+echo "----------------------------------------"
+echo "  subjects:"
+awk -F',' 'NR>1 {printf "    [%d] sub-%s  ses-%s\n", NR-1, $1, $2}' "$sublist"
+echo "========================================"
+echo ""
+
+export analysis_name fp_version sublist slurm_log_dir BIDS_DIR
 
 now=$(date +"%H-%M")
 
 cmd="sbatch \
-    --export=ALL,analysis_name="${analysis_name}",fp_version="${fp_version}",slurm_log_dir="${slurm_log_dir}",sublist="${sublist}",basedir=${STUDY}\
+    --export=analysis_name=${analysis_name},fp_version=${fp_version},slurm_log_dir=${slurm_log_dir},sublist=${sublist},output_base=${OUTPUT_BASE},bids_dir=${BIDS_DIR} \
     --array=1-${DATA_LINES} \
-    -J "${job_name}"
-    -o "$slurm_log_dir/%J_%x-%A-%a_${now}.o" \
-    -e "$slurm_log_dir/%J_%x-%A-%a_${now}.e" \
-    ${code_dir}/run_dipc/src_fmriprep.slurm "
+    -J ${job_name} \
+    -o ${slurm_log_dir}/%J_%x-%A-%a_${now}.o \
+    -e ${slurm_log_dir}/%J_%x-%A-%a_${now}.e \
+    ${script_dir}/run_dipc/src_fmriprep.slurm"
 
-## Attention! the sublist needs to be subject only, and all the session will be processed in the same time
-## if want to specify session, then specify the bids_filter.json file,
-echo " The command for the slurm is "
-echo $cmd
-eval $cmd
+echo "sbatch cmd: $cmd"
+echo ""
+eval "$cmd"

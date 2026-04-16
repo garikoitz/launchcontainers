@@ -60,7 +60,7 @@ def _create_analysis_dir(lc_config: dict) -> str:
 
     if deriv_layout == "legacy":
         container_folder = op.join(
-            basedir, bidsdir_name, "derivatives", f"{container}-{version}"
+            basedir, bidsdir_name, "derivatives", f"{container}_{version}"
         )
         analysis_dir = op.join(container_folder, f"analysis-{analysis_name}")
     else:
@@ -133,8 +133,7 @@ def main(parse_namespace) -> tuple[bool, str | None]:
     bidsdir_name = lc_config["general"]["bidsdir_name"]
 
     sub_ses_list_path = parse_namespace.sub_ses_list
-    df_subses, _ = do.read_df(sub_ses_list_path)
-    df_subses = df_subses.loc[df_subses["RUN"] == "True"]
+    df_subses = do.parse_subses_list(sub_ses_list_path)
 
     if container in _DWI_PIPELINES:
         analysis_dir = _create_analysis_dir(lc_config)
