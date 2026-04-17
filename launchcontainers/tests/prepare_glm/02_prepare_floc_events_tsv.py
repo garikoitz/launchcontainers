@@ -38,9 +38,11 @@ from __future__ import annotations
 
 import csv
 import re
+from datetime import date, datetime
 from pathlib import Path
 from typing import Optional
 
+import pandas as pd
 import typer
 from rich.console import Console
 from rich.table import Table
@@ -53,6 +55,15 @@ from rich.text import Text
 _BIDS_DIR = Path("/scratch/tlei/VOTCLOC/BIDS")
 _RERUN_MAP_DEFAULT = Path("sourcedata/qc/rerun_check.tsv")  # relative to bids_dir
 _TASK = "fLoc"
+
+# Regexes for validating the onset directory name
+# e.g. sub-07_ses-01_task-fLoc_14-Mar-2025_CN_Stimset1_1back_10runs
+_ONSET_SUB_RE  = re.compile(r"(?:^|_)sub-(\d+)")
+_ONSET_SES_RE  = re.compile(r"(?:^|_)ses-(\d+)")
+_ONSET_DATE_RE = re.compile(r"(\d{1,2}-[A-Za-z]{3}-\d{4})")
+
+_DATE_FMTS = ["%d-%b-%Y", "%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%d-%m-%Y"]
+_BAD_SES_RE = r"-|wrong|failed|lost|ME|bad|00|test|-t"
 
 # Type alias: (sub, ses, task, extra_run) → compensates_run (zero-padded str)
 RerunMap = dict[tuple[str, str, str, str], str]
@@ -79,9 +90,15 @@ def _find_onset_dir(sourcedata_dir: Path, sub: str, ses: str) -> tuple[Path | No
 
     prefix = f"sub-{sub}_ses-{ses}"
     candidates: list[Path] = []
+    _bad_ses_re = re.compile(r"wrong|failed|lost|bad|test", re.IGNORECASE)
 
     for ses_dir in sub_src.iterdir():
         if not ses_dir.is_dir():
+            continue
+        # Skip sourcedata ses-* directories that are marked as bad sessions
+        # (e.g. ses-01wrong, ses-02failed).  These exist when a session was
+        # aborted or invalid and should not be used as an onset source.
+        if _bad_ses_re.search(ses_dir.name):
             continue
         for onset_dir in ses_dir.iterdir():
             name = onset_dir.name
@@ -192,6 +209,152 @@ def _atomic_symlink(tgt: Path, src: Path) -> None:
     tmp.rename(tgt)
 
 
+def _parse_date_flexible(val) -> date | None:
+    """Parse a date value from a pandas Timestamp, datetime, or various string formats."""
+    if hasattr(val, "date"):           # pandas Timestamp / datetime
+        return val.date()
+    s = str(val).strip()
+    for fmt in _DATE_FMTS:
+        try:
+            return datetime.strptime(s, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def _load_session_dates(lab_note_path: Path) -> dict[tuple[str, str], date]:
+    """
+    Read the lab-note Excel and return a dict mapping (sub, ses) → session date.
+
+    Only reads the `sub`, `ses`, and `date` columns.  Applies the same
+    bad-session filter as ``01_generate_rerun_check_from_labnote.py``.
+    """
+    session_dates: dict[tuple[str, str], date] = {}
+    if not lab_note_path.exists():
+        console.print(f"  [yellow]WARN[/yellow] lab note not found: {lab_note_path}")
+        return session_dates
+
+    ext = lab_note_path.suffix.lower()
+    if ext not in (".xlsx", ".xls"):
+        console.print(f"  [yellow]WARN[/yellow] lab note must be .xlsx/.xls, got: {lab_note_path.name}")
+        return session_dates
+
+    xls = pd.ExcelFile(lab_note_path)
+    for sheet_name in xls.sheet_names:
+        if not sheet_name.startswith("sub-"):
+            continue
+        df = pd.read_excel(xls, sheet_name=sheet_name, header=0)
+        df.columns = [str(c).strip().lower() for c in df.columns]
+        if not all(c in df.columns for c in ("sub", "ses", "date")):
+            continue
+
+        df = df[["sub", "ses", "date"]].copy()
+        df[["sub", "ses"]] = df[["sub", "ses"]].replace("", pd.NA)
+        df = df.dropna(subset=["sub", "ses"])
+        if df.empty:
+            continue
+
+        df = df[~df["ses"].astype(str).str.contains(_BAD_SES_RE, na=False)]
+        try:
+            df["sub"] = df["sub"].astype(float).astype(int).astype(str).str.zfill(2)
+        except Exception:
+            continue
+
+        if pd.api.types.is_string_dtype(df["ses"]):
+            def _zfill_one(v):
+                s = str(v).strip()
+                try:
+                    return str(int(float(s))).zfill(2)
+                except (ValueError, TypeError):
+                    return s
+            df["ses"] = df["ses"].apply(_zfill_one)
+        else:
+            try:
+                df["ses"] = df["ses"].astype(float).astype(int).astype(str).str.zfill(2)
+            except Exception:
+                df["ses"] = df["ses"].astype(str)
+
+        for _, row in df.iterrows():
+            key = (str(row["sub"]), str(row["ses"]))
+            if key in session_dates:
+                continue
+            parsed = _parse_date_flexible(row["date"])
+            if parsed:
+                session_dates[key] = parsed
+
+    return session_dates
+
+
+def _check_onset_dir(
+    onset_dir: Path,
+    sub: str,
+    ses: str,
+    session_dates: dict[tuple[str, str], date],
+) -> list[str]:
+    """
+    Validate the onset directory name against the expected sub, ses, and lab-note date.
+
+    Returns a list of warning strings (empty if everything matches).
+
+    Checks
+    ------
+    1. The sub number in the onset dir name matches ``sub``.
+    2. The numeric part of the ses label in the onset dir name matches ``ses``.
+    3. The date in the onset dir name matches the lab-note date for this session
+       (only when ``session_dates`` is non-empty).
+    """
+    name = onset_dir.name
+    warnings: list[str] = []
+
+    # 0. Parent ses-* directory sanity check
+    _bad_re = re.compile(r"wrong|failed|lost|bad|test", re.IGNORECASE)
+    parent_name = onset_dir.parent.name
+    if _bad_re.search(parent_name):
+        warnings.append(
+            f"onset dir lives under a bad-session sourcedata dir: {parent_name}  [{name}]"
+        )
+
+    # 1. Sub check
+    sub_m = _ONSET_SUB_RE.search(name)
+    if sub_m:
+        found_sub = sub_m.group(1).zfill(2)
+        if found_sub != sub:
+            warnings.append(
+                f"onset dir sub mismatch: expected sub-{sub}, got sub-{found_sub}  [{name}]"
+            )
+    else:
+        warnings.append(f"cannot parse sub from onset dir name: {name}")
+
+    # 2. Ses check (numeric part only — ignores trailing letters like 'rr', 'ME')
+    ses_m = _ONSET_SES_RE.search(name)
+    if ses_m:
+        found_ses = ses_m.group(1).zfill(2)
+        if found_ses != ses:
+            warnings.append(
+                f"onset dir ses mismatch: expected ses-{ses}, got ses-{found_ses}  [{name}]"
+            )
+    else:
+        warnings.append(f"cannot parse ses from onset dir name: {name}")
+
+    # 3. Date check (only when lab note was loaded)
+    if session_dates:
+        expected_date = session_dates.get((sub, ses))
+        date_m = _ONSET_DATE_RE.search(name)
+        if date_m:
+            onset_date = _parse_date_flexible(date_m.group(1))
+            if onset_date and expected_date and onset_date != expected_date:
+                warnings.append(
+                    f"onset dir date mismatch: onset dir has {onset_date}, "
+                    f"lab note has {expected_date}  [{name}]"
+                )
+        elif expected_date:
+            warnings.append(
+                f"cannot parse date from onset dir name (expected {expected_date}): {name}"
+            )
+
+    return warnings
+
+
 def _bids_events_path(func_dir: Path, sub: str, ses: str, run: str) -> Path:
     return func_dir / f"sub-{sub}_ses-{ses}_task-{_TASK}_run-{run}_events.tsv"
 
@@ -233,6 +396,7 @@ def _process_session(
     force: bool,
     rerun_map: RerunMap,
     verbose: bool,
+    session_dates: dict[tuple[str, str], date] | None = None,
 ) -> tuple[int, int, int, int, bool]:
     """
     Process one sub/ses.
@@ -264,6 +428,11 @@ def _process_session(
 
     if onset_status != "ok":
         onset_warnings.append(onset_status)
+
+    # Validate onset dir name (sub/ses match, date match against lab note).
+    # These are always printed (not just in verbose mode) because a mismatch
+    # indicates the wrong onset directory was selected.
+    validation_warnings = _check_onset_dir(onset_dir, sub, ses, session_dates or {})
 
     # ---- per-run pass ----
     n_ok = n_skip = n_missing = n_warn = 0
@@ -338,8 +507,12 @@ def _process_session(
                 pass  # will be visible in the table
 
     # ---- output ----
+    # Validation warnings are always shown (wrong onset dir is serious).
+    for w in validation_warnings:
+        console.print(f"  [bold red]VALIDATION[/bold red]  {w}")
+
     if verbose:
-        # Onset dir info
+        # Onset dir info and ambiguity/multi-onset warnings
         rel = onset_dir.relative_to(sourcedata_dir)
         console.print(f"  [cyan]onset[/cyan] : {rel}")
         for w in onset_warnings:
@@ -354,7 +527,8 @@ def _process_session(
             tbl.add_row(run, _styled_status(status), Text.from_markup(detail))
         console.print(tbl)
 
-    return n_ok, n_skip, n_warn, n_missing, n_missing > 0 or n_warn > 0
+    has_problem = n_missing > 0 or n_warn > 0 or bool(validation_warnings)
+    return n_ok, n_skip, n_warn, n_missing, has_problem
 
 
 def _iter_subses(
@@ -425,11 +599,15 @@ def main(
     ),
     force: bool = typer.Option(
         False, "--force",
-        help="Overwrite WRONG symlinks.",
+        help="Unlink and relink ALL existing symlinks (both correct and wrong).",
     ),
     rerun_tsv: Optional[Path] = typer.Option(
         None, "--rerun-map",
         help="Path to rerun_check.tsv (default: <bids_dir>/sourcedata/qc/rerun_check.tsv)",
+    ),
+    lab_note: Optional[Path] = typer.Option(
+        None, "--lab-note",
+        help="Lab-note Excel (.xlsx) for onset-dir validation (sub/ses/date checks).",
     ),
     verbose: bool = typer.Option(
         False, "-v", "--verbose",
@@ -454,6 +632,15 @@ def main(
     # Load rerun map
     rerun_path = rerun_tsv if rerun_tsv else bids_dir / _RERUN_MAP_DEFAULT
     rerun_map = _load_rerun_map(rerun_path)
+
+    # Load session dates from lab note (optional)
+    session_dates: dict[tuple[str, str], date] = {}
+    if lab_note:
+        session_dates = _load_session_dates(lab_note)
+        console.print(
+            f"[bold]Lab note[/bold]  : {lab_note.name}  "
+            f"([green]{len(session_dates)} sessions with dates[/green])"
+        )
 
     pairs = _iter_subses(bids_dir, subses_arg, file_arg)
     if not pairs:
@@ -485,6 +672,7 @@ def main(
             bids_dir, sub, ses,
             execute=execute, force=force,
             rerun_map=rerun_map, verbose=verbose,
+            session_dates=session_dates,
         )
 
         total_link    += n_ok
