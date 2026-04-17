@@ -177,6 +177,21 @@ def _resolve_original_run(
     return comp, chain
 
 
+def _atomic_symlink(tgt: Path, src: Path) -> None:
+    """
+    Replace (or create) *tgt* as a symlink pointing to *src*, atomically.
+
+    Uses a sibling temp file + os.rename, which is an atomic operation on
+    POSIX systems.  This avoids the unlink→symlink window where the target
+    file would be momentarily absent.
+    """
+    tmp = tgt.parent / f".tmp_{tgt.name}"
+    if tmp.exists() or tmp.is_symlink():
+        tmp.unlink()
+    tmp.symlink_to(src)
+    tmp.rename(tgt)
+
+
 def _bids_events_path(func_dir: Path, sub: str, ses: str, run: str) -> Path:
     return func_dir / f"sub-{sub}_ses-{ses}_task-{_TASK}_run-{run}_events.tsv"
 
@@ -255,21 +270,38 @@ def _process_session(
     rows: list[tuple[str, str, str]] = []   # (run, status, detail) for verbose table
 
     for run in runs:
-        src = _find_source_events(onset_dir, run)
         tgt = _bids_events_path(func_dir, sub, ses, run)
         rerun_note = ""
 
-        if src is None:
-            comp_run, chain = _resolve_original_run(rerun_map, sub, ses, _TASK, run)
-            if comp_run is not None:
-                src = _find_source_events(onset_dir, comp_run)
-                chain_str = (
-                    f"via {' → '.join('run-' + r for r in chain)} → " if chain else ""
-                )
-                rerun_note = (
-                    f" [dim](rerun→{chain_str}run-{comp_run})[/dim]"
-                    if src else f" [yellow](rerun map: {chain_str}run-{comp_run} not in onset dir)[/yellow]"
-                )
+        # Check rerun_map FIRST: if this run is a rerun (in the map), use the
+        # direct compensates_run (one hop) rather than the direct sourcedata file.
+        # Without this, within-range reruns (e.g. run-06…run-10) would find their
+        # own aborted events.tsv in sourcedata and get a self-symlink, making them
+        # invisible to generate_rerun_check_from_bids.py.
+        #
+        # We use ONE hop only so that the symlink target filename encodes the
+        # direct compensates relationship (matching the authoritative rerun_check).
+        # Full chain resolution is only a fallback when the direct run's events.tsv
+        # doesn't exist in sourcedata.
+        direct_comp = rerun_map.get((sub, ses, _TASK, run))
+        if direct_comp is not None:
+            src = _find_source_events(onset_dir, direct_comp)
+            if src is not None:
+                rerun_note = f" [dim](rerun→run-{direct_comp})[/dim]"
+            else:
+                # Direct comp not in sourcedata; fall back to full chain resolution
+                comp_run, chain = _resolve_original_run(rerun_map, sub, ses, _TASK, run)
+                if comp_run is not None:
+                    src = _find_source_events(onset_dir, comp_run)
+                    chain_str = f"via {' → '.join('run-' + r for r in chain)} → " if chain else ""
+                    rerun_note = (
+                        f" [dim](rerun→{chain_str}run-{comp_run})[/dim]"
+                        if src else f" [yellow](rerun map: {chain_str}run-{comp_run} not in onset dir)[/yellow]"
+                    )
+                if src is None:
+                    rerun_note = f" [yellow](rerun map: run-{direct_comp} not in onset dir)[/yellow]"
+        else:
+            src = _find_source_events(onset_dir, run)
 
         if src is None:
             status = "NO_SOURCE"
@@ -300,8 +332,7 @@ def _process_session(
             if status == "LINK":
                 tgt.symlink_to(src)
             elif status in ("SKIP", "WRONG") and force:
-                tgt.unlink()
-                tgt.symlink_to(src)
+                _atomic_symlink(tgt, src)
                 rows[-1] = (run, "→ FIXED", detail)
             elif status == "WRONG" and not force:
                 pass  # will be visible in the table
