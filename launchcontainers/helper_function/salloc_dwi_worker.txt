@@ -1,2 +1,2 @@
 
-salloc --ntasks=1 --cpus-per-task=8 --time=02:00:00 --mem=16GB
+salloc --ntasks=1 --cpus-per-task=40 --time=12:00:00 --mem=96GB
