@@ -34,6 +34,10 @@ usage() {
     echo "  -n <log_note>   Short label written into the log directory name."
     echo "  -m <model>      Model label used in JSON filenames: css or og"
     echo "                  css = CSS model  |  og = one gaussian"
+    echo ""
+    echo "Optional:"
+    echo "  -t <task>       Run only this task (e.g. retCB) instead of auto-detecting"
+    echo "                  all tasks from available JSONs. Useful for reruns."
     exit 1
 }
 
@@ -41,13 +45,15 @@ subses_arg=""
 file_arg=""
 model=""
 log_note=""
+task_override=""
 
-while getopts ":n:m:s:f:" opt; do
+while getopts ":n:m:s:f:t:" opt; do
     case $opt in
-        n) log_note="$OPTARG"  ;;
-        m) model="$OPTARG"     ;;
-        s) subses_arg="$OPTARG" ;;
-        f) file_arg="$OPTARG"   ;;
+        n) log_note="$OPTARG"      ;;
+        m) model="$OPTARG"         ;;
+        s) subses_arg="$OPTARG"    ;;
+        f) file_arg="$OPTARG"      ;;
+        t) task_override="$OPTARG" ;;
         *) usage ;;
     esac
 done
@@ -99,10 +105,15 @@ mkdir -p "$HOME_DIR"
 cp "$0" "$LOG_DIR/"
 [[ -n "$file_arg" ]] && cp "$subseslist_path" "$LOG_DIR/subseslist.txt"
 
-echo "Log dir  : $LOG_DIR"
-echo "JSON dir : $json_dir"
-echo "Model    : $model"
-echo "Log note : $log_note"
+echo "Log dir     : $LOG_DIR"
+echo "JSON dir    : $json_dir"
+echo "Model       : $model"
+echo "Log note    : $log_note"
+if [[ -n "$task_override" ]]; then
+    echo "Task (fixed): $task_override"
+else
+    echo "Task        : auto-detect from JSONs"
+fi
 echo ""
 
 # ---------------------------------------------------------------------------
@@ -112,15 +123,23 @@ job_num=1
 while IFS=',' read -r sub ses _; do
     [[ -z "$sub" || -z "$ses" ]] && continue
 
-    # Detect all tasks by globbing existing JSONs for this sub/ses
-    mapfile -t jsons < <(ls "${json_dir}"/*_${model}_sub-${sub}_ses-${ses}.json 2>/dev/null)
-
-    if [[ ${#jsons[@]} -eq 0 ]]; then
-        echo "WARNING: no JSONs found for sub-${sub} ses-${ses} — skipping"
-        continue
+    # Detect tasks: use override if given, otherwise glob all JSONs for this sub/ses
+    if [[ -n "$task_override" ]]; then
+        json_path="${json_dir}/${task_override}_${model}_sub-${sub}_ses-${ses}.json"
+        if [[ ! -f "$json_path" ]]; then
+            echo "WARNING: JSON not found for task=${task_override} sub-${sub} ses-${ses}: $json_path — skipping"
+            continue
+        fi
+        mapfile -t jsons < <(echo "$json_path")
+        echo "sub-${sub} ses-${ses}: using fixed task=${task_override}"
+    else
+        mapfile -t jsons < <(ls "${json_dir}"/*_${model}_sub-${sub}_ses-${ses}.json 2>/dev/null)
+        if [[ ${#jsons[@]} -eq 0 ]]; then
+            echo "WARNING: no JSONs found for sub-${sub} ses-${ses} — skipping"
+            continue
+        fi
+        echo "sub-${sub} ses-${ses}: found ${#jsons[@]} task(s) (auto-detected)"
     fi
-
-    echo "sub-${sub} ses-${ses}: found ${#jsons[@]} task(s)"
 
     for json_path in "${jsons[@]}"; do
         # Extract task label from filename: retCB_css_sub-01_ses-01.json → retCB

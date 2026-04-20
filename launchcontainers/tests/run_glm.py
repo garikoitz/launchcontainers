@@ -202,7 +202,7 @@ def glm_l1(
             outname_base = outname_base.replace("_statmap", f"{randrun_idx}_statmap")
         outname_base = op.join(outdir, outname_base)
 
-        contrast_obj = compute_contrast(labels, estimates, contrast_val, contrast_type="t")
+        contrast_obj = compute_contrast(labels, estimates, contrast_val)
 
         betas     = contrast_obj.effect_size()
         t_value   = contrast_obj.stat()
@@ -251,9 +251,15 @@ def prepare_glm_input(
     confounds_allrun = []
     store_l1         = []
 
+    # Per-run step timing: {run_num: {step: seconds}}
+    run_step_times: dict[str, dict[str, float]] = {}
+
     for idx, run_num in enumerate(run_list):
         console.print(f"  Processing run [cyan]{run_num}[/cyan]")
+        run_step_times[run_num] = {}
 
+        # ── Step 1: find + load functional data ─────────────────────────────
+        _t = time.time()
         query_params = {
             "subject":   subject,
             "session":   session,
@@ -293,8 +299,14 @@ def prepare_glm_input(
             console.print(
                 f"  Volumetric shape: {original_shape}, timepoints: {n_timepoints}"
             )
+        run_step_times[run_num]["load_func"] = time.time() - _t
+        console.print(
+            f"  Length original data: {np.shape(data_float)[1]}  "
+            f"[dim](load_func: {run_step_times[run_num]['load_func']:.1f} s)[/dim]"
+        )
 
-        console.print(f"  Length original data: {np.shape(data_float)[1]}")
+        # ── Step 2: z-score + trim ────────────────────────────────────────────
+        _t = time.time()
         data_remove_first = data_float[:, start_scans:]
         console.print(f"  Length after removing {start_scans} prescan TRs: {np.shape(data_remove_first)[1]}")
 
@@ -314,7 +326,10 @@ def prepare_glm_input(
 
         n_scans = np.shape(data_std)[1]
         data_allrun.append(data_std)
+        run_step_times[run_num]["zscore_mask"] = time.time() - _t
 
+        # ── Step 3: first_level_from_bids (events + confounds + TR) ──────────
+        _t = time.time()
         img_filters = [("desc", "preproc"), ("ses", session), ("run", run_num)]
         try:
             l1 = first_level_from_bids(
@@ -333,7 +348,13 @@ def prepare_glm_input(
         except (TypeError, FileNotFoundError, IndexError) as e:
             console.print(f"  [yellow]WARNING[/yellow]: error processing run {run_num}: {e} — skipping")
             continue
+        run_step_times[run_num]["first_level_from_bids"] = time.time() - _t
+        console.print(
+            f"  [dim]first_level_from_bids: {run_step_times[run_num]['first_level_from_bids']:.1f} s[/dim]"
+        )
 
+        # ── Step 4: confound processing ───────────────────────────────────────
+        _t = time.time()
         t_r      = l1[0][0].t_r
         events   = l1[2][0][0]
         confounds = l1[3][0][0]
@@ -358,12 +379,35 @@ def prepare_glm_input(
             confounds_keep["framewise_displacement"]
         )
         confounds_keep = confounds_keep.iloc[start_scans:]
-        console.print(f"  Confounds length: {len(confounds_keep)}")
         confounds_allrun.append(confounds_keep)
 
         frame_times = t_r * ((np.arange(n_scans) + slice_time_ref) + idx * n_scans)
         frame_time_allrun.append(frame_times)
+        run_step_times[run_num]["confounds"] = time.time() - _t
+        console.print(
+            f"  Confounds length: {len(confounds_keep)}  "
+            f"[dim](confound processing: {run_step_times[run_num]['confounds']:.1f} s)[/dim]"
+        )
 
+    # ── Per-run timing summary table ──────────────────────────────────────────
+    if run_step_times:
+        step_cols = ["load_func", "zscore_mask", "first_level_from_bids", "confounds"]
+        tbl_run = Table(title="Per-run step timing (s)", box=box.SIMPLE_HEAD)
+        tbl_run.add_column("run")
+        for s in step_cols:
+            tbl_run.add_column(s, justify="right")
+        tbl_run.add_column("run_total", justify="right")
+        for rn, steps in run_step_times.items():
+            vals = [steps.get(s, 0.0) for s in step_cols]
+            tbl_run.add_row(
+                rn,
+                *[f"{v:.2f}" for v in vals],
+                f"{sum(vals):.2f}",
+            )
+        console.print(tbl_run)
+
+    # ── Step 5: build design matrix ───────────────────────────────────────────
+    _t = time.time()
     conc_data_std   = np.concatenate(data_allrun, axis=1)
     concat_frame_times = np.concatenate(frame_time_allrun, axis=0)
     concat_events   = pd.concat(events_allrun, axis=0)
@@ -386,7 +430,11 @@ def prepare_glm_input(
     design_matrix_std["constant"] = np.ones(len(design_matrix_std)).astype(int)
 
     contrasts = load_contrasts(contrast_fpath, design_matrix)
-    console.print(f"  Design matrix columns: {list(design_matrix.columns)}")
+    t_design = time.time() - _t
+    console.print(
+        f"  Design matrix columns: {list(design_matrix.columns)}\n"
+        f"  [dim]design_matrix build: {t_design:.2f} s[/dim]"
+    )
 
     return conc_data_std, design_matrix_std, contrasts
 
