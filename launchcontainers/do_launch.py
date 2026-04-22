@@ -84,7 +84,7 @@ def launch_jobs(
     ----------
     parse_namespace : argparse.Namespace
         Parsed CLI arguments for run mode.
-    df_subses : pandas.DataFrame
+    df_subses : list[tuple[str, str]]
         Filtered subject/session rows to launch.
     job_script_dir : str
         Directory used to store generated scripts and batch command files.

@@ -9,7 +9,7 @@ baseP="/scratch/tlei/VOTCLOC"
 codedir="$baseP/code"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-HOME_DIR="$baseP/singularity_home_gari"
+HOME_DIR="$baseP/singularity_home"
 license_path="$baseP/BIDS/.license"
 
 step="prfanalyze-vista"
@@ -17,7 +17,7 @@ version="2.2.1"
 qos="regular"         # regular | test
 mem="18G"
 cpus="24"
-time="18:00:00"
+time="24:00:00"
 
 json_dir="$baseP/code/${step}_jsons"
 sif_path="/scratch/tlei/containers/${step}_${version}.sif"
@@ -101,6 +101,8 @@ fi
 LOG_DIR="/scratch/tlei/dipc_${step}_logs/$(date +"%Y-%m-%d")_${log_note}_${analysis_name}"
 mkdir -p "$LOG_DIR"
 mkdir -p "$HOME_DIR"
+chmod -R 777 "$HOME_DIR"
+chmod -R 777 "$LOG_DIR"
 
 cp "$0" "$LOG_DIR/"
 [[ -n "$file_arg" ]] && cp "$subseslist_path" "$LOG_DIR/subseslist.txt"

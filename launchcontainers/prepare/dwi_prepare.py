@@ -408,8 +408,8 @@ def main(parser_namespace, analysis_dir, df_subses, layout):
         Parsed CLI arguments for prepare mode.
     analysis_dir : str
         Prepared analysis directory.
-    df_subses : pandas.DataFrame
-        Filtered subject/session rows to process.
+    df_subses : list[tuple[str, str]]
+        Filtered subject/session pairs to process.
     layout : bids.BIDSLayout
         BIDS layout built from the configured raw dataset.
 

@@ -26,7 +26,7 @@ FP_ANA_NAME="25.1.4_newest"
 TASK="fLoc"
 SPACE="fsnative"
 START_SCANS="6"
-CONTRAST="/scratch/tlei/lc/MR_pipelines/04_fMRI_first-level/contrast_votcloc_all.yaml"
+CONTRAST="/scratch/tlei/lc/launchcontainers/tests/contrast_votcloc_all.yaml"
 RERUN_MAP="/scratch/tlei/VOTCLOC/BIDS/sourcedata/qc/rerun_check.tsv"   # leave empty "" to skip
 
 # Python / conda environment
@@ -110,6 +110,9 @@ echo "  GLM Slurm launcher"
 echo "  Output name : ${output_name}"
 echo "  Input       : ${SOURCE}"
 echo "  Sessions    : ${#PAIRS[@]}"
+echo "  Task        : ${TASK}"
+echo "  Start scans : ${START_SCANS}"
+echo "  Space       : ${SPACE}"
 echo "  QOS         : ${QOS}"
 echo "  Partition   : ${PARTITION}"
 echo "  CPUs / job  : ${CPUS}"

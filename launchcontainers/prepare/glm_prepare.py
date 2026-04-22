@@ -25,7 +25,6 @@ import re
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    import pandas as pd
     import bids  # pybids — BIDSLayout lives here
 
 from launchcontainers.log_setup import console
@@ -87,9 +86,9 @@ def _parse_events_from_stim_name(stim_basename: str, block_time: float):
 
     # Normalize task name
     if "block" in task:
-        task = "fixblock"
+        task = "WCblock"
     else:
-        task = "fixnonstop"
+        task = "WCnonestop"
 
     # Total run duration from "duration-<N>" token
     match = re.search(r"duration-(\d+)", stim_basename)
@@ -99,7 +98,7 @@ def _parse_events_from_stim_name(stim_basename: str, block_time: float):
         )
     total_duration = int(match.group(1))
 
-    if task == "fixblock":
+    if task == "WCblock":
         # Block design: alternating baseline / active epochs
         n_epochs = int(total_duration / block_time)
         onset = [float(block_time * i) for i in range(n_epochs)]
@@ -236,6 +235,11 @@ class GLMPrepare(BasePrepare):
     def sm(self) -> str | None:
         """FreeSurfer FWHM smooth factor (e.g. '05')."""
         return self._glm_cfg.get("sm")
+
+    @property
+    def force(self) -> bool:
+        """If ``True``, overwrite existing outputs (from ``general.force``)."""
+        return bool(self.lc_config.get("general", {}).get("force", False))
 
     @property
     def dry_run(self) -> bool:
@@ -524,7 +528,7 @@ class GLMPrepare(BasePrepare):
 
             * ``bids_path``    — absolute path to the original BIDS bold
             * ``glm_task_run`` — normalised GLM task-run string, e.g.
-              ``task-fixnonstop_run-01``
+              ``task-WCnonestop_run-01``
             * ``link_path``    — absolute path to the symlink that was created
         """
         from launchcontainers.utils import parse_hms, times_match
@@ -543,7 +547,11 @@ class GLMPrepare(BasePrepare):
                 return_type="file",
             )
         )
-        bids_files = [f for f in bids_files if "task-fLoc" not in op.basename(f)]
+        bids_files = [
+            f for f in bids_files
+            if "task-fLoc" not in op.basename(f)
+            and not op.islink(f)
+        ]
         if not bids_files:
             console.print(
                 f"  No non-fLoc BIDS bold files found for sub-{sub} ses-{ses}",
@@ -571,7 +579,7 @@ class GLMPrepare(BasePrepare):
                 (
                     row
                     for row in mapping
-                    if times_match(bold_acq_time, row["acq_time"], max_diff_sec=120)
+                    if times_match(bold_acq_time, row["acq_time"], max_diff_sec=180)
                 ),
                 None,
             )
@@ -642,12 +650,14 @@ class GLMPrepare(BasePrepare):
         Create fMRIprep bold symlinks using the same run list resolved by
         :meth:`gen_bids_bold_symlinks`.
 
-        For each entry in *bids_matched* the method locates the corresponding
-        preprocessed bold in the fMRIprep ``func/`` directory by matching the
-        ``task-<x>_run-<n>`` token and filtering on ``space-<self.space>`` and
-        ``desc-preproc``.  The symlink is named with the same ``glm_task_run``
-        value used on the BIDS side, ensuring both trees share an identical file
-        list.
+        For each entry in *bids_matched* the method locates **all** files in the
+        fMRIprep ``func/`` directory that match the original ``task-<x>_run-<n>``
+        token (all spaces, hemispheres, and suffixes) and creates a symlink for
+        each one with the normalised ``glm_task_run`` name.  This ensures that
+        both fsnative (``.func.gii``) and volumetric (``space-T1w .nii.gz``)
+        files are available under the WC task name, as required by both the
+        surface GLM and ``first_level_from_bids`` (which needs a T1w file to
+        extract TR and events).
 
         Parameters
         ----------
@@ -687,64 +697,50 @@ class GLMPrepare(BasePrepare):
             task_run_match = re.search(r"task-(\w+)_run-(\d+)", orig_task_run)
             task, run = task_run_match.group(1), task_run_match.group(2)
 
+            # Collect ALL files for this task/run — all spaces, hemis, and
+            # suffixes (.func.gii, .nii.gz, .json).  run_glm.py uses
+            # first_level_from_bids with space_label="T1w" to extract TR/events,
+            # so both fsnative and T1w files must be symlinked with WC names.
             candidates = glob.glob(
                 op.join(fmriprep_func, f"sub-{sub}_ses-{ses}_task-{task}_run-{run}*")
             )
-
-            candidates = [
-                c for c in candidates if f"space-{self.space}" in op.basename(c)
-            ]
-            if self.space == "fsnative":
-                candidates = [
-                    c for c in candidates if "_bold.func.gii" in op.basename(c)
-                ]
-            if self.space == "T1w":
-                candidates = [
-                    c
-                    for c in candidates
-                    if "desc-preproc*bold.nii.gz" in op.basename(c)
-                ]
+            # Exclude files that are already symlinks (from a prior prepare run)
+            candidates = [c for c in candidates if not op.islink(c)]
 
             if not candidates:
                 console.print(
-                    f"  [WARNING] No fMRIprep bold for task-{task}_run-{run} "
-                    f"space-{self.space} — skipping.",
+                    f"  [WARNING] No fMRIprep files for task-{task}_run-{run} — skipping.",
                     style="yellow",
                 )
                 continue
-            if len(candidates) > 1:
+
+            for fp_bold in candidates:
+                fp_basename = op.basename(fp_bold)
+
+                new_basename = re.sub(r"task-\w+_run-\d+", glm_task_run, fp_basename)
+                link_path = op.join(func_dir, new_basename)
+                if op.islink(link_path) or op.exists(link_path):
+                    os.remove(link_path)
+                os.symlink(fp_bold, link_path)
+                symlinks.append(link_path)
+
+                # Also symlink the JSON sidecar if it exists
+                # JSON sidecar: derive from bold path by replacing bold suffix
+                for bold_suffix in (".func.gii", ".nii.gz"):
+                    if fp_bold.endswith(bold_suffix):
+                        fp_json = fp_bold[: -len(bold_suffix)] + ".json"
+                        if op.exists(fp_json):
+                            new_json_basename = new_basename[: -len(bold_suffix)] + ".json"
+                            json_link_path = op.join(func_dir, new_json_basename)
+                            if op.islink(json_link_path) or op.exists(json_link_path):
+                                os.remove(json_link_path)
+                            os.symlink(fp_json, json_link_path)
+                        break
+
                 console.print(
-                    f"  [WARNING] Multiple fMRIprep candidates for task-{task}_run-{run}, "
-                    f"using first: {op.basename(candidates[0])}",
-                    style="yellow",
+                    f"  {fp_basename}\n    → {new_basename}",
+                    style="cyan",
                 )
-            fp_bold = candidates[0]
-            fp_basename = op.basename(fp_bold)
-
-            new_basename = re.sub(r"task-\w+_run-\d+", glm_task_run, fp_basename)
-            link_path = op.join(func_dir, new_basename)
-            if op.islink(link_path) or op.exists(link_path):
-                os.remove(link_path)
-            os.symlink(fp_bold, link_path)
-            symlinks.append(link_path)
-
-            # Also symlink the JSON sidecar if it exists
-            if self.space == "fsnative":
-                fp_json = fp_bold.replace(".func.gii", ".json")
-                new_json_basename = new_basename.replace(".func.gii", ".json")
-            else:
-                fp_json = fp_bold.replace(".nii.gz", ".json")
-                new_json_basename = new_basename.replace(".nii.gz", ".json")
-            if op.exists(fp_json):
-                json_link_path = op.join(func_dir, new_json_basename)
-                if op.islink(json_link_path) or op.exists(json_link_path):
-                    os.remove(json_link_path)
-                os.symlink(fp_json, json_link_path)
-
-            console.print(
-                f"  {fp_basename}\n    → {new_basename}",
-                style="cyan",
-            )
 
         console.print(
             f"\n### fMRIprep bold symlinks complete: {len(symlinks)} created.",
@@ -759,7 +755,7 @@ class GLMPrepare(BasePrepare):
 
 
 def run_prf_glm_prepare(
-    lc_config: dict, df_subses: pd.DataFrame, layout: bids.BIDSLayout
+    lc_config: dict, df_subses: list[tuple[str, str]], layout: bids.BIDSLayout
 ) -> bool:
     """
     Run the full PRF-GLM preparation pipeline for every subject/session.
@@ -782,8 +778,8 @@ def run_prf_glm_prepare(
     ----------
     lc_config : dict
         Parsed launchcontainers YAML configuration.
-    df_subses : pandas.DataFrame
-        Subject/session table filtered to rows where ``RUN == True``.
+    df_subses : list[tuple[str, str]]
+        Subject/session pairs filtered to rows where ``RUN == True``.
 
     Returns
     -------
@@ -819,9 +815,7 @@ def run_prf_glm_prepare(
                     os.symlink(src_readme, dst_readme)
                     console.print(f"  Symlinked {fname} → {dst_readme}", style="cyan")
 
-    for row in df_subses.itertuples():
-        sub = str(row.sub)
-        ses = str(row.ses)
+    for sub, ses in df_subses:
         console.print(f"\n### PRF-GLM prepare  sub-{sub}  ses-{ses}", style="bold cyan")
 
         # Resolve output dirs: when output_bids_dir is set, mirror the full
@@ -846,6 +840,23 @@ def run_prf_glm_prepare(
             out_func = None  # each method falls back to its own default
             out_fmriprep_func = None
 
+        # If force, delete existing mapping TSV so it is regenerated fresh
+        if glm.force:
+            mapping_tsv = op.join(
+                glm.bidsdir,
+                "sourcedata",
+                "vistadisplog",
+                f"sub-{sub}",
+                f"ses-{ses}",
+                f"sub-{sub}_ses-{ses}_desc-mapping_PRF_acqtime.tsv",
+            )
+            if op.exists(mapping_tsv):
+                os.remove(mapping_tsv)
+                console.print(
+                    f"  force=True — deleted existing mapping TSV: {mapping_tsv}",
+                    style="yellow",
+                )
+
         # 1. Generate events.tsv
         glm.gen_events_tsv_vistadisplog(sub, ses, output_dir=out_func)
 
@@ -862,7 +873,7 @@ def run_prf_glm_prepare(
 
 def run_glm_prepare(
     lc_config: dict | None = None,
-    df_subses: pd.DataFrame | None = None,
+    df_subses: list[tuple[str, str]] | None = None,
     layout: bids.BIDSLayout | None = None,
 ) -> bool:
     """
@@ -878,8 +889,8 @@ def run_glm_prepare(
     ----------
     lc_config : dict or None
         Parsed launchcontainers YAML configuration.
-    df_subses : pandas.DataFrame or None
-        Subject/session table filtered to rows where ``RUN == True``.
+    df_subses : list[tuple[str, str]] or None
+        Subject/session pairs filtered to rows where ``RUN == True``.
     layout : BIDSLayout or None
         Pre-loaded BIDS layout for the dataset.
 
