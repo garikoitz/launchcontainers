@@ -214,8 +214,8 @@ def backup_old_rtp2pipeline_log(
     ----------
     parse_namespace : argparse.Namespace
         Parsed CLI arguments for run mode.
-    df_subses : pandas.DataFrame
-        Subject/session rows whose output directories should be inspected.
+    df_subses : list[tuple[str, str]]
+        Subject/session pairs whose output directories should be inspected.
     """
     # read LC config yml from analysis dir
     analysis_dir = parse_namespace.workdir

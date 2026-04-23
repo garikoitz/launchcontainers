@@ -56,8 +56,8 @@ def gen_launch_cmd(
     ----------
     parse_namespace : argparse.Namespace
         Parsed CLI arguments for run mode.
-    df_subses : pandas.DataFrame
-        Filtered subject/session rows to launch.
+    df_subses : list[tuple[str, str]]
+        Filtered subject/session pairs to launch.
     batch_command_file : str or path-like
         Output text file that stores the generated command list.
 
@@ -85,9 +85,7 @@ def gen_launch_cmd(
         )
 
     commands = []
-    for row in df_subses.itertuples(index=True, name="Pandas"):
-        sub = row.sub
-        ses = row.ses
+    for sub, ses in df_subses:
         command = _gen_cmd(lc_config, sub, ses, analysis_dir)
         commands.append(command)
 

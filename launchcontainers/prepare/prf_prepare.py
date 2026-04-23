@@ -76,8 +76,8 @@ class PRFPrepare:
 
         Column written only when ``lc_glm=True``:
 
-        * ``glm_task_run``   — normalized task label (``fixnonstop`` / ``fixblock``) +
-          per-normalized-task run counter, e.g. ``task-fixnonstop_run-01``
+        * ``glm_task_run``   — normalized task label (``WCnonestop`` / ``WCblock``) +
+          per-normalized-task run counter, e.g. ``task-WCnonestop_run-01``
 
         Output file is named ``sub-{sub}_ses-{ses}_desc-mapping_PRF_acqtime.tsv``
         and written to ``output_dir`` if provided, otherwise to the
@@ -182,7 +182,7 @@ class PRFPrepare:
                     )
                     row["glm_task_run"] = "N/A"
                 else:
-                    norm_task = "fixblock" if "block" in orig_task else "fixnonstop"
+                    norm_task = "WCblock" if "block" in orig_task else "WCnonestop"
                     norm_counters[norm_task] = norm_counters.get(norm_task, 0) + 1
                     row["glm_task_run"] = (
                         f"task-{norm_task}_run-{norm_counters[norm_task]:02d}"
