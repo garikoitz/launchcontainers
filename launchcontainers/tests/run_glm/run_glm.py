@@ -176,7 +176,7 @@ def glm_l1(
 
     Y = np.transpose(conc_data_std)
     X = np.asarray(design_matrix_std)
-    labels, estimates = run_glm(Y, X, n_jobs=-1)
+    labels, estimates = run_glm(Y, X, n_jobs=1)
 
     timing: dict[str, float] = {}
 

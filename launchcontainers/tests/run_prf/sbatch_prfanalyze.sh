@@ -9,7 +9,7 @@ baseP="/scratch/tlei/VOTCLOC"
 codedir="$baseP/code"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-HOME_DIR="$baseP/singularity_home"
+HOME_DIR="$baseP/singularity_home_${USER}"
 license_path="$baseP/BIDS/.license"
 
 step="prfanalyze-vista"
@@ -170,3 +170,9 @@ while IFS=',' read -r sub ses _; do
 done < "$tmpfile"
 
 rm -f "$tmpfile"
+
+total_jobs=$(( job_num - 1 ))
+summary="All ${total_jobs} job(s) submitted. Logs: ${LOG_DIR}"
+echo ""
+echo "$summary"
+echo "$summary" >> "${LOG_DIR}/submit_summary.txt"

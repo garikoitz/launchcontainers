@@ -103,6 +103,15 @@ def _prepare_analysis_dir(parse_namespace, analysis_dir: str, lc_config: dict):
     )
 
 
+def _chmod777(path: str) -> None:
+    """Recursively set permissions to 777 on *path* so other users can access it."""
+    console.print(f"Setting permissions 777 on {path}", style="blue")
+    for dirpath, dirnames, filenames in os.walk(path):
+        os.chmod(dirpath, 0o777)
+        for fname in filenames:
+            os.chmod(op.join(dirpath, fname), 0o777)
+
+
 def main(parse_namespace) -> tuple[bool, str | None]:
     """
     Run the full prepare workflow.
@@ -149,6 +158,7 @@ def main(parse_namespace) -> tuple[bool, str | None]:
             f"\n #####\n \U0001f37a Analysis dir is \n{analysis_dir}\n",
             style="bold red",
         )
+        _chmod777(analysis_dir)
         return success, analysis_dir
 
     elif container in _GLM_PIPELINES:
@@ -176,6 +186,7 @@ def main(parse_namespace) -> tuple[bool, str | None]:
             f"\n #####\n \U0001f37a Analysis dir is \n{analysis_dir}\n",
             style="bold red",
         )
+        _chmod777(analysis_dir)
         return success, analysis_dir
 
     else:
